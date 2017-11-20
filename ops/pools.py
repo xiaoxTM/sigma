@@ -24,3 +24,31 @@ def avg_pool2d(input_shape, psize, stride=None, padding='same', name=None):
 
 def max_pool2d(input_shape, psize, stride=None, padding='same', name=None):
     return base_pool2d(input_shape, tf.nn.max_pool, psize, stride, padding, name)
+
+def resize(input_shape, output_shape, factor=None, mode='bilinear',
+           align_corners=False, reuse=False, name=None):
+    if output_shape is None:
+        if factor is None:
+            raise ValueError('cannot feed bilinear with both none of output_shape and factor')
+        output_shape = [x for x in input_shape]
+        if isinstance(factor, (int, float)):
+            factor = [1] + [factor] * (len(output_shape)-2) + [1]
+        elif isinstance(factor, (list, tuple)):
+            if len(factor) == 1:
+                factor = [1] + factor * (len(output_shape) - 2) + [1]
+            elif len(factor) == (len(output_shape) - 2):
+                factor = [1] + factor + [1]
+            elif len(factor) != len(output_shape):
+                raise ValueError('factor and output_shape length not match. {} vs {}'
+                                 .format(factor, output_shape))
+        else:
+            raise TypeError('factor type not support in bilinear')
+
+        for i in range(1, len(output_shape)-1):
+            output_shape[i] *= factor[i]
+    if mode not in ['bilinear', 'bicubic', 'area', 'nearest_neighbor']:
+        raise ValueError('mode must be one of [bilinear, bicubic, area, nearest_neighbor]')
+    def _resize(x):
+        return eval('tf.image.resize_{}(x, output_shape, align_corners, name)'
+                    .format(mode))
+    return _resize

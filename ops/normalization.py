@@ -1,6 +1,7 @@
 import tensorflow as tf
 from . import mm
 from . import helper
+from . import actives
 from .. import status
 
 def batch_norm(input_shape,
@@ -12,6 +13,7 @@ def batch_norm(input_shape,
                moving_mean_initializer=None,
                moving_variance_initializer=None,
                epsilon=1e-5,
+               act=None,
                fused=False,
                reuse=False,
                collections=None,
@@ -93,6 +95,7 @@ def batch_norm(input_shape,
                                 trainable=True,
                                 collections=collections,
                                 reuse=reuse, scope=scope)
+    act = actives.get(act)
     # print('input shape:', input_shape)
     # print('axis:', axis)
     def _train(x):
@@ -119,7 +122,7 @@ def batch_norm(input_shape,
             # print('mn', mean.get_shape().as_list())
             moving_mean.assign(moving_mean * momentum + mean * (1 - momentum))
             moving_variance.assign(moving_variance * momentum + variance * (1 - momentum))
-        return x
+        return act(x)
 
     def _infer(x):
         if fused:
@@ -133,7 +136,7 @@ def batch_norm(input_shape,
             mean, variance = tf.nn.moments(x, axis, keep_dims=True)
             x = tf.nn.batch_normalization(x, moving_mean, moving_variance,
                                           offset, scale, epsilon)
-        return x
+        return act(x)
 
     def _batch_norm(x):
         x = tf.cond(tf.cast(status.is_training, tf.bool),
@@ -145,7 +148,7 @@ def batch_norm(input_shape,
     return _batch_norm
 
 
-def layer_norm(input_shape, scale=True, epsilon=1e-5,
+def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
                reuse=False, name=None, scope=None):
     if name is None:
         name = helper.dispatch_name('layer_norm')
@@ -157,6 +160,7 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5,
                        initializer=tf.zeros_initializer,
                        trainable=True, reuse=reuse,
                        scope=scope)
+    act = actives.get(act)
     if scale is True:
         scale = mm.malloc('{}-scale'.format(name),
                           [neurons], dtype=tf.float32,
@@ -171,15 +175,16 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5,
             x = scale * x + offset
         else:
             x = x + offset
-        return x
+        return act(x)
 
     return _layer_norm
 
 
-def dropout(pkeep, noise_shape=None, seed=None, name=None):
+def dropout(pkeep, noise_shape=None, seed=None, name=None, scope=None):
     if name is None:
         name = helper.dispatch_name('dropout')
-    scope = tf.name_scope(name)
+    if scope is None:
+        scope = tf.name_scope(name)
     def _dropout(x):
         with scope:
             return tf.nn.dropout(x, pkeep, noise_shape, seed, name)

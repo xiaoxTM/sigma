@@ -1,7 +1,9 @@
 from ..ops import normalization as norm
 from ..ops import helper
 import tensorflow as tf
+from .layers import layers
 
+@layers
 def batch_norm(inputs,
                momentum=0.99,
                offset_initializer=None,
@@ -11,6 +13,7 @@ def batch_norm(inputs,
                moving_mean_initializer=None,
                moving_variance_initializer=None,
                epsilon=1e-5,
+               act=None,
                fused=True,
                reuse=False,
                collections=None,
@@ -25,7 +28,7 @@ def batch_norm(inputs,
                         scale_regularizer=scale_regularizer,
                         moving_mean_initializer=moving_mean_initializer,
                         moving_variance_initializer=moving_variance_initializer,
-                        epsilon=epsilon,
+                        epsilon=epsilon, act=act,
                         fused=fused, reuse=reuse,
                         collections=collections,
                         name=name, scope=scope)
@@ -37,5 +40,6 @@ def batch_norm(inputs,
                                  colors.fg.red, x.get_shape().as_list(), colors.reset))
     return x
 
+@layers
 def dropout(inputs, pkeep, noise_shape=None, seed=None, name=None):
     return norm.dropout(pkeep, noise_shape, seed, name)(inputs)

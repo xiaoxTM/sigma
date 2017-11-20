@@ -42,21 +42,22 @@ def conv(convop, kernel_shape, weight_initializer='truncated_normal',
     act = actives.get(act)
 
     if not reuse:
-        logging.debug('=====debug===== for convolution:{}'.format(convop.__name__))
+        logging.debug('=====debug===== for convolution:{}'
+                      .format(convop.__name__))
         logging.debug('kernel_shape: {}'.format(kernel_shape))
-        logging.debug('weight_initializer:{}'.format(weight_initializer))
-        logging.debug('weight_regularizer:{}'.format(weight_regularizer))
-        logging.debug('bias_initializer:{}'.format(bias_initializer))
-        logging.debug('bias_regularizer:{}'.format(bias_regularizer))
-        logging.debug('act:{}'.format(act.__name__))
-        logging.debug('trainable:{}'.format(trainable))
-        logging.debug('dtype:{}'.format(dtype))
-        logging.debug('bias_axis:{}'.format(bias_axis))
-        logging.debug('collections:{}'.format(collections))
-        logging.debug('reuse:{}'.format(reuse))
-        logging.debug('summarize:{}'.format(summarize))
-        logging.debug('name:{}'.format(name))
-        logging.debug('scope:{}'.format(scope))
+        logging.debug('weight_initializer: {}'.format(weight_initializer))
+        logging.debug('weight_regularizer: {}'.format(weight_regularizer))
+        logging.debug('bias_initializer: {}'.format(bias_initializer))
+        logging.debug('bias_regularizer: {}'.format(bias_regularizer))
+        logging.debug('act: {}'.format(act.__name__))
+        logging.debug('trainable: {}'.format(trainable))
+        logging.debug('dtype: {}'.format(dtype))
+        logging.debug('bias_axis: {}'.format(bias_axis))
+        logging.debug('collections: {}'.format(collections))
+        logging.debug('reuse: {}'.format(reuse))
+        logging.debug('summarize: {}'.format(summarize))
+        logging.debug('name: {}'.format(name))
+        logging.debug('scope: {}'.format(scope))
 
     weight = mm.malloc('{}/weight'.format(name), kernel_shape, dtype,
                     weight_initializer, weight_regularizer,
@@ -84,22 +85,29 @@ def conv(convop, kernel_shape, weight_initializer='truncated_normal',
 
 """ fully convolutional operation
 """
-def fully_conv(input_shape, nouts, weight_initializer=None, weight_regularizer=None,
-           bias_initializer=None, bias_regularizer=None, act=None, trainable=True,
-           dtype=tf.float32, collections=None, reuse=False, summarize=True,
-           name=None, scope=None):
+def fully_conv(input_shape, nouts,
+               weight_initializer=None,
+               weight_regularizer=None,
+               bias_initializer=None,
+               bias_regularizer=None,
+               act=None, trainable=True,
+               dtype=tf.float32, collections=None,
+               reuse=False, summarize=True,
+               name=None, scope=None):
     if name is None:
         name = helper.dispatch_name('fully_conv')
 
     if len(input_shape) != 2:
-        raise ValueError('fully_conv require input shape {}[batch-size, channels]{}, given {}{}{}'
+        raise ValueError('fully_conv require input shape {}[batch-size,'
+                         'channels]{}, given {}{}{}'
                          .format(colors.fg.green, colors.reset,
                                  colors.fg.red, input_shape, colors.reset))
     kernel_shape = [input_shape[1], nouts] # get rid of batch_size axis
     output_shape = [input_shape[0], nouts]
     def _full_conv(x, weight):
         return tf.matmul(x, weight)
-    return conv(convop=_full_conv, kernel_shape=kernel_shape,
+    return conv(convop=_full_conv,
+                kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
                 weight_regularizer=weight_regularizer,
                 bias_initializer=bias_initializer,
@@ -111,15 +119,22 @@ def fully_conv(input_shape, nouts, weight_initializer=None, weight_regularizer=N
 
 """ 1-D convolutional operation
 """
-def conv1d(input_shape, nouts, kernel, stride, padding='valid', weight_initializer=None,
-           weight_regularizer=None, bias_initializer=None, bias_regularizer=None, act=None,
-           trainable=True, dtype=tf.float32, collections=None, reuse=False, summarize=True,
+def conv1d(input_shape, nouts, kernel, stride,
+           padding='valid',
+           weight_initializer=None,
+           weight_regularizer=None,
+           bias_initializer=None,
+           bias_regularizer=None,
+           act=None, trainable=True,
+           dtype=tf.float32, collections=None,
+           reuse=False, summarize=True,
            name=None, scope=None):
     if name is None:
         name = helper.dispatch_name('conv1d')
 
     if len(input_shape) != 3:
-        raise ValueError('conv1d require input shape {}[batch-size, cols, channels]{}, given {}{}{}'
+        raise ValueError('conv1d require input shape '
+                         '{}[batch-size, cols, channels]{}, given {}{}{}'
                          .format(colors.fg.green, colors.reset,
                                  colors.fg.red, input_shape, colors.reset))
     kernel = helper.norm_input_1d(kernel)
@@ -127,8 +142,9 @@ def conv1d(input_shape, nouts, kernel, stride, padding='valid', weight_initializ
 
     # helper.get_output_shape requires all inputs (except padding)
     # to have same length and be all list / tuple
-    output_shape = helper.get_output_shape(input_shape, nouts, kernel, stride, padding)
-    kernel_shape = [kernel[1], input_shape[-1], nouts] # get rid of batch_size axis
+    output_shape = helper.get_output_shape(input_shape, nouts,
+                                           kernel, stride, padding)
+    kernel_shape = [kernel[1], input_shape[-1], nouts]
     # tf.nn.conv1d requires stride to be integer
     # collapse dimension into scalar
     stride = stride[1]
@@ -155,13 +171,16 @@ def conv2d(input_shape, nouts, kernel, stride, padding='valid',
     if name is None:
         name = helper.dispatch_name('conv2d')
     if len(input_shape) != 4:
-        raise ValueError('conv2d require input shape {}[batch-size, rows, cols, channels]{}, given {}{}{}'
-                        .format(colors.fg.green, colors.reset, colors.fg.red, input_shape, colors.reset))
+        raise ValueError('conv2d require input shape {}[batch-size, rows,'
+                         'cols, channels]{}, given {}{}{}'
+                        .format(colors.fg.green, colors.reset, colors.fg.red,
+                                input_shape, colors.reset))
 
     kernel = helper.norm_input_2d(kernel)
     stride = helper.norm_input_2d(stride)
-    output_shape = helper.get_output_shape(input_shape, nouts, kernel, stride, padding)
-    kernel_shape = [*kernel[1:-1], input_shape[-1], nouts] # get rid of batch_size axis
+    output_shape = helper.get_output_shape(input_shape, nouts,
+                                           kernel, stride, padding)
+    kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
     # print('kernel:', kernel)
     # print('stride:', stride)
     # print('kernel shape:', kernel_shape)
@@ -192,7 +211,8 @@ def conv3d(input_shape, nouts, kernel, stride, padding='valid',
     if tf.is_tensor(inputs):
         input_shape = inputs.get_shape().as_list()
     if len(input_shape) != 4:
-        raise ValueError('{}conv2d require input shape [batch-size, rows, cols, channels], given {}{}'
+        raise ValueError('{}conv2d require input shape [batch-size, rows,'
+                         'cols, channels], given {}{}'
                          .format(colors.fg.red, input_shape, colors.reset))
 
     kernel = helper.norm_input_3d(kernel)
@@ -217,10 +237,15 @@ def conv3d(input_shape, nouts, kernel, stride, padding='valid',
 
 """ 2-D transpose convolutional operation
 """
-def deconv2d(input_shape, output_shape, nout, kernel, stride, padding='valid',
-             weight_initializer=None, weight_regularizer=None, bias_initializer=None,
-             bias_regularizer=None, act=None, trainable=True, dtype=tf.float32,
-             collections=None, reuse=False, summarize=True, name=None, scope=None):
+def deconv2d(input_shape, output_shape, nout, kernel, stride,
+             padding='valid',
+             weight_initializer=None,
+             weight_regularizer=None,
+             bias_initializer=None,
+             bias_regularizer=None,
+             act=None, trainable=True, dtype=tf.float32,
+             collections=None, reuse=False,
+             summarize=True, name=None, scope=None):
     # NOTE: unlike normal convolutional, de-convolutional weights has shape of:
     #       [height, width, output_channels, inputs_channels]
     #       the run-time input shape:
@@ -231,12 +256,13 @@ def deconv2d(input_shape, output_shape, nout, kernel, stride, padding='valid',
     if name is None:
         name = helper.dispatch_name('deconv2d')
     if len(input_shape) != 4:
-        raise ValueError('{}deconv2d require input shape [batch-size, rows, cols, channels], given {}{}'
+        raise ValueError('{}deconv2d require input shape [batch-size,'
+                         'rows, cols, channels], given {}{}'
                          .format(colors.fg.red, input_shape, colors.reset))
 
     kernel = helper.norm_input_2d(kernel)
     stride = helper.norm_input_2d(stride)
-    kernel_shape = [*kernel[1:-1], nout, input_shape[-1]] # get rid of batch_size axis
+    kernel_shape = [*kernel[1:-1], nout, input_shape[-1]]
     out_shape = output_shape
     if out_shape is None:
         out_shape = input_shape
@@ -246,8 +272,10 @@ def deconv2d(input_shape, output_shape, nout, kernel, stride, padding='valid',
     elif isinstance(out_shape, (list, tuple)):
         if len(out_shape) == 2:
             out_shape = [input_shape[0], *out_shape, nout]
-        elif len(out_shape) == 4 and (out_shape[0] != input_shape[0] or out_shape[-1] != nout):
-            raise ValueError('output shape not match input_shape and hidden units')
+        elif len(out_shape) == 4 and \
+             (out_shape[0] != input_shape[0] or out_shape[-1] != nout):
+            raise ValueError('output shape not match'
+                             'input_shape and hidden units')
     else:
         raise TypeError('out_shape with type `{}` not support'.format(type(out_shape)))
     #
@@ -257,7 +285,8 @@ def deconv2d(input_shape, output_shape, nout, kernel, stride, padding='valid',
     # print('output shape:', out_shape)
 
     def _deconv2d(x, weight):
-        # out = tf.nn.conv2d_transpose(x, weight, out_shape, stride, padding.upper(), name=name)
+        # out = tf.nn.conv2d_transpose(x, weight, out_shape, stride,
+        #                              padding.upper(), name=name)
         # out.set_shape(out_shape)
         # return out
         return tf.nn.conv2d_transpose(x, weight, out_shape, stride,

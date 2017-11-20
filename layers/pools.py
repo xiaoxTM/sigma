@@ -1,8 +1,10 @@
 from ..ops import pools
 from .. import colors
+from .layers import layers
 import logging
 import tensorflow as tf
 
+@layers
 def base_pool(inputs, op, psize, stride, padding, reuse=False, name=None):
     fun, output = op(inputs.get_shape().as_list(), psize, stride, padding, name)
     x = fun(inputs)

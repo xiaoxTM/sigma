@@ -1,9 +1,11 @@
 from ..ops import merge, helper
 from .. import colors
+from .layers import layers
 import tensorflow as tf
 
 import logging
 
+@layers
 def concat(inputs, axis=-1, reuse=False, name='concat'):
     inputs_shape = [ip.get_shape().as_list() for ip in inputs]
     fun, output = merge.concat(inputs_shape, axis, name)
@@ -15,6 +17,7 @@ def concat(inputs, axis=-1, reuse=False, name='concat'):
                                  colors.fg.red, x.get_shape().as_list(), colors.reset))
     return x
 
+@layers
 def add(inputs, reuse=False, name='add'):
     input_shape = [ip.get_shape().as_list() for ip in inputs]
     fun, output = merge.add(input_shape, name)
@@ -26,6 +29,7 @@ def add(inputs, reuse=False, name='add'):
                                  colors.fg.red, x.get_shape().as_list(), colors.reset))
     return x
 
+@layers
 def mul(inputs, reuse=False, name='mul'):
     input_shape = [ip.get_shape().as_list() for ip in inputs]
     fun, output = merge.mul(input_shape, name)
