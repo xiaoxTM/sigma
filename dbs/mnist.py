@@ -1,25 +1,9 @@
 import tensorflow as tf
 import numpy as np
 import os.path
+from .. import helpers
 
-def one_hot(y, nclass=None):
-    if isinstance(y, np.ndarray):
-        shape = list(y.shape)
-    elif isinstance(y, list):
-        y = np.asarray(y).astype(np.int32)
-        shape = list(y.shape)
-    y = y.ravel()
-    if not nclass:
-        nclass = np.max(y) + 1
-    if nclass < np.max(y) + 1:
-        raise ValueError('class {} must be equal/greater than max value {} + 1'.format(nclass, np.max(y)))
-    n = y.shape[0]
-    cat = np.zeros((n, nclass))
-    cat[np.arange(n), y] = 1
-    shape = shape + [nclass]
-    return np.reshape(cat, shape)
-
-def load(dirs, to_tensor=True, onehot=False):
+def load(dirs, to_tensor=True, onehot=False, nclass=None):
     """ load mnist data from directory
         output in tf.tensor form
     """
@@ -29,14 +13,14 @@ def load(dirs, to_tensor=True, onehot=False):
             x = loaded[16:].reshape((nsamples, 28, 28, 1)).astype(np.float32) / 255.0
         with open(os.path.join(dirs, '{}-labels.idx1-ubyte'.format(dset))) as fd:
             loaded = np.fromfile(file=fd, dtype=np.uint8)
-            y = loaded[8:].reshape((nsamples)).astype(np.float32)
+            y = loaded[8:].reshape((nsamples)).astype(np.int32)
         if to_tensor:
             x = tf.convert_to_tensor(x, tf.float32)
             if onehot:
-                y = tf.one_hot(y, depth=10, axis=1, dtype=tf.float32)
+                y = tf.one_hot(y, depth=10, axis=1, dtype=tf.int32)
         else:
             if onehot:
-                y = one_hot(y)
+                y = helpers.one_hot(y, nclass)
         return x, y
 
     xtrain, ytrain = _load('train', 60000)
@@ -46,10 +30,11 @@ def load(dirs, to_tensor=True, onehot=False):
 
 def sampler(dirs, is_training, batch_size,
             onehot=False, to_tensor=False,
+            nclass=None,
             nthreads=None, capacity=None,
             min_after_dequeue=None,
             allow_samller_final_batch=False):
-    train, valid = load(dirs, to_tensor, onehot)
+    train, valid = load(dirs, to_tensor, onehot, nclass)
 
     data = valid
     if is_training:
@@ -69,4 +54,7 @@ def sampler(dirs, is_training, batch_size,
             np.random.shuffle(index)
             # get the previous `batch-size` samples
             index = index[:batch_size]
-            yield [x[index, :].reshape((-1, 28, 28, 1)), y[index].reshape((-1, 1))]
+            if onehot:
+                yield [x[index, :].reshape((-1, 28, 28, 1)), y[index]]
+            else:
+                yield [x[index, :].reshape((-1, 28, 28, 1)), y[index].reshape((-1, 1))]
