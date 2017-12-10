@@ -31,7 +31,9 @@ def elu(x, name=None):
     calculates:
         scale * alpha * (exp(x) -1)
 """
-def selu(x, alpha=1.6732632423543772848170429916717, scale=1.0507009873554804934193349852946, name=None):
+def selu(x, alpha=1.6732632423543772848170429916717,
+         scale=1.0507009873554804934193349852946,
+         name=None):
     return actives.selu(alpha, scale, name)(x)
 
 

@@ -1,12 +1,12 @@
 import tensorflow as tf
+import numpy as np
 
-    
 """ Computes the number of input and output units for a weight shape.
     Args:
         shape: Integer shape tuple or TF tensor shape.
     Returns:
         A tuple of scalars (fan_in, fan_out).
-    
+
     // NOTE: code borrowed from tensorflow (https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/python/ops/init_ops.py)
 """
 def get_fans(shape):
@@ -176,6 +176,12 @@ def get(initializer):
         return eval('{}()'.format(initializer))
     elif callable(initializer):
         return initializer()
+    # if given list / tuple / np.ndarray value
+    # return as lambda function
+    elif isinstance(initializer, (list, tuple)):
+        return lambda : np.asarray(initializer)
+    elif isinstance(initializer, np.ndarray):
+        return lambda : initializer
     else:
         raise ValueError('cannot get activates `{}` with type {}'
                          .format(initializer, type(initializer)))

@@ -6,7 +6,7 @@ from .layers import layers
 
 @layers
 def embedding(inputs, table_size, strategy='mod', dtype=tf.float32,
-              initializer=None, regularizer=None, reuse=False,
+              initializer='glorot_uniform', regularizer=None, reuse=False,
               trainable=True, collections=None, name=None):
     fun = convs.embedding(table_size, strategy, dtype, initializer,
                           regularizer, trainable, collections, name)
@@ -60,9 +60,15 @@ def embedding(inputs, table_size, strategy='mod', dtype=tf.float32,
 """ fully convolutional operation
 """
 @layers
-def fully_conv(inputs, nouts, weight_initializer='truncated_normal', weight_regularizer=None,
-           bias_initializer=None, bias_regularizer=None, act=None, trainable=True, dtype=tf.float32,
-           collections=None, reuse=False, summarize=True, name=None, scope=None):
+def fully_conv(inputs, nouts,
+               weight_initializer='glorot_uniform',
+               weight_regularizer=None,
+               bias_initializer='zeros',
+               bias_regularizer=None,
+               act=None, trainable=True,
+               dtype=tf.float32, collections=None,
+               reuse=False, summarize=True,
+               name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = convs.fully_conv(input_shape, nouts, weight_initializer,
                                    weight_regularizer, bias_initializer, bias_regularizer, act,
@@ -70,7 +76,8 @@ def fully_conv(inputs, nouts, weight_initializer='truncated_normal', weight_regu
     x = fun(inputs)
     helper.print_layer(inputs, x, 'fully_conv', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the real'
+                         ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
     return x
@@ -81,57 +88,182 @@ dense = fully_conv
 """ 1-D convolutional operation
 """
 @layers
-def conv1d(inputs, nouts, kernel, stride, padding='valid', weight_initializer='truncated_normal',
-           weight_regularizer=None, bias_initializer=None, bias_regularizer=None, act=None,
-           trainable=True, dtype=tf.float32, collections=None, reuse=False, summarize=True, name=None, scope=None):
+def conv1d(inputs, nouts, kernel,
+           stride, padding='valid',
+           weight_initializer='glorot_uniform',
+           weight_regularizer=None,
+           bias_initializer='zeros',
+           bias_regularizer=None, act=None,
+           trainable=True, dtype=tf.float32,
+           collections=None, reuse=False,
+           summarize=True, name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = convs.conv1d(input_shape, nouts, kernel, stride, padding, weight_initializer,
-                               weight_regularizer, bias_initializer, bias_regularizer, act,
-                               trainable, dtype, collections, reuse, summarize, name, scope)
+    fun, output = convs.conv1d(input_shape, nouts, kernel,
+                               stride, padding,
+                               weight_initializer,
+                               weight_regularizer,
+                               bias_initializer,
+                               bias_regularizer,
+                               act, trainable, dtype,
+                               collections, reuse,
+                               summarize, name, scope)
 
     x = fun(inputs)
     helper.print_layer(inputs, x, 'conv1d', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the real'
+                         ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
     return x
 
 
+# @layers
+# def soft_conv1d(inputs, nouts, kernel, stride, padding='valid',
+#                 offsets=None, offsets_trainable=False,
+#                 weight_initializer='glorot_uniform',
+#                 weight_regularizer=None,
+#                 bias_initializer='zeros',
+#                 bias_regularizer=None,
+#                 act=None, trainable=True,
+#                 dtype=tf.float32,
+#                 collections=None,
+#                 reuse=False, summarize=True,
+#                 name=None, scope=None):
+#     input_shape = inputs.get_shape().as_list()
+#     fun, output = convs.soft_conv1d(input_shape, nouts,
+#                                     kernel, stride, padding,
+#                                     weight_initializer,
+#                                     weight_regularizer,
+#                                     bias_initializer,
+#                                     bias_regularizer,
+#                                     act, trainable, dtype,
+#                                     collections, reuse,
+#                                     summarize, name, scope)
+#     x = fun(inputs, offsets)
+#     return x
+
+
 """ 2-D convolutional operation
 """
 @layers
-def conv2d(inputs, nouts, kernel, stride, padding='valid', weight_initializer='truncated_normal',
-           weight_regularizer=None, bias_initializer=None, bias_regularizer=None, act=None,
-           trainable=True, dtype=tf.float32, collections=None, reuse=False, summarize=True,
+def conv2d(inputs, nouts, kernel,
+           stride, padding='valid',
+           weight_initializer='glorot_uniform',
+           weight_regularizer=None,
+           bias_initializer='zeros',
+           bias_regularizer=None,
+           act=None, trainable=True,
+           dtype=tf.float32, collections=None,
+           reuse=False, summarize=True,
            name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = convs.conv2d(input_shape, nouts, kernel, stride, padding, weight_initializer,
-                               weight_regularizer, bias_initializer, bias_regularizer, act,
-                               trainable, dtype, collections, reuse, summarize, name, scope)
+    fun, output = convs.conv2d(input_shape, nouts, kernel,
+                               stride, padding,
+                               weight_initializer,
+                               weight_regularizer,
+                               bias_initializer,
+                               bias_regularizer, act,
+                               trainable, dtype,
+                               collections, reuse,
+                               summarize, name, scope)
     x = fun(inputs)
     helper.print_layer(inputs, x, 'conv2d', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the real'
+                         ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
+    return x
+
+
+""" 2-D soft convolutional operation
+    Returns
+    =======
+        x if return_offsets is False,
+        x, offsets if return_offsets is true.
+            mode = 'naive' / 'nearest'
+                offsets in the form of [[batch, row, col, channel, kernel],
+                                         ...
+                                       ] for 2D, e.g., images
+            mode = 'bilinear'
+                offsets in the form of [[batch, row, col, channel, kernel_topleft],
+                                        [batch, row, col, channel, kernel_topright],
+                                        [batch, row, col, channel, kernel_bottomleft],
+                                        [batch, row, col, channel, kernel_bottomright],
+                                         ...
+                                       ] for 2D, e.g., images
+                where kernel_topleft, kernel_topright,
+                      kernel_bottomleft, kernel_bottomright,
+                are used to bilinear interpolation
+            therefore, 'bilinear' have 4 times of length than 'naive' / 'nearest'
+"""
+@layers
+def soft_conv2d(inputs, nouts, kernel,
+                stride, padding='valid',
+                mode='bilinear', return_offsets=False,
+                weight_initializer='glorot_uniform',
+                weight_regularizer=None,
+                bias_initializer='zeros',
+                bias_regularizer=None,
+                act=None, trainable=True,
+                dtype=tf.float32, axis=-1,
+                collections=None,
+                reuse=False, summarize=True,
+                name=None, scope=None):
+    # with tf.name_scope(''):
+    input_shape = inputs.get_shape().as_list()
+    # offset_fun, offset_output = convs.conv2d(input_shape,
+    #                                          input_shape[-1]*)
+    fun, output = convs.soft_conv2d(input_shape, nouts, kernel,
+                                    stride, padding, mode,
+                                    weight_initializer,
+                                    weight_regularizer,
+                                    bias_initializer,
+                                    bias_regularizer,
+                                    act, trainable, dtype,
+                                    axis, collections, reuse,
+                                    summarize, name, scope)
+    x, offsets = fun(inputs)
+    helper.print_layer(inputs, x, 'soft_conv2d', reuse, name)
+    if output != x.get_shape().as_list():
+        raise ValueError('the predicted output shape and the real'
+                         ' output shape not match. {}{}{} vs {}{}{}'
+                         .format(colors.fg.green, output, colors.reset,
+                                 colors.fg.red, x.get_shape(), colors.reset))
+    if return_offsets:
+        return x, offsets
     return x
 
 
 """ 3-D convolutional operation
 """
 @layers
-def conv3d(inputs, nouts, kernel, stride, padding='valid', weight_initializer='truncated_normal',
-          weight_regularizer=None, bias_initializer=None, bias_regularizer=None, act=None,
-          trainable=True, dtype=tf.float32, collections=None, reuse=False, summarize=True, name=None, scope=None):
+def conv3d(inputs, nouts, kernel,
+           stride, padding='valid',
+           weight_initializer='glorot_uniform',
+           weight_regularizer=None,
+           bias_initializer='zeros',
+           bias_regularizer=None,
+           act=None, trainable=True,
+           dtype=tf.float32, collections=None,
+           reuse=False, summarize=True,
+           name=None, scope=None):
     # TODO: atruous_convxd
-    fun, output = convs.conv3d(scope, input_shape, nouts, kernel, stride, padding, weight_initializer,
-                               weight_regularizer, bias_initializer, bias_regularizer, act,
-                               trainable, dtype, collections, reuse, summarize, name, scope)
+    fun, output = convs.conv3d(scope, input_shape, nouts,
+                               kernel, stride, padding,
+                               weight_initializer,
+                               weight_regularizer,
+                               bias_initializer,
+                               bias_regularizer, act,
+                               trainable, dtype,
+                               collections, reuse,
+                               summarize, name, scope)
     x = fun(inputs)
     helper.print_layer(inputs, x, 'conv3d', reuse, name)
     if output != x.get_shape().as_list():
-       raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+       raise ValueError('the predicted output shape and the real'
+                        ' output shape not match. {}{}{} vs {}{}{}'
                         .format(colors.fg.green, output, colors.reset,
                                 colors.fg.red, x.get_shape(), colors.reset))
     return x
@@ -141,19 +273,31 @@ def conv3d(inputs, nouts, kernel, stride, padding='valid', weight_initializer='t
     **TODO** atruos_convxd_tranpose
 """
 @layers
-def deconv2d(inputs, output_shape, nouts, kernel, stride, padding='valid',
-             weight_initializer='truncated_normal', weight_regularizer=None, bias_initializer=None,
-             bias_regularizer=None, act=None, trainable=True, dtype=tf.float32,
-             collections=None, reuse=False, summarize=True, name=None, scope=None):
+def deconv2d(inputs, output_shape, nouts,
+             kernel, stride, padding='valid',
+             weight_initializer='glorot_uniform',
+             weight_regularizer=None,
+             bias_initializer='zeros',
+             bias_regularizer=None,
+             act=None, trainable=True,
+             dtype=tf.float32, collections=None,
+             reuse=False, summarize=True,
+             name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = convs.deconv2d(input_shape, output_shape, nouts, kernel, stride, padding,
-                                 weight_initializer, weight_regularizer, bias_initializer, bias_regularizer, act,
-                                 trainable, dtype, collections, reuse, summarize, name, scope)
+    fun, output = convs.deconv2d(input_shape, output_shape,
+                                 nouts, kernel, stride, padding,
+                                 weight_initializer,
+                                 weight_regularizer,
+                                 bias_initializer,
+                                 bias_regularizer,
+                                 act, trainable, dtype, collections,
+                                 reuse, summarize, name, scope)
 
     x = fun(inputs)
     helper.print_layer(inputs, x, 'deconv2d', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the real'
+                         ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
     return x

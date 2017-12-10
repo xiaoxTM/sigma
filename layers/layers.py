@@ -23,6 +23,7 @@ def layers(fun):
                         kwargs[parameter] = ctx[parameter]
                         break
         # print('args:', args)
+        # print('kwargs:', kwargs)
         if signature.return_annotation is signature.empty:
             return fun(*args, **kwargs)
         else:

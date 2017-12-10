@@ -9,6 +9,7 @@ def malloc(name, shape, dtype=None, initializer=None,
     regularizer = regularizers.get(regularizer)
     if scope is None:
         scope = name
+    # print('malloc weights name:', name)
     with tf.variable_scope(scope, reuse=reuse):
         variable = tf.get_variable(name, shape, dtype, initializer,
                                    regularizer, trainable, collections)
