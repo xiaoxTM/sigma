@@ -345,6 +345,7 @@ def soft_conv(input_shape, nouts, kernel_shape,
                        weight_initializer,
                        weight_regularizer,
                        trainable, collections, reuse, scope)
+    reshaped_weight = tf.reshape(weight, (-1, *kernel_shape[:-2]))
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
@@ -358,32 +359,28 @@ def soft_conv(input_shape, nouts, kernel_shape,
     else:
         bias = False
     input_len = len(input_shape)
+
     axis = (axis + input_len) % input_len
-    # NOTE: we apply grids to dims except *BATCH-SIZE* dim
-    #       since the *BATCH-SIZE* dim generally is None
-    #       for compiling this code, we set it to 1,
-    #       when calculating, we can *REPEAT / TILE* along
-    #       *BATCH-SIZE* dim (HOPE THIS WORKS :(
-    grids = [tf.range(dim) for dim in input_shape[1:]]
-    grids = tf.meshgrid(*grids)
-    indices = [tf.cast(tf.reshape(grid, [-1, 1]),
-                       dtype=tf.float32) for grid in grids]
     dims = list(range(input_len))
     del dims[axis] # remove featrue map dim
     del dims[0]    # remove batch size dim
+    dim_len = len(dims)
+    positions = [input_shape[dim] for dim in dims]
+    kernel_positions = np.prod(kernel_shape[:dim_len])
+    input_positions = np.prod(positions)
 
     if mode not in ['naive', 'nearest', 'bilinear']:
         raise ValueError('`mode` must be one of '
                          '"naive" / "nearest" / "bilinear".'
                          ' given {}'.format(mode))
-
+    out_offset = kernel_positions * dim_len
     kwargs = {
         'input_shape':input_shape,
-        'nouts':input_shape[axis], # change no number of output feature maps
+        'nouts':out_offset, # change no number of output feature maps
         'kernel':kernel_shape,
         'stride':stride,
         'padding':padding,
-        'weight_initializer':weight_initializer,
+        'weight_initializer':'zeros',
         'weight_regularizer':weight_regularizer,
         'bias_initializer':bias_initializer,
         'bias_regularizer':bias_regularizer,
@@ -393,23 +390,49 @@ def soft_conv(input_shape, nouts, kernel_shape,
         'collections':collections,
         'reuse':reuse,
         'summarize':summarize,
-        'name':name,
+        'name':'{}/offsets'.format(name),
         'scope':scope
     }
 
+    # NOTE: we apply grids to dims except *BATCH-SIZE* dim
+    #       since the *BATCH-SIZE* dim generally is None
+    #       for compiling this code, we set it to 1,
+    #       when calculating, we can *REPEAT / TILE* along
+    #       *BATCH-SIZE* dim (HOPE THIS WORKS :(
+    grids = [tf.range(input_shape[dim]) for dim in dims]
+    grids = tf.meshgrid(*grids, indexing='ij')
+    indices = [tf.reshape(grid, (-1, 1)) for grid in grids]
+    indices = tf.concat(indices, axis=-1)
+
+    kernel_grids = []
+    for i in range(dim_len):
+        half = int(kernel_shape[i] / 2)
+        kernel_grid = tf.range(-half, half+1)
+        kernel_grids.append(kernel_grid)
+    kernel_grids = tf.meshgrid(*kernel_grids, indexing='ij')
+    kernel_indices = [tf.reshape(grid, (-1, 1)) for grid in kernel_grids]
+    kernel_indices = tf.concat(kernel_indices, axis=-1)
+
+    # add kernel offset
+    indices = tf.tile(indices, [1, kernel_positions])
+    indices = tf.reshape(indices, (-1, dim_len))
+    kernel_indices = tf.tile(kernel_indices, [input_positions, 1])
+    # [rows * cols * krows * kcols, 2]
+    indices = tf.cast(indices + kernel_indices, dtype=tf.float32)
+
     if input_len == 3: # 1d
-        convop = conv1d
+        convop, offset_shape = conv1d(**kwargs)
     elif input_len == 4: # 2d
-        convop = conv2d
+        convop, offset_shape = conv2d(**kwargs)
     elif input_len == 5:
-        convop = conv3d
+        convop, offset_shape = conv3d(**kwargs)
     else:
         raise ValueError('input shape length must'
                          ' have 3/4/5. given {}'.format(input_len))
 
     _scope = tf.name_scope(scope)
 
-    def _gather(inputs, coords):
+    def _map_batch_coordinates(batch_size, indices):
         """ gathering elements from inputs at coords
             centered at *one point* o, e.g.,
             x-----x-----x
@@ -453,114 +476,126 @@ def soft_conv(input_shape, nouts, kernel_shape,
                            ...
                          ]
         """
-        if mode == 'naive': # brute cast
-            coordinates = tf.cast(tf.concat(coords, axis=-1), dtype=tf.int32)
-            out = tf.gather_nd(inputs, coordinates)
-        elif mode == 'nearest': # nearest neighbor
-            coordinates = tf.cast(tf.concat(coords, axis=-1) + 0.5,
-                                  dtype=tf.int32)
-            out = tf.gather_nd(inputs, coordinates)
+        if mode in ['naive', 'nearest']: # brute cast
+            if mode == 'nearest':
+                indices = indices + 0.5
+            indices = tf.cast(indices, dtype=tf.int32)
+            batch_range = tf.expand_dims(tf.range(batch_size), axis=-1)
+            batch_range = tf.tile(batch_range, [1, input_positions*kernel_positions])
+            batch_range = tf.reshape(batch_range, [-1, 1])
+            indices = tf.reshape(indices, [-1, dim_len])
+            # print('inside batch coordinates mapping:', indices.get_shape().as_list())
+            indices = tf.concat([batch_range, indices], axis=-1)
+            return indices
         else: # bilinear
             positions = []
             weights = []
-            for dim in dims:
-                floor = tf.floor(coords[:][dim])
-                ceil  = tf.ceil(coords[:][dim])
+            floor = tf.floor(indices)
+            ceil  = tf.ceil(indices)
 
-                diff_floor = coords[:][dim] - floor
-                diff_ceil  = ceil - coords[:][dim]
+            diff_floor = 1 - (indices - floor)
+            diff_ceil  = 1 - (ceil - indices)
 
-                positions.append([floor, ceil])
-                weights.append([diff_floor, diff_ceil])
-            # coord_grids has the form of
-            # [[x, y, z], [x, y, z], ... ] for 2d
-            # to enumerate all points near original point
-            coord_grids = np.meshgrid(*[range(2) for _ in dims])
-            coord_grids = np.concatenate(
-                [coord_grid.reshape([-1, 1]) for coord_grid in coord_grids],
-                axis=-1)
-            outs = []
-            coordinates = []
-            for coord_grid in coord_grids:
-                # coord_grid is the index of each combinations
-                # [x, y, z]
-                # where x, y, z \in [0, 1] indicates whether
-                # use floor or ceil boundings
-                _weight = 1
-                for idx, coord in enumerate(coord_grid):
-                    coords[dims[idx]] = positions[coord][idx]
-                    _weight *= weights[coord][idx]
-                    # coords[dims[idx]] = tf.where(coords[dims[idx]] < 0,
-                    #                              tf.zeros_like(coords[dims[idx]]),
-                    #                              coords[dims[idx]])
-                    # coords[dims[idx]] = tf.where(coords[dims[idx]] >= input_shape[dims[idx]],
-                    #                              tf.fill(tf.shape(coords[dims[idx]]),
-                    #                                      input_shape[dims[idx]]-1),
-                    #                              coords[dims[idx]])
-                coordinate = tf.cast(tf.concat(coords, axis=-1), dtype=tf.int32)
-                elem = tf.gather_nd(inputs, coordinate)
-                elem = tf.reshape(elem, [-1, 1])
-                outs.append(elem * _weight)
-                coordinates.append(coordinate)
-            coordinates = tf.concat(coordinates, axis=-1)
-            out = tf.add_n(outs)
-        return out, coordinates
+            positions.append([floor, ceil])
+            weights.append([diff_floor, diff_ceil])
+            return (positions, weights)
+
+    def _check_boundry(indices):
+        splited = tf.unstack(indices, axis=-1)
+        clipped = [tf.clip_by_value(s, 0,
+                                    input_shape[dims[idx]]-1)
+                   for idx, s in enumerate(splited)]
+        return tf.stack(clipped, axis=-1)
+
+    def _gather(x, indices):
+        print('x shape:', x.get_shape().as_list())
+        print('indices shape:', indices.get_shape().as_list())
+        # x : [batch-size, rows, cols]
+        # indices:
+        #   mode == 'naive' or 'nearest'
+        #     i:[[batch-size, rows, cols, krows * kcols],
+        #     j: [batch-size, rows, cols, krows * kcols]]
+        #   (coords, weights):
+        #     coords:
+        #       i: [[floor([batch-size, rows, cols, krows * kcols]),
+        #             ceil([batch-size, rows, cols, krows * kcols])],
+        #       j:  [floor([batch-size, rows, cols, krows * kcols]),
+        #             ceil([batch-size, rows, cols, krows * kcols])]]
+        # Return:
+        #    [rows * cols, batch-size, krows * kcols]
+        if mode in ['naive', 'nearest']:
+            # [batch-size, rows, cols, krows * kcols] =>
+            # [batch-size, rows * cols, krows * kcols]
+            gather = tf.gather_nd(x, indices)
+            return tf.reshape(gather, [-1]+positions+kernel_shape[:dim_len])
+        else:
+            raise NotImplementedError('mode `bilinear` not implemented')
 
     def _soft_conv(x):
         with _scope:
-            offsets = []
             with tf.name_scope('offsets'):
-                for i in range(np.prod(kernel_shape[:-2])):
-                    off = []
-                    for j, _ in enumerate(dims):
-                        kwargs['name'] = '{}/offsets/{}/{}'.format(name, i, j)
-                        off.append(convop(**kwargs)[0](x))
-                    offsets.append(off)
-            elems = []
+                # [batch-size, rows, cols, 2 * krows * kcols]
+                offsets = convop(x)
+                print('learned offsets shape:', offsets.get_shape().as_list())
+                # [batch-size, rows, cols, 2, krows * kcols]
+                offsets = tf.reshape(offsets,
+                        [-1] + offset_shape[1:-1] + [dim_len, kernel_positions])
+                offsets = tf.unstack(offsets, axis=-2)
+                offsets = [tf.reshape(offset,
+                                     (-1, input_positions * kernel_positions, 1)
+                                     )
+                           for offset in offsets]
+                # [[[rows-idx, cols-idx],
+                #   [rows-idx, cols-idx],
+                #    ... krows * kcols
+                #   [rows-idx, cols-idx]]
+                #  [[rows-idx, cols-idx],
+                #   [rows-idx, cols-idx],
+                #    ... krows * kcols
+                #   [rows-idx, cols-idx]],
+                #
+                #   ... batch-size
+                #
+                #  [[rows-idx, cols-idx],
+                #   [rows-idx, cols-idx],
+                #    ... krows * kcols
+                #   [rows-idx, cols-idx]]
+                #  [[rows-idx, cols-idx],
+                #   [rows-idx, cols-idx],
+                #    ... krows * kcols
+                #   [rows-idx, cols-idx]]]
+                # [batch-size, rows * cols * krows * kcols, 2]
+                offsets = tf.concat(offsets, axis=-1)
+                print('adjust offsets shape:', offsets.get_shape().as_list())
             with tf.name_scope('locates'):
-                batch_size = tf.shape(x)[0]
-                # repeat indices to batch times
-                batch_range = tf.expand_dims(tf.range(tf.cast(batch_size,
-                                                              tf.float32),
-                                                      dtype=tf.float32), 1)
-                batch_range = tf.tile(batch_range, [1, np.prod(input_shape[1:])])
-                batch_range = tf.reshape(batch_range, [-1, 1])
-                repeated_indices = [tf.tile(index,
-                                           [batch_size, 1]) for index in indices]
-                repeated_indices = [batch_range] + repeated_indices
-                coords = [index for index in repeated_indices]
-                offset_coords = []
-                for idx, offset in enumerate(offsets):
-                    # offset:
-                    # [x_offset, y_offset, z_offset, ...]
-                    dim_idx = 0
-                    for off in offset:
-                        # indices:
-                        # [[rows * cols * channels, 1], for batch dim
-                        #  [rows * cols * channels, 1], for rows dim
-                        #  [rows * cols * channels, 1], for cols dim
-                        #  [rows * cols * channels, 1]] for channels dim
-                        # off:
-                        # [batch-size, rows, cols, channels] =>
-                        # [batch-size * rows * cols * channels, 1]
+                # broadcast addition
+                offset_indices = offsets + indices
+                # [batch-size, rows * cols * krows * kcols, 2]
+                offset_indices = _check_boundry(offset_indices)
+                # [batch-size * rows * cols * krows * kcols, 2]
+                offset_indices = _map_batch_coordinates(tf.shape(x)[0], offset_indices)
+                print('after batch coordinates:', offset_indices.get_shape().as_list())
 
-                        off = tf.reshape(off, [-1, 1]) + repeated_indices[dims[dim_idx]]
-                        off = tf.clip_by_value(off, 0, input_shape[dims[dim_idx]]-1)
+                # [batch-size, rows, cols, depth] =>
+                # [[batch-size, rows, cols],
+                #  [batch-size, rows, cols],
+                #   ...
+                #  [batch-size, rows, cols]]
+                inputs = tf.unstack(x, axis=axis)
 
-                        coords[dims[dim_idx]] = off
-                        dim_idx += 1
-                    gathers, coordiates = _gather(x, coords)
-                    gathers = tf.reshape(x, tf.shape(x))
-                    elems.append(tf.expand_dims(gathers, -1))
-                    offset_coords.append(coordiates)
-                gathers = tf.concat(elems, axis=-1)
-                elems = tf.reshape(gathers, [-1]+input_shape[1:]+kernel_shape[:-2])
-                _dims = list(range(input_len, input_len+len(dims))) + [axis]
+                gathers = [_gather(ip, offset_indices) for ip in inputs]
+                print('gather:', gathers[0].get_shape().as_list())
+                # [depth, batch-size, rows, cols, krows * kcols]
+                gathers = tf.stack(gathers)
             with tf.name_scope('convolves'):
-                x = tf.tensordot(elems, weight, axes=[_dims, [0, 1, 2]])
+                # gathers: [depth, batch-size, rows, cols, krows * kcols]
+                # reshape weight:                         [krows * kcols, depth, nouts]
+                print('gathers shape:', gathers.shape)
+                print('weights shape:', weight.shape)
+                x = tf.tensordot(gathers, weight, axes=[[0, -2, -1], [0, 1, 2]])
                 if bias:
                     x = tf.nn.bias_add(x, bias)
-            return act(x), offset_coords
+            return act(x), offset_indices
     return _soft_conv
 
 
