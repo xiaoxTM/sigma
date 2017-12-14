@@ -23,16 +23,16 @@ import numpy as np
 # plt.grid(True)
 # plt.show()
 
-dfiles = ['keras', 'softconv']
+dfiles = ['keras', 'sigma', 'softconv']
 
 for f in dfiles:
-    data = np.loadtxt('mnist/{}/scaled_he_uniform'.format(f))
+    data = np.loadtxt('mnist/{}/new_scaled_he_uniform'.format(f))
     index = np.arange(0, data.shape[0], step=10, dtype=np.int32)
     data = data[index, :]
     plt.plot(range(data.shape[0]), data[:, 0], label='{}-loss'.format(f))
     plt.plot(range(data.shape[0]), data[:, 1], label='{}-acc'.format(f))
 
-plt.title('he-uniform comparison')
+plt.title('he_uniform implementation comparison')
 # plt.legend(dfiles)
 plt.legend()
 plt.grid(True)

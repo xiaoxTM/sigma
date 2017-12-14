@@ -128,7 +128,36 @@ def accuracy(logits, labels):
     return tf.div(acc, tf.cast(tf.shape(y)[0], dtype=tf.float32))
 
 if __name__ == '__main__':
+    """
+        for run:
+            old implementation of soft convolution (aka. deoformable convolution)
+            time cost : 307.139710187912
+            old implementation of soft convolution v2
+            time cost : 238.9779028892517
+            old implementation of soft convolution v3
+            time cost : 277.8907811641693
+            old implementation of soft convolution v4
+            time cost : 233.3266041278839
+            old implementation of soft convolution v5
+            time cost : 243.74346470832825
+            old implementation of soft convolution v6
+            time cost : 235.13102054595947
 
+            new implementation v1:
+            time cost : 598.5708783149719
+            new implementation v2:
+            time cost : 589.8767378330231 (ignoreable)
+            new implementation v3
+            time cost : 370.2597749233246
+            new implementation v4
+            time cost : 395.0825481414795
+            new implementation v5
+            time cost : 412.5409576892853
+            new implementation v6
+            time cost : 305.10115146636963
+            new implementation v7
+            time cost : soft conv cost: 304.6719214916229
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-w', '--winit', type=str, default='he_uniform')
 
@@ -136,7 +165,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     winit = args.winit
-    beg = time.time()
     with tf.Session() as sess:
         x = tf.placeholder(tf.float32, [batch_size, 28, 28, 1], name='samples')
         y = tf.placeholder(tf.float32, [batch_size, 10], name='labels')
@@ -163,16 +191,17 @@ if __name__ == '__main__':
 
         train_gen = get_gen(
             'train', batch_size=batch_size,
-            scale=(1.0, 2.5), translate=0.2,
+            scale=(0.25, 2.5), translate=0.2,
             shuffle=True
         )
 
         test_gen = get_gen(
             'test', batch_size=batch_size,
-            scale=(1.0, 2.5), translate=0.2,
+            scale=(0.25, 2.5), translate=0.2,
             shuffle=False
         )
-
+        print('start to record time')
+        beg = time.time() # we only evaluate run time
         for i in range(5000):
             trainx, trainy = next(train_gen)
             _, train_loss = sess.run([train_op, loss],
@@ -187,6 +216,6 @@ if __name__ == '__main__':
             losses.append([valid_loss, _acc])
             # print('epoch: {}, acc: {}'.format(i, _acc))
         # writer.close()
-        np.savetxt('test/data/mnist/keras/scaled_{}'.format(winit), losses)
-    end = time.time()
+        np.savetxt('test/data/mnist/keras/new_scaled_{}'.format(winit), losses)
+        end = time.time()
     print('soft conv cost: {}'.format(end-beg))
