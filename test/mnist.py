@@ -6,6 +6,7 @@ from tensorflow.contrib.keras import datasets
 mnist = datasets.mnist
 from tensorflow.contrib.keras import utils
 to_categorical = utils.to_categorical
+from tensorflow.contrib.keras import backend as K
 # from tensorflow.examples.tutorials.mnist import input_data
 import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -49,77 +50,46 @@ def get_gen(set_name, batch_size, translate, scale,
     gen = image_gen.flow(X, Y, batch_size=batch_size, shuffle=shuffle)
     return gen
 
-def lecun_model(x, winit, nclass=10):
+def model_regular(x, winit, nclass=10):
     with sigma.defaults(stride=1, padding='same', act='relu',
-                        weight_initializer=winit):
-        # 28 x 28 x 1 => 14 x 14 x32
-        # tf.summary.image('inputs', x)
-        x = layers.convs.conv2d(x, 32, 5)
-        # tf.summary.histogram('conv2d_1', x)
-        x = layers.pools.max_pool2d(x, 2, stride=2)
-        # tf.summary.histogram('maxpool_1', x)
+                        kernel=3, weight_initializer=winit):
 
-        # 14 x 14 x 32 => 7 x 7 x 64
-        x = layers.convs.conv2d(x, 64, 5)
-        # tf.summary.histogram('conv2d_2', x)
-        x = layers.pools.max_pool2d(x, 2, stride=2)
-        # tf.summary.histogram('maxpool_2', x)
+        x = layers.convs.conv2d(x, 32)
+        x = layers.norm.batch_norm(x, act=None)
 
-        # 7 x 7 x 64 =>
-        x = layers.base.flatten(x)
-        x = layers.convs.dense(x, 1024)
-        # tf.summary.histogram('dense_1', x)
-        # x = layers.norm.dropout(x, 0.5)
-        # tf.summary.histogram('dropout_1', x)
-        x = layers.convs.dense(x, nclass, act=None)
-        # tf.summary.histogram('dense_2', x)
+        x = layers.convs.conv2d(x, 64, stride=2)
+        x = layers.norm.batch_norm(x, act=None)
+
+        x = layers.convs.conv2d(x, 128)
+        x = layers.norm.batch_norm(x, act=None)
+
+        x = layers.convs.conv2d(x, 128, stride=2)
+        x = layers.norm.batch_norm(x, act=None)
+
+        x = layers.pools.avg_pool2d_global(x)
+        x = layers.convs.dense(x, 10, act=None)
 
         return x
 
-def lecun_model_soft(x, winit, nclass=10):
-    with sigma.defaults(stride=1, padding='same', act='relu', mode='nearest',
-                        weight_initializer=winit):
-        # 28 x 28 x 1 => 14 x 14 x32
-        # tf.summary.image('inputs', x)
-        x = layers.convs.soft_conv2d(x, 32, 5)
-        # tf.summary.histogram('conv2d_1', x)
-        x = layers.pools.max_pool2d(x, 2, stride=2)
-        # tf.summary.histogram('maxpool_1', x)
+def model_soft(x, winit, mode, nclass=10):
+    with sigma.defaults(stride=1, padding='same', act='relu',
+                        kernel=3, weight_initializer=winit):
+        x = layers.convs.soft_conv2d(x, 32)
+        x = layers.norm.batch_norm(x, act=None)
 
-        # 14 x 14 x 32 => 7 x 7 x 64
-        x = layers.convs.soft_conv2d(x, 64, 5)
-        # tf.summary.histogram('conv2d_2', x)
-        x = layers.pools.max_pool2d(x, 2, stride=2)
-        # tf.summary.histogram('maxpool_2', x)
+        x = layers.convs.soft_conv2d(x, 64, stride=2)
+        x = layers.norm.batch_norm(x, act=None)
 
-        # 7 x 7 x 64 =>
-        x = layers.base.flatten(x)
-        x = layers.convs.dense(x, 1024)
-        # tf.summary.histogram('dense_1', x)
-        # x = layers.norm.dropout(x, 0.5)
-        # tf.summary.histogram('dropout_1', x)
-        x = layers.convs.dense(x, nclass, act=None)
-        # tf.summary.histogram('dense_2', x)
+        x = layers.convs.soft_conv2d(x, 128)
+        x = layers.norm.batch_norm(x, act=None)
+
+        x = layers.convs.soft_conv2d(x, 128, stride=2)
+        x = layers.norm.batch_norm(x, act=None)
+
+        x = layers.pools.avg_pool2d_global(x)
+        x = layers.convs.dense(x, 10, act=None)
 
         return x
-
-def lecun_model_keras(x, winit, nclass=10):
-    x = klayers.Conv2D(32, (5,5), padding='same', activation='relu',
-               kernel_initializer=winit)(x)
-    x = klayers.MaxPooling2D()(x)
-
-    x = klayers.Conv2D(64, (5,5), padding='same', activation='relu',
-               kernel_initializer=winit)(x)
-    x = klayers.MaxPooling2D()(x)
-
-    x = klayers.Flatten()(x)
-    x = klayers.Dense(1024, activation='relu', kernel_initializer=winit)(x)
-
-    # x = klayers.Dropout(0.5)(x)
-
-    x = klayers.Dense(10, kernel_initializer=winit)(x)
-
-    return x
 
 def accuracy(logits, labels):
     y = tf.argmax(tf.nn.softmax(logits), axis=-1)
@@ -128,38 +98,12 @@ def accuracy(logits, labels):
     return tf.div(acc, tf.cast(tf.shape(y)[0], dtype=tf.float32))
 
 if __name__ == '__main__':
-    """
-        for run:
-            old implementation of soft convolution (aka. deoformable convolution)
-            time cost : 307.139710187912
-            old implementation of soft convolution v2
-            time cost : 238.9779028892517
-            old implementation of soft convolution v3
-            time cost : 277.8907811641693
-            old implementation of soft convolution v4
-            time cost : 233.3266041278839
-            old implementation of soft convolution v5
-            time cost : 243.74346470832825
-            old implementation of soft convolution v6
-            time cost : 235.13102054595947
 
-            new implementation v1:
-            time cost : 598.5708783149719
-            new implementation v2:
-            time cost : 589.8767378330231 (ignoreable)
-            new implementation v3
-            time cost : 370.2597749233246
-            new implementation v4
-            time cost : 395.0825481414795
-            new implementation v5
-            time cost : 412.5409576892853
-            new implementation v6
-            time cost : 305.10115146636963
-            new implementation v7
-            time cost : soft conv cost: 304.6719214916229
-    """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-w', '--winit', type=str, default='he_uniform')
+    parser.add_argument('-w', '--winit', type=str, default='glorot_uniform')
+
+    mode = 'bilinear'
+    model = 'soft'
 
     batch_size = 50
 
@@ -168,9 +112,8 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         x = tf.placeholder(tf.float32, [batch_size, 28, 28, 1], name='samples')
         y = tf.placeholder(tf.float32, [batch_size, 10], name='labels')
-        # reshapedx = tf.reshape(x, [-1, 28, 28, 1])
+        out = eval('model_{}(x, winit, mode)'.format(model))
 
-        out = lecun_model_keras(x, winit)
         loss = layers.losses.cce(out, y)
         acc = accuracy(out, y)
 
@@ -203,19 +146,17 @@ if __name__ == '__main__':
         print('start to record time')
         beg = time.time() # we only evaluate run time
         for i in range(5000):
+
+            status.is_training = True
             trainx, trainy = next(train_gen)
             _, train_loss = sess.run([train_op, loss],
                                              feed_dict={x:trainx, y:trainy})
 
-            # writer.add_summary(summary, global_step=i)
-
+            status.is_training = False
             validx, validy = next(test_gen)
             valid_loss, _acc = sess.run([loss, acc], feed_dict={x:validx, y:validy})
-            # print('train loss: {}, valid loss: {}'.format(train_loss,
-            #                                               valid_loss))
             losses.append([valid_loss, _acc])
-            # print('epoch: {}, acc: {}'.format(i, _acc))
         # writer.close()
-        np.savetxt('test/data/mnist/keras/new_scaled_{}'.format(winit), losses)
+        np.savetxt('test/data/mnist/{}/{}/scaled_{}'.format(model, mode, winit), losses)
         end = time.time()
     print('soft conv cost: {}'.format(end-beg))

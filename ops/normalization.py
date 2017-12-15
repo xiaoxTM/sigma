@@ -6,13 +6,13 @@ from .. import status
 
 def batch_norm(input_shape,
                momentum=0.99,
-               offset_initializer=None,
-               scale_initializer=None,
+               offset_initializer='zeros',
+               scale_initializer='ones',
                offset_regularizer=None,
                scale_regularizer=None,
-               moving_mean_initializer=None,
-               moving_variance_initializer=None,
-               epsilon=1e-5,
+               moving_mean_initializer='zeros',
+               moving_variance_initializer='ones',
+               epsilon=0.001,
                act=None,
                fused=False,
                reuse=False,
@@ -56,7 +56,6 @@ def batch_norm(input_shape,
 
     if scope is None:
         scope = name
-
     axis = list(range(len(input_shape)-1))
     if fused:
         axis = [0 ,1, 2]
@@ -67,7 +66,8 @@ def batch_norm(input_shape,
     offset = None
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
-        offset = mm.malloc('{}-offset'.format(name), neurons, tf.float32, offset_initializer,
+        offset = mm.malloc('{}-offset'.format(name), neurons,
+                           tf.float32, offset_initializer,
                            offset_regularizer, trainable=True,
                            collections=collections, reuse=reuse,
                            scope=scope)
@@ -138,13 +138,15 @@ def batch_norm(input_shape,
                                           offset, scale, epsilon)
         return act(x)
 
+    scope = tf.name_scope(scope)
     def _batch_norm(x):
-        x = tf.cond(tf.cast(status.is_training, tf.bool),
-                    lambda: _train(x),
-                    lambda: _infer(x))
-        # if update moving_mean and moving_variance
-        # print('x shape:', x.get_shape().as_list())
-        return x
+        with scope:
+            x = tf.cond(tf.cast(status.is_training, tf.bool),
+                        lambda: _train(x),
+                        lambda: _infer(x))
+            # if update moving_mean and moving_variance
+            # print('x shape:', x.get_shape().as_list())
+            return x
     return _batch_norm
 
 
@@ -153,7 +155,8 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
     if name is None:
         name = helper.dispatch_name('layer_norm')
     if scope is None:
-        scope = tf.name_scope(name)
+        scope = name
+    scope = tf.name_scope(name)
     axis = len(input_shape) - 1
     neurons = [input_shape[0]]
     offset = mm.malloc('{}-offset'.format(name), neurons, tf.float32,
@@ -169,13 +172,14 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
                           scope=scope)
 
     def _layer_norm(x):
-        mean, var = tf.nn.moments(x, [axis], keep_dims=True)
-        x = (x - mean) / tf.sqrt(var + epsilon)
-        if scale:
-            x = scale * x + offset
-        else:
-            x = x + offset
-        return act(x)
+        with scope:
+            mean, var = tf.nn.moments(x, [axis], keep_dims=True)
+            x = (x - mean) / tf.sqrt(var + epsilon)
+            if scale:
+                x = scale * x + offset
+            else:
+                x = x + offset
+            return act(x)
 
     return _layer_norm
 
@@ -184,7 +188,8 @@ def dropout(pkeep, noise_shape=None, seed=None, name=None, scope=None):
     if name is None:
         name = helper.dispatch_name('dropout')
     if scope is None:
-        scope = tf.name_scope(name)
+        scope = name
+    scope = tf.name_scope(name)
     def _dropout(x):
         with scope:
             return tf.nn.dropout(x, pkeep, noise_shape, seed, name)
