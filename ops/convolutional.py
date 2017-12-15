@@ -1,9 +1,9 @@
 import tensorflow as tf
 from .. import colors
+from .. import status
 from . import mm
 from . import actives
 from . import helper
-
 import numpy as np
 
 import logging
@@ -45,6 +45,11 @@ def conv(convop, kernel_shape,
          dtype=tf.float32, bias_axis=-1,
          collections=None, reuse=False,
          summarize=True, name=None, scope=None):
+    # NOTE that the parameters:
+    #          `bias_axis`
+    #      is setup to deal with de-convolutional op
+    #      whose output is kernel_shape[-2]
+    #      instead of kernel_shape[-1]
     if name is None:
         name = helper.dispatch_name('conv')
 
@@ -246,8 +251,10 @@ def deconv2d(input_shape, output_shape, nout,
              act=None, trainable=True, dtype=tf.float32,
              collections=None, reuse=False,
              summarize=True, name=None, scope=None):
-    # NOTE: unlike normal convolutional, de-convolutional weights has shape of:
-    #       [height, width, output_channels, inputs_channels]
+    # NOTE: unlike normal convolutional, whose weights has shape of
+    #       => [height, width, inputs_channels, output_channels]
+    #       de-convolutional weights has shape of:
+    #       => [height, width, output_channels, inputs_channels]
     #       the run-time input shape:
     #       if padding == 'valid'
     #           [batch-size, ceil((output_shape[1:-1] - kernel[1:-1] + 1) / stride[1:-1])]
@@ -277,20 +284,13 @@ def deconv2d(input_shape, output_shape, nout,
             raise ValueError('output shape not match'
                              'input_shape and hidden units')
     else:
-        raise TypeError('out_shape with type `{}` not support'.format(type(out_shape)))
-    #
-    # print('input shape:', input_shape)
-    # print('kernel shape:', kernel_shape)
-    # print('stride:', stride)
-    # print('output shape:', out_shape)
+        raise TypeError('out_shape with type `{}` not support'
+                        .format(type(out_shape)))
 
     def _deconv2d(x, weight):
-        # out = tf.nn.conv2d_transpose(x, weight, out_shape, stride,
-        #                              padding.upper(), name=name)
-        # out.set_shape(out_shape)
-        # return out
         return tf.nn.conv2d_transpose(x, weight, out_shape, stride,
                                       padding.upper(), name=name)
+
     return conv(convop=_deconv2d, kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
                 weight_regularizer=weight_regularizer,
@@ -313,8 +313,7 @@ def soft_conv(input_shape, kernel_shape,
               offset_bias_initializer=None,
               offset_bias_regularizer=None,
               act=None, trainable=True,
-              dtype=tf.float32, axis=-2,
-              collections=None, reuse=False,
+              dtype=tf.float32, collections=None, reuse=False,
               summarize=True, name=None, scope=None):
     if name is None:
         name = helper.dispatch_name('soft_conv')
@@ -324,14 +323,21 @@ def soft_conv(input_shape, kernel_shape,
 
     input_len = len(input_shape)
 
-    axis = (axis + input_len) % input_len
+    axis = (status.axis + input_len) % input_len
     dims = list(range(input_len))
     del dims[axis] # remove featrue map dim
     del dims[0]    # remove batch size dim
-    dim_shape = [input_shape[dim] for dim in dims]  #[4, 4]
     dimlen = len(dims)
+    dim_shape = [1] * dimlen
+    dim_stride = [1] * dimlen
+    dim_strided_shape = [1] * dimlen
+    for idx, dim in enumerate(dims):
+        dim_shape[idx] = input_shape[dim]
+        dim_stride[idx] = stride[dim]
+        dim_strided_shape[idx] = int(
+                        np.ceil(float(input_shape[dim]) / float(stride[dim])))
     nkernels = np.prod(kernel_shape[:dimlen])
-    ndims = np.prod(dim_shape)
+    ndims = np.prod([int(sh / st) for sh, st in zip(dim_shape, dim_stride)])
     # offsets_shape = [-1] + dim_shape + [nkernels, dimlen]
 
     weight = mm.malloc('{}/weight'.format(name),
@@ -381,7 +387,8 @@ def soft_conv(input_shape, kernel_shape,
     # print('offset conv parameters:', kwargs)
 
     #with _scope:
-    grids = [np.arange(s, dtype=np.float32) for s in dim_shape]
+    grids = [np.arange(0, s, t, dtype=np.float32)
+              for s,t in zip(dim_shape, dim_stride)]
     grids = np.meshgrid(*grids, indexing='ij')
     grids = np.stack(grids, axis=-1)
     kgrids = [np.arange(-int(k / 2), int(k / 2)+1, dtype=np.float32)
@@ -410,22 +417,6 @@ def soft_conv(input_shape, kernel_shape,
         else:
             raise ValueError('input shape length must'
                              ' have 3/4/5. given {}'.format(input_len))
-
-    # def _append_batch_grids(offset_grids):
-    #     """ offset_grids : [batch-size,
-    #                         rows * cols * krows * kcols,
-    #                         [row-idx, col-idx]] with dtype = int32
-    #         Return:        [batch-size,
-    #                         rows * cols * krows * kcols,
-    #                         [batch-idx, row-idx, col-idx]]
-    #     """
-    #     shape = tf.shape(offset_grids)
-    #     batch_range = tf.expand_dims(tf.range(shape[0]), axis=-1)
-    #     batch_range = tf.tile(batch_range, [1, tf.reduce_prod(shape[1:-1])])
-    #     int_shape = offset_grids.get_shape().as_list()
-    #     batch_range = tf.reshape(batch_range, int_shape[:-1] + [1])
-    #     offset_grids = tf.concat([batch_range, offset_grids], axis=-1)
-    #     return offset_grids
 
     def _append_batch_grids(offset_grids):
         """ offset_grids : [batch-size,
@@ -493,7 +484,6 @@ def soft_conv(input_shape, kernel_shape,
             enum = np.concatenate([apps, enum], axis=1)
         return enum
 
-
     def _gather(x, offset_grids):
         # offset_grids: [batch-size, rows * cols * krows * kcols, [batch-idx, row-idx, col-idx]]
         x = tf.transpose(x, [axis, 0] + dims)
@@ -536,8 +526,7 @@ def soft_conv(input_shape, kernel_shape,
             #     [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1],
             #      [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]]
             combinations = _enumerate(dimlen)
-            shape = [-1] + dim_shape + [nkernels]
-
+            shape = [-1] + dim_strided_shape + [nkernels]
 
             def _bilinear(feature_map):
                 interpolated = []
@@ -564,7 +553,7 @@ def soft_conv(input_shape, kernel_shape,
 
             gathers = tf.map_fn(_bilinear, x)
         # [channels, batch-size, rows , cols, krows * kcols]
-        shape = [input_shape[axis], -1] + dim_shape + [nkernels]
+        shape = [input_shape[axis], -1] + dim_strided_shape + [nkernels]
         gathers = tf.reshape(gathers, shape)
         return gathers, offset_grids
 
@@ -640,8 +629,7 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
                 offset_bias_initializer=None,
                 offset_bias_regularizer=None,
                 act=None, trainable=True,
-                dtype=tf.float32, axis=-1,
-                collections=None,
+                dtype=tf.float32, collections=None,
                 reuse=False, summarize=True,
                 name=None, scope=None):
     if name is None:
@@ -671,7 +659,7 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
                      offset_bias_initializer,
                      offset_bias_regularizer,
                      act, trainable, dtype,
-                     -1, collections, reuse, summarize,
+                     collections, reuse, summarize,
                      name, scope), output_shape
 
 

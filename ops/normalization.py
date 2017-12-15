@@ -108,20 +108,23 @@ def batch_norm(input_shape,
             for _ in range(4 - x.get_shape().ndims):
                 x = tf.expand_dims(x, 1)
             # print('x shape:', x.get_shape().as_list())
-            x, mean, variance = tf.nn.fused_batch_norm(x, scale, offset, epsilon=epsilon)
+            x, mean, variance = tf.nn.fused_batch_norm(x, scale,
+                                                       offset, epsilon=epsilon)
             x = tf.reshape(x, x_shape)
         else:
             mean, variance = tf.nn.moments(x, axis, keep_dims=True)
             # tf.nn.batch_normalize(x, mean, variance, offset,
             #                       scale, variance_epsilon, name)
-            x = tf.nn.batch_normalization(x, mean, variance, offset, scale, epsilon)
+            x = tf.nn.batch_normalization(x, mean, variance,
+                                          offset, scale, epsilon)
             mean = tf.squeeze(mean)
             variance = tf.squeeze(variance)
         if momentum is not None:
             # print('mm:', moving_mean.get_shape().as_list())
             # print('mn', mean.get_shape().as_list())
             moving_mean.assign(moving_mean * momentum + mean * (1 - momentum))
-            moving_variance.assign(moving_variance * momentum + variance * (1 - momentum))
+            moving_variance.assign(
+                       moving_variance * momentum + variance * (1 - momentum))
         return act(x)
 
     def _infer(x):
@@ -129,8 +132,9 @@ def batch_norm(input_shape,
             x_shape = x.get_shape().as_list()
             for _ in range(4 - x.get_shape().ndims):
                 x = tf.expand_dims(x, 1)
-            x, mean, variance = tf.nn.fused_batch_norm(x, scale, offset, moving_mean,
-                                         moving_variance, epsilon, is_training=False)
+            x, mean, variance = tf.nn.fused_batch_norm(x, scale,
+                                         offset, moving_mean, moving_variance,
+                                         epsilon, is_training=False)
             x = tf.reshape(x, x_shape)
         else:
             mean, variance = tf.nn.moments(x, axis, keep_dims=True)

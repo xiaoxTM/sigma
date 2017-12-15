@@ -35,9 +35,11 @@ def batch_norm(inputs,
     x = fun(inputs)
     helper.print_layer(inputs, x, 'add', reuse, name)
     if input_shape != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, input_shape, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(), colors.reset))
+                                 colors.fg.red, x.get_shape().as_list(),
+                                 colors.reset))
     return x
 
 @layers

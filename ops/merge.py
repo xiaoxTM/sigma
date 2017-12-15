@@ -4,7 +4,8 @@ from .. import colors
 
 def concat(inputs_shape, axis=-1, name=None):
     if not isinstance(inputs_shape, (list, tuple)):
-        raise TypeError('concat requires inputs as {}list / tpule{}, given {}{}{}'
+        raise TypeError('concat requires inputs as '
+                        '{}list / tpule{}, given {}{}{}'
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 type(inputs_shape), colors.reset))
     elif len(inputs_shape) < 2:
@@ -14,10 +15,12 @@ def concat(inputs_shape, axis=-1, name=None):
     output_shape = inputs_shape[0]
     for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(np.delete(output_shape, axis) == np.delete(ip, axis)):
-            raise ValueError('shape of {}{}{}-input differ from first one besides {}{}{}-axis. {}{} vs {}{}'
-                             .format(colors.fg.red, idx, colors.reset, colors.fg.green, axis,
-                                     colors.reset, colors.fg.red, output_shape, ip,
-                                     colors.reset))
+            raise ValueError('shape of {}{}{}-input differ from first'
+                             ' one besides {}{}{}-axis. {}{} vs {}{}'
+                             .format(colors.fg.red, idx, colors.reset,
+                                     colors.fg.green, axis,
+                                     colors.reset, colors.fg.red, output_shape,
+                                     ip, colors.reset))
         output_shape[axis] += ip[axis]
     if name is None:
         name = helper.dispatch_name('concat')
@@ -29,7 +32,8 @@ def concat(inputs_shape, axis=-1, name=None):
 
 def add(inputs_shape, name=None):
     if not isinstance(inputs_shape, (list, tuple)):
-        raise TypeError('concat requires inputs as {}list / tpule{}, given {}{}{}'
+        raise TypeError('concat requires inputs as '
+                        '{}list / tpule{}, given {}{}{}'
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 type(inputs_shape), colors.reset))
     elif len(inputs_shape) < 2:
@@ -39,7 +43,8 @@ def add(inputs_shape, name=None):
     output_shape = inputs_shape[0]
     for ip in inputs_shape[1:]:
         if not np.all(output_shape != ip):
-            raise ValueError('shape of {}{}{}-input differ from first one. {}{} vs {}{}'
+            raise ValueError('shape of {}{}{}-input differ '
+                             'from first one. {}{} vs {}{}'
                              .format(color.fg.red, colors.reset, colors.fg.red,
                                      output_shape, ip, colors.reset))
     if name is None:
@@ -52,7 +57,8 @@ def add(inputs_shape, name=None):
 
 def mul(inputs, name=None):
     if not isinstance(inputs, (list, tuple)):
-        raise TypeError('concat requires inputs as {}list / tpule{}, given {}{}{}'
+        raise TypeError('concat requires inputs '
+                        'as {}list / tpule{}, given {}{}{}'
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 type(inputs), colors.reset))
     elif len(inputs) != 2:
@@ -62,7 +68,8 @@ def mul(inputs, name=None):
     output_shape = inputs[0]
     for ip in inputs[1:]:
         if not np.all(output_shape != ip):
-            raise ValueError('shape of {}{}{}-input differ from first one. {}{} vs {}{}'
+            raise ValueError('shape of {}{}{}-input differ from '
+                             'first one. {}{} vs {}{}'
                              .format(color.fg.red, colors.reset, colors.fg.red,
                                      output_shape, ip, colors.reset))
     if name is None:

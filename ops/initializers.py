@@ -7,7 +7,8 @@ import numpy as np
     Returns:
         A tuple of scalars (fan_in, fan_out).
 
-    // NOTE: code borrowed from tensorflow (https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/python/ops/init_ops.py)
+    // NOTE: code borrowed from tensorflow
+    (https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/python/ops/init_ops.py)
 """
 def get_fans(shape):
     if len(shape) < 1:  # Just to avoid errors for constants.

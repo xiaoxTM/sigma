@@ -71,8 +71,9 @@ def fully_conv(inputs, nouts,
                name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = convs.fully_conv(input_shape, nouts, weight_initializer,
-                                   weight_regularizer, bias_initializer, bias_regularizer, act,
-                                   trainable, dtype, collections, reuse, summarize, name, scope)
+                                   weight_regularizer, bias_initializer,
+                                   bias_regularizer, act, trainable, dtype,
+                                   collections, reuse, summarize, name, scope)
     x = fun(inputs)
     helper.print_layer(inputs, x, 'fully_conv', reuse, name)
     if output != x.get_shape().as_list():
@@ -211,8 +212,7 @@ def soft_conv2d(inputs, nouts, kernel,
                 offset_bias_initializer=None,
                 offset_bias_regularizer=None,
                 act=None, trainable=True,
-                dtype=tf.float32, axis=-1,
-                collections=None,
+                dtype=tf.float32, collections=None,
                 reuse=False, summarize=True,
                 name=None, scope=None):
     # with tf.name_scope(''):
@@ -230,7 +230,7 @@ def soft_conv2d(inputs, nouts, kernel,
                                     offset_bias_initializer,
                                     offset_bias_regularizer,
                                     act, trainable, dtype,
-                                    axis, collections, reuse,
+                                    collections, reuse,
                                     summarize, name, scope)
     x, offsets = fun(inputs)
     helper.print_layer(inputs, x, 'soft_conv2d', reuse, name)

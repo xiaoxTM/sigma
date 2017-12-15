@@ -12,9 +12,11 @@ def concat(inputs, axis=-1, reuse=False, name='concat'):
     x = fun(inputs)
     helper.print_layer(inputs, x, 'concat', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(), colors.reset))
+                                 colors.fg.red, x.get_shape().as_list(),
+                                 colors.reset))
     return x
 
 @layers
@@ -24,9 +26,11 @@ def add(inputs, reuse=False, name='add'):
     x = fun(inputs)
     helper.print_layer(inputs, x, 'add', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(), colors.reset))
+                                 colors.fg.red, x.get_shape().as_list(),
+                                 colors.reset))
     return x
 
 @layers
@@ -36,7 +40,9 @@ def mul(inputs, reuse=False, name='mul'):
     x = fun(inputs)
     helper.print_layer(inputs, x, 'mul', reuse, name)
     if output != x.get_shape().as_list():
-        raise ValueError('the predicted output shape and the real output shape not match. {}{}{} vs {}{}{}'
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(), colors.reset))
+                                 colors.fg.red, x.get_shape().as_list(),
+                                 colors.reset))
     return x
