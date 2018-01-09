@@ -23,7 +23,7 @@ import numpy as np
 # plt.grid(True)
 # plt.show()
 
-dfiles = ['keras', 'sigma']
+dfiles = ['soft', 'sigma']
 
 for f in dfiles:
     data = np.loadtxt('mnist/{}/bilinear/scaled_glorot_uniform'.format(f))

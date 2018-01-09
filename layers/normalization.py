@@ -4,6 +4,37 @@ import tensorflow as tf
 from .layers import layers
 
 @layers
+def instance_norm(inputs,
+                  offset_initializer='zeros',
+                  scale_initializer='ones',
+                  offset_regularizer=None,
+                  scale_regularizer=None,
+                  epsilon=0.001,
+                  act=None,
+                  reuse=False,
+                  collections=None,
+                  name=None,
+                  scope=None):
+    input_shape = inputs.get_shape().as_list()
+    fun = norm.instance_norm(input_shape=input_shape,
+                             offset_initializer=offset_initializer,
+                             scale_initializer=scale_initializer,
+                             offset_regularizer=offset_regularizer,
+                             scale_regularizer=scale_regularizer,
+                             epsilon=epsilon, act=act, reuse=reuse,
+                             collections=collections,
+                             name=name, scope=scope)
+    x = fun(inputs)
+    helper.print_layer(inputs, x, 'instance_norm', reuse, name)
+    if input_shape != x.get_shape().as_list():
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {}{}{} vs {}{}{}'
+                         .format(colors.fg.green, input_shape, colors.reset,
+                                 colors.fg.red, x.get_shape().as_list(),
+                                 colors.reset))
+    return x
+
+@layers
 def batch_norm(inputs,
                momentum=0.99,
                offset_initializer='zeros',
@@ -33,7 +64,7 @@ def batch_norm(inputs,
                         collections=collections,
                         name=name, scope=scope)
     x = fun(inputs)
-    helper.print_layer(inputs, x, 'add', reuse, name)
+    helper.print_layer(inputs, x, 'batch_norm', reuse, name)
     if input_shape != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'

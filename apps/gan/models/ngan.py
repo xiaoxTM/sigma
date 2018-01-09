@@ -95,7 +95,7 @@ def generator(ninput=99, nclass=10, scope='generator'):
             #     batch-size x ninput
             if noise is None:
                 if shape is not None:
-                    inputs = tf.random_normal(shape, dtype=tf.float32,
+                    inputs = tf.random_uniform(shape, 0, 1, dtype=tf.float32,
                                               name='random-noise')
                 else:
                     raise ValueError('cannot feed generator with'

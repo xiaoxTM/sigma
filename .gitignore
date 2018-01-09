@@ -72,7 +72,7 @@ target/
 
 # pyenv
 .python-version
-
+EXP
 # celery beat schedule file
 celerybeat-schedule
 
@@ -101,5 +101,5 @@ ENV/
 .mypy_cache/
 
 test/data/*
-
+apps/gan/exp
 test/mnist_keras.py

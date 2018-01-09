@@ -4,6 +4,59 @@ from . import helper
 from . import actives
 from .. import status
 
+def instance_norm(input_shape,
+                  offset_initializer='zeros',
+                  scale_initializer='ones',
+                  offset_regularizer=None,
+                  scale_regularizer=None,
+                  epsilon=0.001,
+                  act=None,
+                  reuse=False,
+                  collections=None,
+                  name=None,
+                  scope=None):
+    if name is  None:
+        name = helper.dispatch_name('instance_norm')
+
+    if scope is None:
+        scope = name
+    input_len = len(input_shape)
+    axis = (status.axis + input_len) % input_len
+    neurons = input_shape[axis]
+    axes = list(range(input_len))
+    del axes[axis]
+    del axes[0]
+
+    offset = None
+    if not isinstance(offset_initializer, bool) or \
+       offset_initializer is not False:
+        offset = mm.malloc('{}-offset'.format(name), neurons,
+                           tf.float32, offset_initializer,
+                           offset_regularizer, trainable=True,
+                           collections=collections, reuse=reuse,
+                           scope=scope)
+    scale = None
+    if not isinstance(scale_initializer, bool) or \
+       scale_initializer is not False:
+        scale = mm.malloc('{}-scale'.format(name), neurons, tf.float32,
+                          scale_initializer,
+                          scale_regularizer, trainable=True,
+                          collections=collections, reuse=reuse,
+                          scope=scope)
+    act = actives.get(act)
+    scope = tf.name_scope(scope)
+    def _instance_norm(x):
+        with scope:
+            mean, variance = tf.nn.moments(x, axes, keep_dims=True)
+            normalized = (x - mean) / tf.sqrt(variance + epsilon)
+            if scale is not None:
+                normalized = scale * normalized
+            if offset is not None:
+                normalized = normalized + offset
+            return  normalized
+    return _instance_norm
+
+
 def batch_norm(input_shape,
                momentum=0.99,
                offset_initializer='zeros',
@@ -61,7 +114,7 @@ def batch_norm(input_shape,
         axis = [0 ,1, 2]
     # if not isinstance(axis, (list, tuple)):
     #     axis = [axis]
-    neurons = input_shape[-1]
+    neurons = input_shape[status.axis]
 
     offset = None
     if not isinstance(offset_initializer, bool) or \
