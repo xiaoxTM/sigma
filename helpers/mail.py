@@ -10,8 +10,7 @@ from .error_message import error_traceback
 import platform
 from datetime import datetime
 
-def sendmail(message, fromaddr='gilyou.public@gmail.com',
-             toaddr='gilyou.private@gmail.com', passwd='gilyou1314521',
+def sendmail(message, fromaddr, toaddr, passwd,
              subject=None, mtype='plain', screenshot=False, **kwargs):
     """
         send mail
