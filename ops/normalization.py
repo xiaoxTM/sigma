@@ -11,6 +11,7 @@ def instance_norm(input_shape,
                   scale_regularizer=None,
                   epsilon=0.001,
                   act=None,
+                  trainable=True,
                   reuse=False,
                   collections=None,
                   name=None,
@@ -21,7 +22,7 @@ def instance_norm(input_shape,
     if scope is None:
         scope = name
     input_len = len(input_shape)
-    axis = (status.axis + input_len) % input_len
+    axis = helper.normalize_axes(input_shape)
     neurons = input_shape[axis]
     axes = list(range(input_len))
     del axes[axis]
@@ -32,7 +33,7 @@ def instance_norm(input_shape,
        offset_initializer is not False:
         offset = mm.malloc('{}-offset'.format(name), neurons,
                            tf.float32, offset_initializer,
-                           offset_regularizer, trainable=True,
+                           offset_regularizer, trainable=trainable,
                            collections=collections, reuse=reuse,
                            scope=scope)
     scale = None
@@ -40,7 +41,7 @@ def instance_norm(input_shape,
        scale_initializer is not False:
         scale = mm.malloc('{}-scale'.format(name), neurons, tf.float32,
                           scale_initializer,
-                          scale_regularizer, trainable=True,
+                          scale_regularizer, trainable=trainable,
                           collections=collections, reuse=reuse,
                           scope=scope)
     act = actives.get(act)
@@ -67,6 +68,7 @@ def batch_norm(input_shape,
                moving_variance_initializer='ones',
                epsilon=0.001,
                act=None,
+               trainable=True,
                fused=False,
                reuse=False,
                collections=None,
@@ -121,7 +123,7 @@ def batch_norm(input_shape,
        offset_initializer is not False:
         offset = mm.malloc('{}-offset'.format(name), neurons,
                            tf.float32, offset_initializer,
-                           offset_regularizer, trainable=True,
+                           offset_regularizer, trainable=trainable,
                            collections=collections, reuse=reuse,
                            scope=scope)
     scale = None
@@ -129,7 +131,7 @@ def batch_norm(input_shape,
        scale_initializer is not False:
         scale = mm.malloc('{}-scale'.format(name), neurons, tf.float32,
                           scale_initializer,
-                          scale_regularizer, trainable=True,
+                          scale_regularizer, trainable=trainable,
                           collections=collections, reuse=reuse,
                           scope=scope)
 
@@ -137,7 +139,7 @@ def batch_norm(input_shape,
     moving_mean = mm.malloc('{}-moving-mean'.format(name),
                             neurons, tf.float32,
                             moving_mean_initializer,
-                            trainable=True,
+                            trainable=trainable,
                             collections=collections,
                             reuse=reuse, scope=scope)
 
@@ -145,7 +147,7 @@ def batch_norm(input_shape,
     moving_variance = mm.malloc('{}-moving-variance'.format(name),
                                 neurons, tf.float32,
                                 moving_variance_initializer,
-                                trainable=True,
+                                trainable=trainable,
                                 collections=collections,
                                 reuse=reuse, scope=scope)
     act = actives.get(act)
@@ -214,7 +216,7 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
     if scope is None:
         scope = name
     scope = tf.name_scope(name)
-    axis = len(input_shape) - 1
+    axis = helper.normalize_axes(input_shape)
     neurons = [input_shape[0]]
     offset = mm.malloc('{}-offset'.format(name), neurons, tf.float32,
                        initializer=tf.zeros_initializer,
@@ -230,8 +232,8 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
 
     def _layer_norm(x):
         with scope:
-            mean, var = tf.nn.moments(x, [axis], keep_dims=True)
-            x = (x - mean) / tf.sqrt(var + epsilon)
+            mean, variance = tf.nn.moments(x, [axis], keep_dims=True)
+            x = (x - mean) / tf.sqrt(variance + epsilon)
             if scale:
                 x = scale * x + offset
             else:

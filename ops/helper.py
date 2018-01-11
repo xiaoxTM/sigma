@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .. import colors
+from .. import colors, status
 import numpy as np
 import copy
 
@@ -43,6 +43,30 @@ def print_layer(inputs, outputs, typename, reuse=False, name=None):
                       name if name is not None else typename,
                       typename, colors.reset, outputs.name,
                       colors.fg.red, output_shape, colors.reset))
+
+""" normalize axis given tensor shape
+    for example: tensor shape [batch size, rows, cols, channels], axis = -1
+        return axis=3
+"""
+def normalize_axes(tensor_shape, axis=status.axis):
+    if not isinstance(tensor_shape, (list, tuple)):
+        raise TypeError('tensor shape must be list/tuple, given {}{}{}[{}]'
+                        .format(colors.fg.red,
+                                type(tensor_shape),
+                                colors.reset,
+                                tensor_shape))
+    input_len = len(tensor_shape)
+    if isinstance(axis, int):
+        axis = (axis + input_len) % input_len
+    elif isinstance(axis, (list, tuple)):
+        axis = map(lambda x:(x + input_len) % input_len, axis)
+    else:
+        raise TypeError('axis must be int or list/tuple, given {}{}{}[{}]'
+                        .format(colors.fg.red,
+                                type(axis),
+                                colors.reset,
+                                axis))
+    return axis
 
 
 def get_output_shape(input_shape, nouts, kernel, stride, padding):

@@ -323,7 +323,7 @@ def soft_conv(input_shape, kernel_shape,
 
     input_len = len(input_shape)
 
-    axis = (status.axis + input_len) % input_len
+    axis = helper.normalize_axes(input_shape)
     dims = list(range(input_len))
     del dims[axis] # remove featrue map dim
     del dims[0]    # remove batch size dim
