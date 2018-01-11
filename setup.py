@@ -8,4 +8,9 @@ setup(name='sigma',
       author_email='gilyou.public@gmail.com',
       license='GPL-3.0',
       packages=['sigma'],
+      install_requires=[
+          'numpy',
+          'tensorflow',
+          
+      ],
       zip_safe=False)
