@@ -73,7 +73,7 @@ def get_output_shape(input_shape, nouts, kernel, stride, padding):
     typecheck = map(lambda x, y: isinstance(x, y),
                     [input_shape, kernel, stride],
                     [(list, tuple)]*3)
-    if not all(typecheck):
+    if not np.all(typecheck):
         raise TypeError('type of input, kernel, stride not all '
                         'list / tuple, given{}{}{}, {}{}{}, {}{}{}'
                         .format(colors.fg.red, type(input_shape), colors.reset,

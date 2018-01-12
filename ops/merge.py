@@ -13,11 +13,14 @@ def concat(inputs_shape, axis=-1, name=None):
                          .format(colors.fg.green, colors.reset, colors.fg.red,
                                  len(inputs_shape), colors.reset))
     output_shape = inputs_shape[0]
-    for idx, ip in enumerate(inputs_shape[1:]):
+    left_shape = inputs_shape[1:]
+    if len(inputs_shape) == 2:
+        left_shape = [left_shape]
+    for idx, ip in enumerate(left_shape):
         if not np.all(np.delete(output_shape, axis) == np.delete(ip, axis)):
-            raise ValueError('shape of {}{}{}-input differ from first'
+            raise ValueError('shape of {}{}{}-input differs from first'
                              ' one besides {}{}{}-axis. {}{} vs {}{}'
-                             .format(colors.fg.red, idx, colors.reset,
+                             .format(colors.fg.red, idx+1, colors.reset,
                                      colors.fg.green, axis,
                                      colors.reset, colors.fg.red, output_shape,
                                      ip, colors.reset))
@@ -41,8 +44,11 @@ def add(inputs_shape, name=None):
                          .format(colors.fg.green, colors.reset, colors.fg.red,
                                  len(inputs_shape), colors.reset))
     output_shape = inputs_shape[0]
-    for ip in inputs_shape[1:]:
-        if not np.all(output_shape != ip):
+    left_shape = inputs_shape[1:]
+    if len(inputs_shape) == 2:
+        left_shape = [left_shape]
+    for ip in left_shape:
+        if not np.all(output_shape == ip):
             raise ValueError('shape of {}{}{}-input differ '
                              'from first one. {}{} vs {}{}'
                              .format(colors.fg.red, colors.reset, colors.fg.red,
@@ -55,19 +61,22 @@ def add(inputs_shape, name=None):
             return tf.add_n(x, name)
     return _add, output_shape
 
-def mul(inputs, name=None):
-    if not isinstance(inputs, (list, tuple)):
+def mul(inputs_shape, name=None):
+    if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs '
                         'as {}list / tpule{}, given {}{}{}'
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 type(inputs), colors.reset))
-    elif len(inputs) != 2:
-        raise ValueError('concat requires only {}two{} inputs, given {}{}{}'
+    elif len(inputs_shape) < 2:
+        raise ValueError('concat requires at least {}two{} inputs, given {}{}{}'
                          .format(colors.fg.green, colors.reset, colors.fg.red,
-                                 len(inputs), colors.reset))
-    output_shape = inputs[0]
-    for ip in inputs[1:]:
-        if not np.all(output_shape != ip):
+                                 len(inputs_shape), colors.reset))
+    output_shape = inputs_shape[0]
+    left_shape = inputs_shape[1:]
+    if len(inputs_shape) == 2:
+        left_shape = [left_shape]
+    for ip in left_shape:
+        if not np.all(output_shape == ip):
             raise ValueError('shape of {}{}{}-input differ from '
                              'first one. {}{} vs {}{}'
                              .format(colors.fg.red, colors.reset, colors.fg.red,
