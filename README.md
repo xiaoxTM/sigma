@@ -58,7 +58,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - bilinear : bilinear interpolation
 
 # Version explanation
-`sigma` version consists three parts:
+`sigma` version consists of three parts:
 - major version indicator
   - increases after great changes
 - minor version indicator
@@ -66,4 +66,4 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
 - state version indicator
   - 0 : developing state
   - 1 : testing state
-  - 2 : stable state 
+  - 2 : stable state
