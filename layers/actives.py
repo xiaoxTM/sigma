@@ -81,7 +81,7 @@ def sigmoid(x, name=None):
     calculates:
         (exp(x) -1) / (exp(x) + 1)
 """
-def tanh(name=None):
+def tanh(x, name=None):
     return actives.tanh(name)(x)
 
 
