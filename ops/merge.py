@@ -13,10 +13,7 @@ def concat(inputs_shape, axis=-1, name=None):
                          .format(colors.fg.green, colors.reset, colors.fg.red,
                                  len(inputs_shape), colors.reset))
     output_shape = inputs_shape[0]
-    left_shape = inputs_shape[1:]
-    if len(inputs_shape) == 2:
-        left_shape = [left_shape]
-    for idx, ip in enumerate(left_shape):
+    for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(np.delete(output_shape, axis) == np.delete(ip, axis)):
             raise ValueError('shape of {}{}{}-input differs from first'
                              ' one besides {}{}{}-axis. {}{} vs {}{}'
@@ -44,10 +41,7 @@ def add(inputs_shape, name=None):
                          .format(colors.fg.green, colors.reset, colors.fg.red,
                                  len(inputs_shape), colors.reset))
     output_shape = inputs_shape[0]
-    left_shape = inputs_shape[1:]
-    if len(inputs_shape) == 2:
-        left_shape = [left_shape]
-    for idx, ip in enumerate(left_shape):
+    for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(output_shape == ip):
             raise ValueError('shape of {}{}{}-input differ '
                              'from first one. {}{} vs {}{}'
@@ -73,10 +67,7 @@ def mul(inputs_shape, name=None):
                          .format(colors.fg.green, colors.reset, colors.fg.red,
                                  len(inputs_shape), colors.reset))
     output_shape = inputs_shape[0]
-    left_shape = inputs_shape[1:]
-    if len(inputs_shape) == 2:
-        left_shape = [left_shape]
-    for idx, ip in enumerate(left_shape):
+    for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(output_shape == ip):
             raise ValueError('shape of {}{}{}-input differ from '
                              'first one. {}{} vs {}{}'
