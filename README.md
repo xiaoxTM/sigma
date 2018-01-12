@@ -30,11 +30,13 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - categorical_cross_entropy
    - mean_square_error
    - winner_takes_all (not tested)
+   - total_variation_regularize (not tested)
  - merge
    - concat
    - add (not tested)
    - mul (not tested)
  - normalization
+   - instance_norm (not tested)
    - batch_norm
    - dropout (not tested)
  - pools
