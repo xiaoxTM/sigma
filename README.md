@@ -56,3 +56,14 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - floor : get the floor location
    - ceil : get the ceil location
    - bilinear : bilinear interpolation
+
+# Version explanation
+`sigma` version consists three parts:
+- major version indicator
+  - increases after great changes
+- minor version indicator
+  - increases after adding new features
+- state version indicator
+  - 0 : developing state
+  - 1 : testing state
+  - 2 : stable state 
