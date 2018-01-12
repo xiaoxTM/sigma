@@ -2,6 +2,7 @@ import tensorflow as tf
 import os.path
 from .. import colors
 import sigma
+import h5py
 
 def encode(strings, codec='utf8'):
     if isinstance(strings, str):

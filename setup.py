@@ -11,6 +11,6 @@ setup(name='sigma',
       install_requires=[
           'numpy',
           'tensorflow',
-          
+          'h5py'
       ],
       zip_safe=False)
