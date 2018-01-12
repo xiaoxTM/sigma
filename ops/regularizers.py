@@ -40,8 +40,8 @@ def total_variation_regularizer(shape):
     def _differ(x, axis):
         previous = np.copy(indices)
         latter = np.copy(indices)
-        del previous[axis][-1] # re-indexing [0:-1]
-        del latter[axis][0] # re-indexing [1:]
+        previous[axis] = np.delete(previous[axis], -1) # re-indexing [0:-1]
+        latter[axis] = np.delete(latter[axis], 0) # re-indexing [1:]
         previous = np.meshgrid(*previous, indexing='ij')
         previous = np.stack(previous, axis=-1)
         previous = tf.gather_nd(x, previous)
