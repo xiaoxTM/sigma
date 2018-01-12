@@ -509,7 +509,7 @@ def load_from_file(listname, size=None, asarray=True, scale=1.0, center=True,
                           strides, mode, spi, void_label, multiprocess)
 
 ################################################################################
-def load(imagedir, gtdir, gtext, size=None, asarray=True, scale=1.0, center=True,
+def load_from_dir(imagedir, gtdir=None, gtext=None, size=None, asarray=True, scale=1.0, center=True,
          strides=0.5, mode='crop', num=None, spi=None, void_label=0,
          multiprocess=1, namefilter=None):
     """
@@ -525,7 +525,7 @@ def load(imagedir, gtdir, gtext, size=None, asarray=True, scale=1.0, center=True
                 ...
     """
     assert os.path.isdir(imagedir)
-    assert gtdir is not None or os.path.isdir(gtdir)
+    assert gtdir is None or (os.path.isdir(gtdir) and gtext is not None)
 
     filelist = []
     gtlist   = []
