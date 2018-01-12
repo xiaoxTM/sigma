@@ -77,6 +77,14 @@ def sigmoid(x, name=None):
     return actives.sigmoid(name)(x)
 
 
+""" hyperbolic tangent activates
+    calculates:
+        (exp(x) -1) / (exp(x) + 1)
+"""
+def tanh(name=None):
+    return actives.tanh(name)(x)
+
+
 """ linear activates
     calculates:
         x

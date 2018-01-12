@@ -18,8 +18,13 @@ def name_space():
 
 dispatch_name = name_space()
 
+
 def is_tensor(x):
     return tf.contrib.framework.is_tensor(x)
+
+
+def shape(x):
+    return x.get_shape().as_list()
 
 
 """ if not reuse:

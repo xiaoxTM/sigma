@@ -288,10 +288,7 @@ def deconv2d(input_shape, output_shape, nout,
                         .format(type(out_shape)))
 
     def _deconv2d(x, weight):
-        nshape = [out for out in out_shape]
-        if nshape[0] is None:
-            nshape[0] = x.get_shape().as_list()[0]
-        return tf.nn.conv2d_transpose(x, weight, nshape, stride,
+        return tf.nn.conv2d_transpose(x, weight, out_shape, stride,
                                       padding.upper(), name=name)
 
     return conv(convop=_deconv2d, kernel_shape=kernel_shape,
