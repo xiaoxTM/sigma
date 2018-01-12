@@ -176,7 +176,7 @@ def get(initializer):
     if isinstance(initializer, str):
         return eval('{}()'.format(initializer))
     elif callable(initializer):
-        return initializer()
+        return initializer
     # if given list / tuple / np.ndarray value
     # return as lambda function
     elif isinstance(initializer, (list, tuple)):
