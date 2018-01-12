@@ -48,7 +48,7 @@ def total_variation_regularizer(shape):
         latter = np.meshgrid(*latter, indexing='ij')
         latter = np.stack(latter, axis=-1)
         latter = tf.gather_nd(x, latter)
-        differeices = tf.nn.l2_loss(latter - previous)
+        differences = tf.nn.l2_loss(latter - previous)
         return tf.reduce_mean(differences)
 
     def _total_variation_regularizer(x):
