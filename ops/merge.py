@@ -47,11 +47,12 @@ def add(inputs_shape, name=None):
     left_shape = inputs_shape[1:]
     if len(inputs_shape) == 2:
         left_shape = [left_shape]
-    for ip in left_shape:
+    for idx, ip in enumerate(left_shape):
         if not np.all(output_shape == ip):
             raise ValueError('shape of {}{}{}-input differ '
                              'from first one. {}{} vs {}{}'
-                             .format(colors.fg.red, colors.reset, colors.fg.red,
+                             .format(colors.fg.red, idx+1, colors.reset,
+                                     colors.fg.red,
                                      output_shape, ip, colors.reset))
     if name is None:
         name = helper.dispatch_name('add')
@@ -75,11 +76,12 @@ def mul(inputs_shape, name=None):
     left_shape = inputs_shape[1:]
     if len(inputs_shape) == 2:
         left_shape = [left_shape]
-    for ip in left_shape:
+    for idx, ip in enumerate(left_shape):
         if not np.all(output_shape == ip):
             raise ValueError('shape of {}{}{}-input differ from '
                              'first one. {}{} vs {}{}'
-                             .format(colors.fg.red, colors.reset, colors.fg.red,
+                             .format(colors.fg.red, idx+1, colors.reset,
+                                     colors.fg.red,
                                      output_shape, ip, colors.reset))
     if name is None:
         name = helper.dispatch_name('mul')
