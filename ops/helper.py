@@ -1,5 +1,6 @@
 import tensorflow as tf
 from .. import colors, status
+import sigma
 import numpy as np
 import copy
 
@@ -48,7 +49,7 @@ def print_layer(inputs, outputs, typename, reuse=False, name=None):
     for example: tensor shape [batch size, rows, cols, channels], axis = -1
         return axis=3
 """
-def normalize_axes(tensor_shape, axis=status.axis):
+def normalize_axes(tensor_shape, axis=sigma.axis):
     if not isinstance(tensor_shape, (list, tuple)):
         raise TypeError('tensor shape must be list/tuple, given {}{}{}[{}]'
                         .format(colors.fg.red,

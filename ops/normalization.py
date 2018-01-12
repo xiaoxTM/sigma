@@ -1,4 +1,5 @@
 import tensorflow as tf
+import sigma
 from . import mm
 from . import helper
 from . import actives
@@ -116,7 +117,7 @@ def batch_norm(input_shape,
         axis = [0 ,1, 2]
     # if not isinstance(axis, (list, tuple)):
     #     axis = [axis]
-    neurons = input_shape[status.axis]
+    neurons = input_shape[sigma.axis]
 
     offset = None
     if not isinstance(offset_initializer, bool) or \

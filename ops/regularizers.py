@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import sigma
 from .. import status
 
 def regularize(l1=0.0, l2=0.0):
@@ -33,7 +34,7 @@ def regularize(l1=0.0, l2=0.0):
 """
 def total_variation_regularizer(shape):
     axes = list(range(len(shape)))
-    del axes[status.axis]
+    del axes[sigma.axis]
     del axes[0]
     indices = [np.arange(s) for s in shape]
 
