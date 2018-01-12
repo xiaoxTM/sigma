@@ -115,7 +115,7 @@ def import_weights(filename, graph, session, collections=None, verbose=True):
     return graph, session
 
 
-def export_weights(session, graph, session, filename, verbose=True):
+def export_weights(filename, graph, session, collections=None, verbose=True):
     with h5py.File(filename, mode='w') as f:
         f.attrs['sigma_version'] = sigma.__version__.encode('utf-8')
         f.attrs['data_format'] = sigma.data_format.encode('utf-8')
