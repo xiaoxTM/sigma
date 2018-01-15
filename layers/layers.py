@@ -25,3 +25,6 @@ def layers(fun):
         else:
             fun(*args, **kwargs)
     return _wrap
+
+
+graph = None

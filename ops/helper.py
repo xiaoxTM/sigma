@@ -1,7 +1,18 @@
 import tensorflow as tf
-from .. import colors, status
+from .. import colors, status, layers
 import numpy as np
 import copy
+
+try:
+    import pydot_ng as pydot
+except ImportError:
+    try:
+        import pydotplus as pydot
+    except ImportError:
+        try:
+            import pydot
+        except ImportError:
+            pydot = None
 
 def name_space():
     name_maps = {}
@@ -33,21 +44,42 @@ def shape(x):
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
 """
-def print_layer(inputs, outputs, typename, reuse=False, name=None):
+def print_layer(inputs, outputs, typename, use_graph=False, reuse=False, name=None):
     if not reuse:
         if isinstance(inputs, (list, tuple)):
             input_shape = [ip.get_shape().as_list() for ip in inputs]
-            inputname = 'merge'
         else:
             input_shape = inputs.get_shape().as_list()
-            inputname = inputs.name
+        inputname = inputs.name
         output_shape = outputs.get_shape().as_list()
-        print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
-              .format(inputname, colors.fg.green, input_shape, colors.reset,
-                      colors.fg.blue,
-                      name if name is not None else typename,
-                      typename, colors.reset, outputs.name,
-                      colors.fg.red, output_shape, colors.reset))
+        name = name if name is not None else typename,
+        if use_graph:
+            if pydot is None:
+                raise ImportError('Import pydot failed. make sure pydot is installed')
+            if layers.graph is None:
+                label = '{}\n|{{}}'
+                        .format(inputname,
+                                input_shape)
+                dot = pydot.Dot()
+                dot.set('concentrate', True)
+                dot.set_node_defaults(shape='record')
+                dot.add_node(pydot.Node(inputname, label))
+                layers.graph = dot
+            label = '{}\n|{input:|output:}|{{}|{}}'
+                    .format(name,
+                            input_shape,
+                            output_shape)
+            layers.graph.add_node(pydot.Node(outputs.name,
+                                             input_shape,
+                                             output_shape))
+            layers.graph.add_edge(pydot.Edge(inputname, outputs.name))
+        else:
+            print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
+                  .format(inputname, colors.fg.green, input_shape, colors.reset,
+                          colors.fg.blue,
+                          name,
+                          typename, colors.reset, outputs.name,
+                          colors.fg.red, output_shape, colors.reset))
 
 """ normalize axis given tensor shape
     for example: tensor shape [batch size, rows, cols, channels], axis = -1

@@ -5,4 +5,4 @@ from . import pools
 from . import base
 from . import merge
 from . import losses
-from . layers import defaults
+from . layers import defaults, graph

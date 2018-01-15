@@ -37,7 +37,7 @@ def decode(strings, codec='utf8'):
 
 
 def load(session, checkpoints, saver=None, verbose=True):
-    if saver is not None:
+    if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
         raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. given {}{}{}'
@@ -53,7 +53,7 @@ def load(session, checkpoints, saver=None, verbose=True):
                         )
     if not os.path.isdir(checkpoints):
         raise FileNotFoundError('Directory {}{}{} not found'
-                                .format(colors.red, checkpoints, colors.reset))
+                                .format(colors.fg.red, checkpoints, colors.reset))
     ckpt = tf.train.get_checkpoint_state(os.path.dirname(checkpoints))
     if ckpt and ckpt.model_checkpoint_path:
         if verbose:
@@ -64,12 +64,12 @@ def load(session, checkpoints, saver=None, verbose=True):
         saver.restore(session, ckpt.model_checkpoint_path)
     elif verbose:
         print('{}restoring from checkpoint ignored{}'
-              .format(colors.red, colors.reset))
+              .format(colors.fg.red, colors.reset))
     return session, saver
 
 
 def save(session, checkpoints, saver=None, verbose=True, **kwargs):
-    if saver is not None:
+    if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
         raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. given {}{}{}'
@@ -85,7 +85,7 @@ def save(session, checkpoints, saver=None, verbose=True, **kwargs):
                         )
     if not os.path.isdir(checkpoints):
         raise FileNotFoundError('Directory {}{}{} not found'
-                                .format(colors.red, checkpoints, colors.reset))
+                                .format(colors.fg.red, checkpoints, colors.reset))
     if verbose:
         print('{}load check point from {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
@@ -100,7 +100,7 @@ def import_weights(filename, graph, session, collections=None, verbose=True):
         collections = graph.get_all_collection_keys()
     if not isinstance(collections, (list, tuple)):
         raise TypeError('collections must be list/tuple. given {}{}{}'
-                        .format(colors.red, type(collections), colors.reset))
+                        .format(colors.fg.red, type(collections), colors.reset))
     with h5py.File(filename, 'r') as f:
         for collection in collections:
             weight_group = f[collection]
@@ -112,7 +112,7 @@ def import_weights(filename, graph, session, collections=None, verbose=True):
                     session.run(op)
                 elif verbose:
                     print('parameter {}{}{} not found.'
-                          .format(colors.red, param.name, colors.reset))
+                          .format(colors.fg.red, param.name, colors.reset))
     return graph, session
 
 
@@ -135,3 +135,11 @@ def export_weights(filename, graph, session, collections=None, verbose=True):
                 else:
                     pset[:] = val
             weight_group.attrs['weight_names'] = encode(names)
+
+
+def import_model():
+    pass
+
+
+def export_model():
+    pass

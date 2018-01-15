@@ -209,8 +209,13 @@ def batch_norm(input_shape,
     return _batch_norm
 
 
-def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
-               reuse=False, name=None, scope=None):
+def layer_norm(input_shape,
+               scale=True,
+               epsilon=1e-5,
+               act=None,
+               reuse=False,
+               name=None,
+               scope=None):
     if name is None:
         name = helper.dispatch_name('layer_norm')
     if scope is None:
@@ -243,7 +248,11 @@ def layer_norm(input_shape, scale=True, epsilon=1e-5, act=None,
     return _layer_norm
 
 
-def dropout(pkeep, noise_shape=None, seed=None, name=None, scope=None):
+def dropout(pkeep,
+            noise_shape=None,
+            seed=None,
+            name=None,
+            scope=None):
     if name is None:
         name = helper.dispatch_name('dropout')
     if scope is None:
