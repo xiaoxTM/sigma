@@ -281,8 +281,9 @@ def deconv2d(input_shape, output_shape, nout,
             out_shape = [input_shape[0], *out_shape, nout]
         elif len(out_shape) == 4 and \
              (out_shape[0] != input_shape[0] or out_shape[-1] != nout):
-            raise ValueError('output shape not match'
-                             'input_shape and hidden units')
+            raise ValueError('output shape{} not match'
+                             ' input_shape{} or hidden units{}'
+                             .format(output_shape, input_shape, nout))
     else:
         raise TypeError('out_shape with type `{}` not support'
                         .format(type(out_shape)))
