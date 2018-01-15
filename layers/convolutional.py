@@ -66,7 +66,8 @@ def fully_conv(inputs, nouts,
                bias_initializer='zeros',
                bias_regularizer=None,
                act=None, trainable=True,
-               dtype=tf.float32, collections=None,
+               dtype=tf.float32, return_shape=False,
+               collections=None,
                reuse=False, summarize=True,
                name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
@@ -81,6 +82,8 @@ def fully_conv(inputs, nouts,
                          ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
 
 # alias of fully-conv
@@ -96,6 +99,7 @@ def conv1d(inputs, nouts, kernel,
            bias_initializer='zeros',
            bias_regularizer=None, act=None,
            trainable=True, dtype=tf.float32,
+           return_shape=False,
            collections=None, reuse=False,
            summarize=True, name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
@@ -116,6 +120,8 @@ def conv1d(inputs, nouts, kernel,
                          ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
 
 
@@ -155,7 +161,8 @@ def conv2d(inputs, nouts, kernel,
            bias_initializer='zeros',
            bias_regularizer=None,
            act=None, trainable=True,
-           dtype=tf.float32, collections=None,
+           dtype=tf.float32, return_shape=False,
+           collections=None,
            reuse=False, summarize=True,
            name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
@@ -175,6 +182,8 @@ def conv2d(inputs, nouts, kernel,
                          ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
 
 
@@ -212,7 +221,8 @@ def soft_conv2d(inputs, nouts, kernel,
                 offset_bias_initializer=None,
                 offset_bias_regularizer=None,
                 act=None, trainable=True,
-                dtype=tf.float32, collections=None,
+                dtype=tf.float32, return_shape=False,
+                collections=None,
                 reuse=False, summarize=True,
                 name=None, scope=None):
     # with tf.name_scope(''):
@@ -240,7 +250,12 @@ def soft_conv2d(inputs, nouts, kernel,
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
     if return_offsets:
-        return x, offsets
+        x = [x, offsets]
+    if return_shape:
+        if isinstance(x, (list, tuple)) and len(x) == 2:
+            x = [*x, output]
+        else:
+            x = [x, output]
     return x
 
 
@@ -254,7 +269,8 @@ def conv3d(inputs, nouts, kernel,
            bias_initializer='zeros',
            bias_regularizer=None,
            act=None, trainable=True,
-           dtype=tf.float32, collections=None,
+           dtype=tf.float32, return_shape=False,
+           collections=None,
            reuse=False, summarize=True,
            name=None, scope=None):
     # TODO: atruous_convxd
@@ -274,6 +290,8 @@ def conv3d(inputs, nouts, kernel,
                         ' output shape not match. {}{}{} vs {}{}{}'
                         .format(colors.fg.green, output, colors.reset,
                                 colors.fg.red, x.get_shape(), colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
 
 
@@ -288,7 +306,8 @@ def deconv2d(inputs, output_shape, nouts,
              bias_initializer='zeros',
              bias_regularizer=None,
              act=None, trainable=True,
-             dtype=tf.float32, collections=None,
+             dtype=tf.float32, return_shape=False,
+             collections=None,
              reuse=False, summarize=True,
              name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
@@ -308,4 +327,6 @@ def deconv2d(inputs, output_shape, nouts,
                          ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape(), colors.reset))
+    if return_shape:
+        x = [x, output]
     return x

@@ -4,7 +4,7 @@ from ..ops import base, helper
 from .layers import layers
 
 @layers
-def flatten(inputs, reuse=False, name=None):
+def flatten(inputs, return_shape=False, reuse=False, name=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = base.flatten(input_shape, name)
     x = fun(inputs)
@@ -14,10 +14,12 @@ def flatten(inputs, reuse=False, name=None):
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(output, x.get_shape().as_list()))
+    if return_shape:
+        x = [x, output]
     return x
 
 @layers
-def reshape(inputs, output_shape, reuse=False, name=None):
+def reshape(inputs, output_shape, return_shape=False, reuse=False, name=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = base.reshape(output_shape, name)
     x = fun(inputs)
@@ -27,4 +29,6 @@ def reshape(inputs, output_shape, reuse=False, name=None):
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(output, output_shape))
+    if return_shape:
+        x = [x, output]
     return x

@@ -6,7 +6,7 @@ import tensorflow as tf
 import logging
 
 @layers
-def concat(inputs, axis=-1, reuse=False, name='concat'):
+def concat(inputs, axis=-1, return_shape=False, reuse=False, name='concat'):
     inputs_shape = [ip.get_shape().as_list() for ip in inputs]
     fun, output = merge.concat(inputs_shape, axis, name)
     x = fun(inputs)
@@ -17,10 +17,12 @@ def concat(inputs, axis=-1, reuse=False, name='concat'):
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape().as_list(),
                                  colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
 
 @layers
-def add(inputs, reuse=False, name='add'):
+def add(inputs, return_shape=False, reuse=False, name='add'):
     input_shape = [ip.get_shape().as_list() for ip in inputs]
     fun, output = merge.add(input_shape, name)
     x = fun(inputs)
@@ -31,10 +33,12 @@ def add(inputs, reuse=False, name='add'):
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape().as_list(),
                                  colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
 
 @layers
-def mul(inputs, reuse=False, name='mul'):
+def mul(inputs, return_shape=False, reuse=False, name='mul'):
     input_shape = [ip.get_shape().as_list() for ip in inputs]
     fun, output = merge.mul(input_shape, name)
     x = fun(inputs)
@@ -45,4 +49,6 @@ def mul(inputs, reuse=False, name='mul'):
                          .format(colors.fg.green, output, colors.reset,
                                  colors.fg.red, x.get_shape().as_list(),
                                  colors.reset))
+    if return_shape:
+        x = [x, output]
     return x
