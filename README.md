@@ -1,5 +1,5 @@
 # Software Integration Group Machine Armory
-sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `Keras` which is class based, `sigma` is a functional fashion framework. That is, all layers are function rather than class.
+sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `Keras` which is class based, `sigma` is a functional fashion framework. That is, all layers are functions rather than classes.
 
 # Support layers
  - actives
@@ -56,6 +56,9 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - floor : get the floor location
    - ceil : get the ceil location
    - bilinear : bilinear interpolation
+ - graph visualization
+   - terminal print
+   - file print
 
 # Version explanation
 `sigma` version consists of three parts:
@@ -67,3 +70,21 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
   - 0 : developing state
   - 1 : testing state
   - 2 : stable state
+
+# Developing progress
+
+```
+                                               branch x.x.x.1 / checkout     /-------\
+                                             |<---------------------------> | x.x.x.1 |
+                branch x.x.x.0    /-------\--|        merge x.x.x.1          \-------/
+              |----------------> | x.x.x.0 |
+              |                   \-------/--|
+              |                              | branch x.x.x.2    /-------\
+              |                              -----------------> | x.x.x.2 |
+              |                                                  \-------/
+              |                                                      |
+              |                                                      v
+   /------\ --|                                                   /------\
+  | master |---------------------------------------------------> | master |
+   \------/                     merge x.x.x.2                     \------/
+```
