@@ -142,7 +142,9 @@ def tanh(name=None):
     calculates:
         x
 """
-def linear():
+def linear(name=None):
+    if name is None:
+        name = helper.dispatch_name('linear')
     def _linear(x):
         return x
     return _linear

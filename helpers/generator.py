@@ -468,7 +468,7 @@ def generator(imagedir, batch_size,
               spi=None,
               void_label=0,
               multiprocess=1,
-              color_mode='RGB'
+              color_mode='RGB',
               num=None,
               namefilter=None,
               nclass=None,
@@ -476,6 +476,9 @@ def generator(imagedir, batch_size,
 
     filelist, gtlist = load_filename_from_dir(imagedir, gtdir, gtext,
                                               num, namefilter)
+    filelist = np.asarray(filelist, dtype=np.string_)
+    if gtlist is not None:
+        gtlist = np.asarray(gtlist, dtype=np.string_)
     length = len(filelist)
     index = np.arange(length, dtype=np.int32)
     iterations = int(length / batch_size)
@@ -487,7 +490,7 @@ def generator(imagedir, batch_size,
             end = min(beg + batch_size, length)
             x_list = filelist[index[beg:end]]
             y_list = None
-            if gtlist is not None
+            if gtlist is not None:
                 y_list = gtlist[index[beg:end]]
             x, y = load_from_list(x_list, y_list, size,
                                   asarray, scale, center,

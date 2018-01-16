@@ -26,7 +26,7 @@ def instance_norm(inputs,
                              reuse=reuse, collections=collections,
                              name=name, scope=scope)
     x = fun(inputs)
-    helper.print_layer(inputs, x, 'instance_norm', reuse, name)
+    # helper.print_layer(inputs, x, 'instance_norm', reuse, name)
     if input_shape != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
@@ -67,7 +67,7 @@ def batch_norm(inputs,
                           collections=collections,
                           name=name, scope=scope)
     x = fun(inputs)
-    helper.print_layer(inputs, x, 'batch_norm', reuse, name)
+    # helper.print_layer(inputs, x, 'batch_norm', reuse, name)
     if input_shape != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'

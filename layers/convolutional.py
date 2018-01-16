@@ -2,6 +2,7 @@ import tensorflow as tf
 from ..ops import convolutional as convs
 from ..ops import helper
 from .. import colors
+from .layers import layers
 
 @layers
 def embedding(inputs, table_size,
@@ -16,13 +17,13 @@ def embedding(inputs, table_size,
     fun = convs.embedding(table_size, strategy, dtype, initializer,
                           regularizer, trainable, collections, name)
     x = fun(inputs)
-    helper.print_layer(inputs, x, 'embedding', reuse, name)
+    # helper.print_layer(inputs, x, 'embedding', reuse, name)
     return x
 
 
 def _layers(fun, inputs, output, return_shape, typename, reuse, name):
     x = fun(inputs)
-    helper.print_layer(inputs, x, typename, reuse, name)
+    # helper.print_layer(inputs, x, typename, reuse, name)
     if output != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {}{}{} vs {}{}{}'
@@ -255,7 +256,7 @@ def soft_conv2d(inputs, nouts, kernel, stride,
                                     collections, reuse,
                                     summarize, name, scope)
     x, offsets = fun(inputs)
-    helper.print_layer(inputs, x, 'soft_conv2d', reuse, name)
+    # helper.print_layer(inputs, x, 'soft_conv2d', reuse, name)
     if output != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {}{}{} vs {}{}{}'
