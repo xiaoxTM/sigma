@@ -1,6 +1,7 @@
 import tensorflow as tf
 import os.path
-from .. import colors
+from .. import colors, layers
+from ..ops import helper
 import sigma
 import h5py
 
@@ -143,3 +144,7 @@ def import_model():
 
 def export_model():
     pass
+
+
+def export_graph(filename, ext=None):
+    helper.export_graph(filename, ext, layers.graph)

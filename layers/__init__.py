@@ -1,5 +1,5 @@
 from . import convolutional as convs
-from . import normalization as norm
+from . import normalization as norms
 from . import actives
 from . import pools
 from . import base

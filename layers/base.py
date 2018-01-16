@@ -8,7 +8,7 @@ def flatten(inputs, return_shape=False, reuse=False, name=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = base.flatten(input_shape, name)
     x = fun(inputs)
-    helper.print_layer(inputs, x, 'flatten', reuse, name)
+    # helper.print_layer(inputs, x, 'flatten', reuse, name)
     if output[1:] != x.get_shape().as_list()[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
@@ -24,7 +24,7 @@ def reshape(inputs, output_shape, return_shape=False,
     input_shape = inputs.get_shape().as_list()
     fun, output = base.reshape(output_shape, name)
     x = fun(inputs)
-    helper.print_layer(inputs, x, 'reshape', reuse, name)
+    # helper.print_layer(inputs, x, 'reshape', reuse, name)
     if output[1:] != output_shape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'

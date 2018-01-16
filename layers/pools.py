@@ -5,15 +5,15 @@ import logging
 import tensorflow as tf
 
 def _pool(inputs, op, psize, stride, padding,
-          axis=-1,
-          return_shape=False,
-          reuse=False,
-          name=None,
-          scope=None):
+          axis,
+          return_shape,
+          reuse,
+          name,
+          scope):
     fun, output = op(inputs.get_shape().as_list(), psize,
                      stride, padding, axis, name, scope)
     x = fun(inputs)
-    helper.print_layer(inputs, x, op.__name__, reuse, name)
+    # helper.print_layer(inputs, x, op.__name__, reuse, name)
     if output != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
@@ -22,15 +22,16 @@ def _pool(inputs, op, psize, stride, padding,
         x = [x, output]
     return x
 
-def _pool_global(inputs, op,
-                 axis=-1,
-                 return_shape=False,
-                 reuse=False,
-                 name=None,
-                 scope=None):
+def _pool_global(inputs,
+                 op,
+                 axis,
+                 return_shape,
+                 reuse,
+                 name,
+                 scope):
     fun, output = op(inputs.get_shape().as_list(), axis, reuse, name, scope)
     x = fun(inputs)
-    helper.print_layer(inputs, x, op.__name__, reuse, name)
+    # helper.print_layer(inputs, x, op.__name__, reuse, name)
     if output != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
@@ -44,7 +45,7 @@ def avg_pool2d(inputs, psize, stride, padding,
                axis=-1,
                return_shape=False,
                reuse=False,
-               name=None,
+               name='avg_pool2d',
                scope=None):
     return _pool(inputs, pools.avg_pool2d, psize,
                  stride, padding, axis, return_shape,
@@ -55,7 +56,7 @@ def avg_pool2d_global(inputs,
                       axis=-1,
                       return_shape=False,
                       reuse=False,
-                      name=None,
+                      name='avg_pool2d_global',
                       scope=None):
     return _pool_global(inputs, pools.avg_pool2d_global,
                         axis, return_shape, reuse,
@@ -66,18 +67,18 @@ def max_pool2d(inputs, psize, stride, padding,
                axis=-1,
                return_shape=False,
                reuse=False,
-               name=None,
+               name='max_pool2d',
                scope=None):
     return _pool(inputs, pools.max_pool2d, psize,
                  stride, padding, axis, return_shape,
-                 name, scope)
+                 reuse, name, scope)
 
 @layers
 def max_pool2d_global(inputs,
                       axis=-1,
                       return_shape=False,
                       reuse=False,
-                      name=None,
+                      name='max_pool2d_global',
                       scope=None):
     return _pool_global(inputs, pools.max_pool2d_global,
                         axis, return_shape, reuse,

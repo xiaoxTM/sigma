@@ -401,7 +401,7 @@ def load_from_list_simple(filelist, gtlist,
     spi: None or int
          samples per image. only used in `crop` mode sampling
     """
-    assert isinstance(filelist, (list, tuple))
+    assert isinstance(filelist, (list, tuple, np.ndarray))
     assert gtlist is None or isinstance(gtlist, (list, tuple))
     samples = []
     labels  = []
@@ -575,7 +575,7 @@ def load_filename(listname,
 
 
 ##############################################################################
-def load_filename_from_dir(imgedir,
+def load_filename_from_dir(imagedir,
                            gtdir=None,
                            gtext=None,
                            num=None,

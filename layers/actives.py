@@ -1,17 +1,9 @@
 from ..ops import actives, helper
-
-from . import layers
-
-def _actives(fun, inputs, typename, reuse, name):
-    x = fun(inputs)
-    helper.print_layer(inputs, x, typename, reuse, name)
-    return x
-
+from .layers import layers
 
 @layers
 def crelu(inputs, reuse=False, name=None):
-    fun = actives.crelu(name)
-    return _actives(fun, inputs, 'crelu', reuse, name)
+    return actives.crelu(name)(inputs)
 
 
 """ relu activates
@@ -20,8 +12,7 @@ def crelu(inputs, reuse=False, name=None):
 """
 @layers
 def relu(inputs, reuse=False, name=None):
-    fun = actives.relu(name)
-    return _actives(fun, inputs, 'relu', reuse, name)
+    return actives.relu(name)(inputs)
 
 
 """ relu6 activates
@@ -30,8 +21,7 @@ def relu(inputs, reuse=False, name=None):
 """
 @layers
 def relu6(inputs, reuse=False, name=None):
-    fun = actives.relu6(name)
-    return _actives(fun, inputs, 'relu6', reuse, name)
+    return actives.relu6(name)(inputs)
 
 
 """ elu activates
@@ -40,8 +30,7 @@ def relu6(inputs, reuse=False, name=None):
 """
 @layers
 def elu(inputs, reuse=False, name=None):
-    fun = actives.elu(name)
-    return _actives(fun, inputs, 'elu', reuse, name)
+    return actives.elu(name)(inputs)
 
 
 """ elu activates
@@ -54,8 +43,7 @@ def selu(inputs,
          scale=1.0507009873554804934193349852946,
          reuse=False,
          name=None):
-    fun = actives.selu(alpha, scale, name)
-    return _actives(fun, inputs, 'selu', reuse, name)
+    return actives.selu(alpha, scale, name)(inputs)
 
 
 """ leaky_relu activates
@@ -64,8 +52,7 @@ def selu(inputs,
 """
 @layers
 def leaky_relu(inputs, alpha=0.2, reuse=False, name=None):
-    fun = actives.leaky_relu(alpha, name)
-    return _actives(fun, inputs, 'leaky_relu', reuse, name)
+    return actives.leaky_relu(alpha, name)(inputs)
 
 
 """ softmax activates
@@ -74,8 +61,7 @@ def leaky_relu(inputs, alpha=0.2, reuse=False, name=None):
 """
 @layers
 def softmax(inputs, dim=-1, reuse=False, name=None):
-    fun = actives.softmax(dim, name)
-    return _actives(fun, inputs, 'softmax', reuse, name)
+    return actives.softmax(dim, name)(inputs)
 
 
 """ softplus activates
@@ -84,8 +70,7 @@ def softmax(inputs, dim=-1, reuse=False, name=None):
 """
 @layers
 def softplus(inputs, reuse=False, name=None):
-    fun = actives.softplus(name)
-    return _actives(fun, inputs, 'softplus', reuse, name)
+    return actives.softplus(name)(inputs)
 
 
 """ softsign activates
@@ -94,8 +79,7 @@ def softplus(inputs, reuse=False, name=None):
 """
 @layers
 def softsign(inputs, reuse=False, name=None):
-    fun = actives.softsign(name)
-    return _actives(fun, inputs, 'softsign', reuse, name)
+    return actives.softsign(name)(inputs)
 
 
 """ sigmoid activates
@@ -104,8 +88,7 @@ def softsign(inputs, reuse=False, name=None):
 """
 @layers
 def sigmoid(inputs, reuse=False, name=None):
-    fun = actives.sigmoid(name)
-    return _actives(fun, inputs, 'sigmoid', reuse, name)
+    return actives.sigmoid(name)(inputs)
 
 
 """ hyperbolic tangent activates
@@ -114,8 +97,7 @@ def sigmoid(inputs, reuse=False, name=None):
 """
 @layers
 def tanh(inputs, reuse=False, name=None):
-    fun = actives.tanh(name)
-    return _actives(fun, inputs, 'tanh', reuse, name)
+    return actives.tanh(name)(inputs)
 
 
 """ linear activates
@@ -124,5 +106,4 @@ def tanh(inputs, reuse=False, name=None):
 """
 @layers
 def linear(inputs, reuse=False, name=None):
-    fun = actives.linear(name)
-    return _actives(fun, inputs, 'linear', reuse, name)
+    return actives.linear(name)(inputs)

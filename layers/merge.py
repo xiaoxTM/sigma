@@ -5,7 +5,7 @@ import tensorflow as tf
 
 def _merge(fun, inputs, output, typename, return_shape, reuse, name):
     x = fun(inputs)
-    helper.print_layer(inputs, x, typename, reuse, name)
+    # helper.print_layer(inputs, x, typename, reuse, name)
     if output != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
