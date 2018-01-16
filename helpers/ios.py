@@ -2,6 +2,7 @@ import tensorflow as tf
 import os.path
 from .. import colors, layers
 from ..ops import helper
+import numpy as np
 import sigma
 import h5py
 
@@ -37,7 +38,7 @@ def decode(strings, codec='utf8'):
                         .format(type(strings)))
 
 
-def load(session, checkpoints, saver=None, verbose=True):
+def load(session, checkpoints, saver=None, verbose=False):
     if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
@@ -69,7 +70,7 @@ def load(session, checkpoints, saver=None, verbose=True):
     return session, saver
 
 
-def save(session, checkpoints, saver=None, verbose=True, **kwargs):
+def save(session, checkpoints, saver=None, verbose=False, **kwargs):
     if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
@@ -88,17 +89,20 @@ def save(session, checkpoints, saver=None, verbose=True, **kwargs):
         raise FileNotFoundError('Directory {}{}{} not found'
                                 .format(colors.fg.red, checkpoints, colors.reset))
     if verbose:
-        print('{}load check point from {}{}{}'
+        print('{}saving check point to {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
-                       ckpt.model_checkpoint_path, colors.reset)
+                       checkpoints, colors.reset)
              )
     saver.save(session, checkpoints, **kwargs)
     return session, saver
 
 
-def import_weights(filename, graph, session, collections=None, verbose=True):
+def import_weights(filename, session, graph=None, collections=None, verbose=True):
+    if graph is None:
+        graph = session.graph
     if collections is None:
         collections = graph.get_all_collection_keys()
+    print('collections:', collections)
     if not isinstance(collections, (list, tuple)):
         raise TypeError('collections must be list/tuple. given {}{}{}'
                         .format(colors.fg.red, type(collections), colors.reset))
@@ -109,7 +113,8 @@ def import_weights(filename, graph, session, collections=None, verbose=True):
             params = graph.get_collection(collection)
             for param in params:
                 if param.name in weight_names:
-                    op = tf.assign(param, weight_group[param.name])
+                    value = np.asarray(weight_group[param.name])
+                    op = tf.assign(param, value)
                     session.run(op)
                 elif verbose:
                     print('parameter {}{}{} not found.'
@@ -117,8 +122,10 @@ def import_weights(filename, graph, session, collections=None, verbose=True):
     return graph, session
 
 
-def export_weights(filename, graph, session, collections=None, verbose=True):
+def export_weights(filename, session, graph=None, collections=None, verbose=True):
     with h5py.File(filename, mode='w') as f:
+        if graph is None:
+            graph = session.graph
         f.attrs['sigma_version'] = sigma.__version__.encode('utf-8')
         f.attrs['data_format'] = sigma.data_format.encode('utf-8')
         collections = graph.get_all_collection_keys()

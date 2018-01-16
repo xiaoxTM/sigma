@@ -59,6 +59,13 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
  - graph visualization
    - terminal print
    - file print
+ - load / save and import / export
+   - checkpoints
+     - load / save
+   - weights
+     - import_weights / export_weights (not tested)
+   - model
+     - import_model / export_model (not tested)
 
 # Version explanation
 `sigma` version consists of three parts:
@@ -75,12 +82,12 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
 
 ```
                                                branch x.x.x.1 / checkout     /-------\
-                                             |<---------------------------> | x.x.x.1 |
+                                             |<---------------------------> | x.x.x.1 | => test
                 branch x.x.x.0    /-------\--|        merge x.x.x.1          \-------/
-              |----------------> | x.x.x.0 |
+              |----------------> | x.x.x.0 | => devel
               |                   \-------/--|
               |                              | branch x.x.x.2    /-------\
-              |                              -----------------> | x.x.x.2 |
+              |                              -----------------> | x.x.x.2 | => stable
               |                                                  \-------/
               |                                                      |
               |                                                      v
