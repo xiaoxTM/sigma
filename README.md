@@ -74,13 +74,13 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
 # Developing progress
 
 ```
-                                               branch x.x.x.1 / checkout     /-------\
-                                             |<---------------------------> | x.x.x.1 | test
-                branch x.x.x.0    /-------\--|        merge x.x.x.1          \-------/
-              |----------------> | x.x.x.0 | developmental
+                                                branch x.x.x.1 / merge x.x.x.1    /-------\
+                                             |<--------------------------------> | x.x.x.1 | => test
+                branch x.x.x.0    /-------\--|          checkout x.x.x.0          \-------/
+              |----------------> | x.x.x.0 | => developmental
               |                   \-------/--|
               |                              | branch x.x.x.2    /-------\
-              |                              -----------------> | x.x.x.2 | stable
+              |                              -----------------> | x.x.x.2 | => stable
               |                                                  \-------/
               |                                                      |
               |                                                      v
