@@ -89,7 +89,7 @@ def save(session, checkpoints, saver=None, verbose=True, **kwargs):
     if verbose:
         print('{}load check point from {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
-                       ckpt.model_checkpoint_path, colors.reset)
+                       checkpoints, colors.reset)
              )
     saver.save(session, checkpoints, **kwargs)
     return session, saver

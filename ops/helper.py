@@ -57,9 +57,7 @@ def print_layer(inputs, outputs, typename, use_graph=False, reuse=False, name=No
             if pydot is None:
                 raise ImportError('Import pydot failed. make sure pydot is installed')
             if layers.graph is None:
-                label = '{}\n|{{}}'
-                        .format(inputname,
-                                input_shape)
+                label = '{}\n|{{}}'format(inputname,input_shape)
                 dot = pydot.Dot()
                 dot.set('concentrate', True)
                 dot.set_node_defaults(shape='record')
