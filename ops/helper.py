@@ -130,6 +130,9 @@ def print_layer(inputs, outputs, typename, reuse, name):
             output_shape = outputs.get_shape().as_list()
             outputname = name_normalize(outputs.name)
             if layers.graph is False:
+                if len(inputname) == 1:
+                    inputname = inputname[0]
+                    input_shape = input_shape[0]
                 print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
                       .format(inputname, colors.fg.green, input_shape, colors.reset,
                               colors.fg.blue, name, typename, colors.reset,
