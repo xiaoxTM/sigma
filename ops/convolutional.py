@@ -8,11 +8,17 @@ import numpy as np
 
 import logging
 
-def embedding(scope, table_shape,
-              strategy='mod', dtype=tf.float32,
+def embedding(table_shape,
+              strategy='mod',
+              dtype=tf.float32,
               initializer='glorot_uniform',
-              regularizer=None, trainable=True,
-              collections=None, name=None):
+              regularizer=None,
+              trainable=True,
+              collections=None,
+              reuse=False,
+              summarize=True,
+              name=None,
+              scope=None):
     """ table shape should be:
         table-length x embedding-length
         normally, table-length is the number of class
@@ -20,10 +26,18 @@ def embedding(scope, table_shape,
 
         // TODO: test
     """
-    table = mm.malloc(scope, '{}-embedding'.format(name), table_shape, dtype,
-                      initializer, regularizer, trainable, collections, name)
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'embedding',
+                                          reuse)
+    table = mm.malloc('embedding', table_shape, dtype,
+                      initializer, regularizer, trainable,
+                      collections, reuse, name, scope)
+    if summarize and not reuse:
+        tf.summary.histogram(table.name, table)
     def _embedding(ids):
-        return tf.nn.embedding_lookup(table, ids, strategy, name)
+        with ops_scope:
+            return tf.nn.embedding_lookup(table, ids, strategy, name)
     return _embedding
 
 
@@ -41,42 +55,59 @@ def conv(convop, kernel_shape,
          weight_regularizer=None,
          bias_initializer='zeros',
          bias_regularizer=None,
-         act=None, trainable=True,
-         dtype=tf.float32, bias_axis=-1,
-         collections=None, reuse=False,
-         summarize=True, name=None, scope=None):
+         act=None,
+         trainable=True,
+         dtype=tf.float32,
+         bias_axis=-1,
+         collections=None,
+         reuse=False,
+         summarize=True,
+         name=None,
+         scope=None):
     # NOTE that the parameters:
     #          `bias_axis`
     #      is setup to deal with de-convolutional op
     #      whose output is kernel_shape[-2]
     #      instead of kernel_shape[-1]
-    if name is None:
-        name = helper.dispatch_name('conv')
-
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          convop.__name__[1:],
+                                          reuse)
     act = actives.get(act)
-
-    weight = mm.malloc('{}/weight'.format(name), kernel_shape, dtype,
-                    weight_initializer, weight_regularizer,
-                    trainable, collections, reuse, scope)
+    weight = mm.malloc('weight',
+                       kernel_shape,
+                       dtype,
+                       weight_initializer,
+                       weight_regularizer,
+                       trainable,
+                       collections,
+                       reuse,
+                       name,
+                       scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
-
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
-        bias = mm.malloc('{}/bias'.format(name), (kernel_shape[bias_axis],),
-                         dtype, bias_initializer, bias_regularizer,
-                         trainable, collections, reuse, scope)
+        bias = mm.malloc('bias',
+                         (kernel_shape[bias_axis],),
+                         dtype,
+                         bias_initializer,
+                         bias_regularizer,
+                         trainable,
+                         collections,
+                         reuse,
+                         name,
+                         scope)
         if summarize and not reuse:
             tf.summary.histogram(bias.name, bias)
     else:
         bias = False
-    scope = tf.name_scope(name)
     def _conv(x):
-        with scope:
+        with ops_scope:
             x = convop(x, weight)
             if bias:
                 x = tf.nn.bias_add(x, bias)
             x = act(x)
-        return x
+            return x
     return _conv
 
 
@@ -91,9 +122,6 @@ def fully_conv(input_shape, nouts,
                dtype=tf.float32, collections=None,
                reuse=False, summarize=True,
                name=None, scope=None):
-    if name is None:
-        name = helper.dispatch_name('fully_conv')
-
     if len(input_shape) != 2:
         raise ValueError('fully_conv require input shape {}[batch-size,'
                          'channels]{}, given {}{}{}'
@@ -109,27 +137,34 @@ def fully_conv(input_shape, nouts,
                 weight_regularizer=weight_regularizer,
                 bias_initializer=bias_initializer,
                 bias_regularizer=bias_regularizer,
-                act=act, trainable=trainable, dtype=dtype,
-                bias_axis=-1, collections=collections,
-                reuse=reuse, summarize=summarize,
-                name=name, scope=scope), output_shape
+                act=act,
+                trainable=trainable,
+                dtype=dtype,
+                bias_axis=-1,
+                collections=collections,
+                reuse=reuse,
+                summarize=summarize,
+                name=name,
+                scope=scope), output_shape
 
 
 """ 1-D convolutional operation
 """
 def conv1d(input_shape, nouts, kernel,
-           stride=1, padding='valid',
+           stride=1,
+           padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
            bias_initializer='zeros',
            bias_regularizer=None,
-           act=None, trainable=True,
-           dtype=tf.float32, collections=None,
-           reuse=False, summarize=True,
-           name=None, scope=None):
-    if name is None:
-        name = helper.dispatch_name('conv1d')
-
+           act=None,
+           trainable=True,
+           dtype=tf.float32,
+           collections=None,
+           reuse=False,
+           summarize=True,
+           name=None,
+           scope=None):
     if len(input_shape) != 3:
         raise ValueError('conv1d require input shape '
                          '{}[batch-size, cols, channels]{}, given {}{}{}'
@@ -137,7 +172,6 @@ def conv1d(input_shape, nouts, kernel,
                                  colors.fg.red, input_shape, colors.reset))
     kernel = helper.norm_input_1d(kernel)
     stride = helper.norm_input_id(stride)
-
     # helper.get_output_shape requires all inputs (except padding)
     # to have same length and be all list / tuple
     output_shape = helper.get_output_shape(input_shape, nouts,
@@ -146,7 +180,6 @@ def conv1d(input_shape, nouts, kernel,
     # tf.nn.conv1d requires stride to be integer
     # collapse dimension into scalar
     stride = stride[1]
-
     def _conv1d(x, weight):
         return tf.nn.conv1d(x, weight, stride, padding.upper())
     return conv(convop=_conv1d, kernel_shape=kernel_shape,
@@ -163,29 +196,30 @@ def conv1d(input_shape, nouts, kernel,
 """ 2-D convolutional operation
 """
 def conv2d(input_shape, nouts, kernel,
-           stride=1, padding='valid',
+           stride=1,
+           padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
            bias_initializer='zeros',
            bias_regularizer=None,
-           act=None, trainable=True,
-           dtype=tf.float32, collections=None,
-           reuse=False, summarize=True,
-           name=None, scope=None):
-    if name is None:
-        name = helper.dispatch_name('conv2d')
+           act=None,
+           trainable=True,
+           dtype=tf.float32,
+           collections=None,
+           reuse=False,
+           summarize=True,
+           name=None,
+           scope=None):
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
                          'cols, channels]{}, given {}{}{}'
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 input_shape, colors.reset))
-
     kernel = helper.norm_input_2d(kernel)
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kernel, stride, padding)
     kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
-
     def _conv2d(x, weight):
         return tf.nn.conv2d(x, weight, stride, padding.upper())
     return conv(convop=_conv2d, kernel_shape=kernel_shape,
@@ -211,22 +245,17 @@ def conv3d(input_shape, nouts, kernel,
            dtype=tf.float32, collections=None,
            reuse=False, summarize=True,
            name=None, scope=None):
-    if name is None:
-        name = helper.dispatch_name('conv3d')
     if tf.is_tensor(inputs):
         input_shape = inputs.get_shape().as_list()
     if len(input_shape) != 4:
         raise ValueError('{}conv2d require input shape [batch-size, rows,'
                          'cols, channels], given {}{}'
                          .format(colors.fg.red, input_shape, colors.reset))
-
     kernel = helper.norm_input_3d(kernel)
     stride = helper.norm_input_3d(stride)
-
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kernel, stride, padding)
     kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
-
     def _conv3d(x, weight):
         return tf.nn.conv3d(x, weight, stride, padding)
     return conv(convop=_conv3d, kernel_shape=kernel_shape,
@@ -260,13 +289,10 @@ def deconv2d(input_shape, output_shape, nout,
     #           [batch-size, ceil((output_shape[1:-1] - kernel[1:-1] + 1) / stride[1:-1])]
     #       else:
     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
-    if name is None:
-        name = helper.dispatch_name('deconv2d')
     if len(input_shape) != 4:
         raise ValueError('{}deconv2d require input shape [batch-size,'
                          'rows, cols, channels], given {}{}'
                          .format(colors.fg.red, input_shape, colors.reset))
-
     kernel = helper.norm_input_2d(kernel)
     stride = helper.norm_input_2d(stride)
     kernel_shape = [*kernel[1:-1], nout, input_shape[-1]]
@@ -287,11 +313,9 @@ def deconv2d(input_shape, output_shape, nout,
     else:
         raise TypeError('out_shape with type `{}` not support'
                         .format(type(out_shape)))
-
     def _deconv2d(x, weight):
         return tf.nn.conv2d_transpose(x, weight, out_shape, stride,
                                       padding.upper(), name=name)
-
     return conv(convop=_deconv2d, kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
                 weight_regularizer=weight_regularizer,
@@ -316,14 +340,12 @@ def soft_conv(input_shape, kernel_shape,
               act=None, trainable=True,
               dtype=tf.float32, collections=None, reuse=False,
               summarize=True, name=None, scope=None):
-    if name is None:
-        name = helper.dispatch_name('soft_conv')
-    if scope is None:
-        scope = name
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'soft_conv',
+                                          reuse)
     act = actives.get(act)
-
     input_len = len(input_shape)
-
     axis = helper.normalize_axes(input_shape)
     dims = list(range(input_len))
     del dims[axis] # remove featrue map dim
@@ -340,26 +362,33 @@ def soft_conv(input_shape, kernel_shape,
     nkernels = np.prod(kernel_shape[:dimlen])
     ndims = np.prod([int(sh / st) for sh, st in zip(dim_shape, dim_stride)])
     # offsets_shape = [-1] + dim_shape + [nkernels, dimlen]
-
-    weight = mm.malloc('{}/weight'.format(name),
-                       [nkernels]+kernel_shape[dimlen:], dtype,
+    weight = mm.malloc('weight',
+                       [nkernels]+kernel_shape[dimlen:],
+                       dtype,
                        weight_initializer,
                        weight_regularizer,
-                       trainable, collections, reuse, scope)
-
+                       trainable,
+                       collections,
+                       reuse,
+                       name,
+                       scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
-        bias = mm.malloc('{}/bias'.format(name),
-                         (kernel_shape[-1],), dtype,
+        bias = mm.malloc('bias',
+                         (kernel_shape[-1],),
+                         dtype,
                          bias_initializer,
                          bias_regularizer,
-                         trainable, collections, reuse, scope)
+                         trainable,
+                         collections,
+                         reuse,
+                         name,
+                         scope)
         if summarize and not reuse:
             tf.summary.histogram(bias.name, bias)
     else:
         bias = False
-
     if mode not in ['naive', 'nearest', 'floor', 'ceil', 'bilinear']:
         raise ValueError('`mode` must be one of '
                          '"naive" / "nearest" / '
@@ -383,7 +412,7 @@ def soft_conv(input_shape, kernel_shape,
         'reuse':reuse,
         'summarize':summarize,
         'name':'{}/offsets'.format(name),
-        'scope':None
+        'scope':scope
     }
     # print('offset conv parameters:', kwargs)
 
@@ -408,7 +437,7 @@ def soft_conv(input_shape, kernel_shape,
     #  =>[rows * cols * krows * kcols, 2]
     grids = grids.reshape((-1, dimlen))
 
-    with tf.name_scope('{}/offsets'.format(scope)):
+    with ops_scope:
         if input_len == 3: # 1d
             convop = conv1d(**kwargs)[0]
         elif input_len == 4: # 2d
@@ -561,7 +590,7 @@ def soft_conv(input_shape, kernel_shape,
     scope = tf.name_scope(scope)
 
     def _soft_conv(x):
-        with scope:
+        with ops_scope:
             with tf.name_scope('offsets'):
                 # [batch-size, rows, cols, 2 * krows * kcols]
                 offsets = convop(x)
@@ -633,10 +662,6 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
                 dtype=tf.float32, collections=None,
                 reuse=False, summarize=True,
                 name=None, scope=None):
-    if name is None:
-        name = helper.dispatch_name('conv2d')
-    if scope is None:
-        scope = name
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
                          'cols, channels]{}, given {}{}{}'

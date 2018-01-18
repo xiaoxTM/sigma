@@ -1,59 +1,49 @@
 import tensorflow as tf
-
 from . import helper
 
-def base_pool2d(input_shape, fun, psize, stride, padding, axis, name, scope):
+
+def base_pool2d(input_shape, fun, psize, stride, padding, axis, reuse, name, scope):
     if stride is None:
         stride = psize
     stride = helper.norm_input_2d(stride)
     psize = helper.norm_input_2d(psize)
-
     out_shape = helper.get_output_shape(input_shape, input_shape[axis],
                                         psize, stride, padding)
 
-    if name is None:
-        # if none and e.g., fun.__name__ == 'tf.nn.max_pool'
-        #    name = max_pool
-        name = fun.__name__.rsplit('.', 1)
-        if len(name) > 1:
-            name = name[1]
-        else:
-            name = name[0]
-    if scope is None:
-        scope = name
-    scope = tf.name_scope(scope)
+    ltype = fun.__name__.rsplit('.', 1)
+    if len(ltype) > 1:
+        ltype = ltype[1]
+    else:
+        ltype = ltype[0]
+    ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
     def _base_pool2d(x):
-        with scope:
+        with ops_scope:
             return fun(x, psize, stride, padding.upper(), name=name)
     return _base_pool2d, out_shape
 
-def base_pool2d_global(input_shape, fun, axis, reuse, name, scope):
-    if name is None:
-        # if none and e.g., fun.__name__ == 'tf.nn.max_pool'
-        #    name = max_pool
-        name = fun.__name__.rsplit('.', 1)
-        if len(name) > 1:
-            name = name[1]
-        else:
-            name = name[0]
-    if scope is None:
-        scope = name
-    scope = tf.name_scope(scope)
 
+def base_pool2d_global(input_shape, fun, axis, reuse, name, scope):
+    # if none and e.g., fun.__name__ == 'tf.nn.max_pool'
+    #    name = max_pool
+    ltype = fun.__name__.rsplit('.', 1)
+    if len(ltype) > 1:
+        ltype = ltype[1]
+    else:
+        ltype = ltype[0]
+    ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
     axes = [idx for idx, _ in enumerate(input_shape)]
     del axes[axis]
     del axes[0]
-
     def _base_pool2d_global(x):
-        with scope:
+        with ops_scope:
             return fun(x, axis=axes, name=name)
     return _base_pool2d_global, [input_shape[0], input_shape[axis]]
 
 
 def avg_pool2d(input_shape, psize, stride=None,
-               padding='same', axis=-1, name=None, scope=None):
+               padding='same', axis=-1, reuse=False, name=None, scope=None):
     return base_pool2d(input_shape, tf.nn.avg_pool, psize,
-                       stride, padding, axis, name, scope)
+                       stride, padding, axis, reuse, name, scope)
 
 
 def avg_pool2d_global(input_shape, axis=-1, reuse=False,
@@ -63,9 +53,9 @@ def avg_pool2d_global(input_shape, axis=-1, reuse=False,
 
 
 def max_pool2d(input_shape, psize, stride=None,
-               padding='same', axis=-1, name=None, scope=None):
+               padding='same', axis=-1, reuse=False, name=None, scope=None):
     return base_pool2d(input_shape, tf.nn.max_pool, psize,
-                       stride, padding, axis, name, scope)
+                       stride, padding, axis, reuse, name, scope)
 
 
 def max_pool2d_global(inputs, axis=-1, reuse=False, name=None, scope=None):
@@ -93,27 +83,14 @@ def resize(input_shape, output_shape, factor=None, mode='bilinear',
                                  .format(factor, output_shape))
         else:
             raise TypeError('factor type not support in bilinear')
-
         for i in range(1, len(output_shape)-1):
             output_shape[i] *= factor[i]
     if mode not in ['bilinear', 'bicubic', 'area', 'nearest_neighbor']:
         raise ValueError('mode must be one of '
                          '[bilinear, bicubic, area, nearest_neighbor]')
-
-    if name is None:
-        # if none and e.g., fun.__name__ == 'tf.nn.max_pool'
-        #    name = max_pool
-        name = fun.__name__.rsplit('.', 1)
-        if len(name) > 1:
-            name = name[1]
-        else:
-            name = name[0]
-    if scope is None:
-        scope = name
-    scope = tf.name_scope(scope)
-
+    ops_scope, name = helper.assign_scope(name, scope, model, reuse)
     def _resize(x):
-        with scope:
+        with ops_scope:
             return eval('tf.image.resize_{}(x, output_shape, align_corners, name)'
                         .format(mode))
     return _resize

@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
 from .. import colors
+from . import helper
 
-def concat(inputs_shape, axis=-1, name=None):
+def concat(inputs_shape, axis=-1, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
                         '{}list / tpule{}, given {}{}{}'
@@ -22,15 +23,13 @@ def concat(inputs_shape, axis=-1, name=None):
                                      colors.reset, colors.fg.red, output_shape,
                                      ip, colors.reset))
         output_shape[axis] += ip[axis]
-    if name is None:
-        name = helper.dispatch_name('concat')
-    scope = tf.name_scope(name)
+    ops_scope, name = helper.assign_scope(name, scope, 'concat', reuse)
     def _concat(x):
-        with scope:
+        with ops_scope:
             return tf.concat(x, axis, name)
     return _concat, output_shape
 
-def add(inputs_shape, name=None):
+def add(inputs_shape, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
                         '{}list / tpule{}, given {}{}{}'
@@ -48,15 +47,13 @@ def add(inputs_shape, name=None):
                              .format(colors.fg.red, idx+1, colors.reset,
                                      colors.fg.red,
                                      output_shape, ip, colors.reset))
-    if name is None:
-        name = helper.dispatch_name('add')
-    scope = tf.name_scope(name)
+    ops_scope, name = helper.assign_scope(name, scope, 'add', reuse)
     def _add(x):
-        with scope:
+        with ops_scope:
             return tf.add_n(x, name)
     return _add, output_shape
 
-def mul(inputs_shape, name=None):
+def mul(inputs_shape, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs '
                         'as {}list / tpule{}, given {}{}{}'
@@ -74,11 +71,8 @@ def mul(inputs_shape, name=None):
                              .format(colors.fg.red, idx+1, colors.reset,
                                      colors.fg.red,
                                      output_shape, ip, colors.reset))
-    if name is None:
-        name = helper.dispatch_name('mul')
-    scope = tf.name_scope(name)
+    ops_scope, name = helper.assign_scope(name, scope, 'mul', reuse)
     def _mul(x):
-        with scope:
+        with ops_scope:
             return tf.multiply(inputs, name)
-
     return _mul

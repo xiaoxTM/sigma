@@ -2,11 +2,11 @@ import tensorflow as tf
 from .. import colors
 from . import helper
 
-def crelu(name=None):
-    if name is None:
-        name = helper.dispatch_name('crelu')
+def crelu(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'crelu', reuse)
     def _crelu(x):
-        return tf.nn.crelu(x, name)
+        with ops_scope:
+            return tf.nn.crelu(x, name)
     return _crelu
 
 
@@ -14,11 +14,11 @@ def crelu(name=None):
     calculates:
         max(x, 0)
 """
-def relu(name=None):
-    if name is None:
-        name = helper.dispatch_name('relu')
+def relu(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'relu', reuse)
     def _relu(x):
-        return tf.nn.relu(x, name)
+        with ops_scope:
+            return tf.nn.relu(x, name)
     return _relu
 
 
@@ -26,11 +26,11 @@ def relu(name=None):
     calculates:
         min(max(x, 0), 6)
 """
-def relu6(name=None):
-    if name is None:
-        name = helper.dispatch_name('relu6')
+def relu6(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'relu6', reuse)
     def _relu6(x):
-        return tf.nn.relu6(x, name)
+        with ops_scope:
+            return tf.nn.relu6(x, name)
     return _relu6
 
 
@@ -38,11 +38,11 @@ def relu6(name=None):
     calculates:
         exp(x) -1 if x < 0 else x
 """
-def elu(name=None):
-    if name is None:
-        name = helper.dispatch_name('elu')
+def elu(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'elu', reuse)
     def _elu(x):
-        return tf.nn.elu(x, name)
+        with ops_scope:
+            return tf.nn.elu(x, name)
     return _elu
 
 
@@ -52,11 +52,14 @@ def elu(name=None):
         scale * alpha * (exp(x) -1)
 """
 def selu(alpha=1.6732632423543772848170429916717,
-         scale=1.0507009873554804934193349852946, name=None):
-    if name is None:
-        name = helper.dispatch_name('selu')
+         scale=1.0507009873554804934193349852946,
+         reuse=False,
+         name=None,
+         scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'selu', reuse)
     def _selu(x):
-        return scale * alpha * (tf.exp(x) - 1)
+        with ops_scope:
+            return scale * alpha * (tf.exp(x) - 1)
     return _selu
 
 
@@ -64,9 +67,8 @@ def selu(alpha=1.6732632423543772848170429916717,
     calculates:
         max(x, alpha*x)
 """
-def leaky_relu(alpha=0.2, name=None):
-    if name is None:
-        name = helper.dispatch_name('leaky_relu')
+def leaky_relu(alpha=0.2, reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'leaky_relu', reuse)
     if tf.__version__ >= '1.4.0':
         run = tf.nn.leaky_relu
     else:
@@ -74,7 +76,8 @@ def leaky_relu(alpha=0.2, name=None):
             return tf.maximum(x, x * alpha, name)
         run = _run
     def _leaky_relu(x):
-        return run(x, alpha, name)
+        with ops_scope:
+            return run(x, alpha, name)
     return _leaky_relu
 
 
@@ -82,11 +85,11 @@ def leaky_relu(alpha=0.2, name=None):
     calculates:
         exp(x) / reduce_sum(exp(x), dim)
 """
-def softmax(dim=-1, name=None):
-    if name is None:
-        name = helper.dispatch_name('softmax')
+def softmax(dim=-1, reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'softmax', reuse)
     def _softmax(x):
-        return tf.nn.softmax(x, dim, name)
+        with ops_scope:
+            return tf.nn.softmax(x, dim, name)
     return _softmax
 
 
@@ -94,11 +97,11 @@ def softmax(dim=-1, name=None):
     calculates:
         log(exp(x) + 1)
 """
-def softplus(name=None):
-    if name is None:
-        name = helper.dispatch_name('softplus')
+def softplus(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'softplus', reuse)
     def _softplus(x):
-        return tf.nn.softplus(x, name)
+        with ops_scope:
+            return tf.nn.softplus(x, name)
     return _softplus
 
 
@@ -106,11 +109,11 @@ def softplus(name=None):
     calculates:
         x / (abs(x) + 1)
 """
-def softsign(name=None):
-    if name is None:
-        name = helper.dispatch_name('softsign')
+def softsign(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'softsign', reuse)
     def _softsign(x):
-        return tf.nn.softsign(x, name)
+        with ops_scope:
+            return tf.nn.softsign(x, name)
     return _softsign
 
 
@@ -118,11 +121,11 @@ def softsign(name=None):
     calculates:
         1 / (1 + exp(-x))
 """
-def sigmoid(name=None):
-    if name is None:
-        name = helper.dispatch_name('sigmoid')
+def sigmoid(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'sigmoid', reuse)
     def _sigmoid(x):
-        return tf.nn.sigmoid(x, name)
+        with ops_scope:
+            return tf.nn.sigmoid(x, name)
     return _sigmoid
 
 
@@ -130,11 +133,11 @@ def sigmoid(name=None):
     calculates:
         (exp(x) -1) / (exp(x) + 1)
 """
-def tanh(name=None):
-    if name is None:
-        name = helper.dispatch_name('tanh')
+def tanh(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'tanh', reuse)
     def _tanh(x):
-        return tf.nn.tanh(x, name)
+        with ops_scope:
+            return tf.nn.tanh(x, name)
     return _tanh
 
 
@@ -142,24 +145,24 @@ def tanh(name=None):
     calculates:
         x
 """
-def linear(name=None):
-    if name is None:
-        name = helper.dispatch_name('linear')
+def linear(reuse=False, name=None, scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'linear', reuse)
     def _linear(x):
-        return x
+        with ops_scope:
+            return x
     return _linear
 
 
-def get(act):
+def get(act, **kwargs):
     if act is None:
-        return linear()
+        return linear(**kwargs)
     if isinstance(act, str):
         if act not in ['relu', 'crelu', 'relu6', 'elu', 'selu',
                        'leaky_relu', 'softmax', 'sigmoid',
                        'softplus', 'softsign', 'tanh', 'linear']:
             raise ValueError('activation function {}`{}`{} not support.'
                             .format(colors.fg.red, act, colors.reset))
-        return eval('{}()'.format(act))
+        return eval('{}(**kwargs)'.format(act))
     elif callable(act):
         return act
     else:

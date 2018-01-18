@@ -9,18 +9,17 @@ def instance_norm(input_shape,
                   scale_initializer='ones',
                   offset_regularizer=None,
                   scale_regularizer=None,
-                  epsilon=0.001,
+                  epsilon=0.003,
                   act=None,
                   trainable=True,
                   reuse=False,
                   collections=None,
                   name=None,
                   scope=None):
-    if name is  None:
-        name = helper.dispatch_name('instance_norm')
-
-    if scope is None:
-        scope = name
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'instance_norm',
+                                          reuse)
     input_len = len(input_shape)
     axis = helper.normalize_axes(input_shape)
     neurons = input_shape[axis]
@@ -31,23 +30,32 @@ def instance_norm(input_shape,
     offset = None
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
-        offset = mm.malloc('{}-offset'.format(name), neurons,
-                           tf.float32, offset_initializer,
-                           offset_regularizer, trainable=trainable,
-                           collections=collections, reuse=reuse,
-                           scope=scope)
+        offset = mm.malloc('offset',
+                           neurons,
+                           tf.float32,
+                           offset_initializer,
+                           offset_regularizer,
+                           trainable,
+                           collections,
+                           reuse,
+                           name,
+                           scope)
     scale = None
     if not isinstance(scale_initializer, bool) or \
        scale_initializer is not False:
-        scale = mm.malloc('{}-scale'.format(name), neurons, tf.float32,
+        scale = mm.malloc('scale',
+                          neurons,
+                          tf.float32,
                           scale_initializer,
-                          scale_regularizer, trainable=trainable,
-                          collections=collections, reuse=reuse,
-                          scope=scope)
+                          scale_regularizer,
+                          trainable,
+                          collections,
+                          reuse,
+                          name,
+                          scope)
     act = actives.get(act)
-    scope = tf.name_scope(scope)
     def _instance_norm(x):
-        with scope:
+        with ops_scope:
             mean, variance = tf.nn.moments(x, axes, keep_dims=True)
             normalized = (x - mean) / tf.sqrt(variance + epsilon)
             if scale is not None:
@@ -56,6 +64,9 @@ def instance_norm(input_shape,
                 normalized = normalized + offset
             return  normalized
     return _instance_norm
+
+
+layer_norm = instance_norm
 
 
 def batch_norm(input_shape,
@@ -103,14 +114,10 @@ def batch_norm(input_shape,
                 use fused_batch_normal if true
     """
 
-    if name is  None:
-        if fused:
-            name = helper.dispatch_name('fused_batch_norm')
-        else:
-            name = helper.dispatch_name('batch_norm')
-
-    if scope is None:
-        scope = name
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'batch_norm',
+                                          reuse)
     axis = list(range(len(input_shape)-1))
     if fused:
         axis = [0 ,1, 2]
@@ -121,35 +128,53 @@ def batch_norm(input_shape,
     offset = None
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
-        offset = mm.malloc('{}-offset'.format(name), neurons,
-                           tf.float32, offset_initializer,
-                           offset_regularizer, trainable=trainable,
-                           collections=collections, reuse=reuse,
-                           scope=scope)
+        offset = mm.malloc('offset',
+                           neurons,
+                           tf.float32,
+                           offset_initializer,
+                           offset_regularizer,
+                           trainable,
+                           collections,
+                           reuse,
+                           name,
+                           scope)
     scale = None
     if not isinstance(scale_initializer, bool) or \
        scale_initializer is not False:
-        scale = mm.malloc('{}-scale'.format(name), neurons, tf.float32,
+        scale = mm.malloc('scale',
+                          neurons,
+                          tf.float32,
                           scale_initializer,
-                          scale_regularizer, trainable=trainable,
-                          collections=collections, reuse=reuse,
-                          scope=scope)
+                          scale_regularizer,
+                          trainable,
+                          collections,
+                          reuse,
+                          name,
+                          scope)
 
     moving_mean = None
-    moving_mean = mm.malloc('{}-moving-mean'.format(name),
-                            neurons, tf.float32,
+    moving_mean = mm.malloc('moving-mean',
+                            neurons,
+                            tf.float32,
                             moving_mean_initializer,
-                            trainable=trainable,
-                            collections=collections,
-                            reuse=reuse, scope=scope)
+                            None,
+                            trainable,
+                            collections,
+                            reuse,
+                            name,
+                            scope)
 
     moving_variance = None
-    moving_variance = mm.malloc('{}-moving-variance'.format(name),
-                                neurons, tf.float32,
+    moving_variance = mm.malloc('moving-variance',
+                                neurons,
+                                tf.float32,
                                 moving_variance_initializer,
-                                trainable=trainable,
-                                collections=collections,
-                                reuse=reuse, scope=scope)
+                                None,
+                                trainable,
+                                collections,
+                                reuse,
+                                name,
+                                scope)
     act = actives.get(act)
     # print('input shape:', input_shape)
     # print('axis:', axis)
@@ -197,9 +222,8 @@ def batch_norm(input_shape,
                                           offset, scale, epsilon)
         return act(x)
 
-    scope = tf.name_scope(scope)
     def _batch_norm(x):
-        with scope:
+        with ops_scope:
             x = tf.cond(tf.cast(status.is_training, tf.bool),
                         lambda: _train(x),
                         lambda: _infer(x))
@@ -209,56 +233,17 @@ def batch_norm(input_shape,
     return _batch_norm
 
 
-def layer_norm(input_shape,
-               scale=True,
-               epsilon=1e-5,
-               act=None,
-               reuse=False,
-               name=None,
-               scope=None):
-    if name is None:
-        name = helper.dispatch_name('layer_norm')
-    if scope is None:
-        scope = name
-    scope = tf.name_scope(name)
-    axis = helper.normalize_axes(input_shape)
-    neurons = [input_shape[0]]
-    offset = mm.malloc('{}-offset'.format(name), neurons, tf.float32,
-                       initializer=tf.zeros_initializer,
-                       trainable=True, reuse=reuse,
-                       scope=scope)
-    act = actives.get(act)
-    if scale is True:
-        scale = mm.malloc('{}-scale'.format(name),
-                          [neurons], dtype=tf.float32,
-                          initializer=tf.ones_initializer,
-                          trainable=True, reuse=reuse,
-                          scope=scope)
-
-    def _layer_norm(x):
-        with scope:
-            mean, variance = tf.nn.moments(x, [axis], keep_dims=True)
-            x = (x - mean) / tf.sqrt(variance + epsilon)
-            if scale:
-                x = scale * x + offset
-            else:
-                x = x + offset
-            return act(x)
-
-    return _layer_norm
-
-
 def dropout(pkeep,
             noise_shape=None,
             seed=None,
+            reuse=False,
             name=None,
             scope=None):
-    if name is None:
-        name = helper.dispatch_name('dropout')
-    if scope is None:
-        scope = name
-    scope = tf.name_scope(name)
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'dropout',
+                                          reuse)
     def _dropout(x):
-        with scope:
+        with ops_scope:
             return tf.nn.dropout(x, pkeep, noise_shape, seed, name)
     return _dropout
