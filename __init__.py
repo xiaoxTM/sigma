@@ -15,10 +15,12 @@ __version__ = '0.1.0'
 
 config_path = os.path.join(os.environ['HOME'], '.sigma', 'config.json')
 if os.path.isfile(config_path):
-    config = json.load(config_path)
+    with open(config_path, 'r') as f:
+        config = json.load(f)
     set_print(config['graph'])
 else:
-    os.makedirs(os.path.join(os.environ['HOME'], '.sigma'))
+    os.makedirs(os.path.join(os.environ['HOME'], '.sigma'), exist_ok=True)
     config = {'graph': None}
     set_print(None)
-    json.dump(config, config_path)
+    with open(config_path, 'w') as f:
+        json.dump(config, f)
