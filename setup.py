@@ -11,6 +11,15 @@ setup(name='sigma',
       install_requires=[
           'numpy',
           'tensorflow',
-          'h5py'
+          'h5py',
+          'gzip',
+          'pickle',
+          'io',
+          'multiprocessing',
+          'scipy',
+          'smtplib',
+          'email',
+          'subprocess',
+          'json'
       ],
       zip_safe=False)

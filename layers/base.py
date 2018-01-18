@@ -4,9 +4,9 @@ from ..ops import base, helper
 from .layers import layers
 
 @layers
-def flatten(inputs, return_shape=False, reuse=False, name=None):
+def flatten(inputs, return_shape=False, reuse=False, name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = base.flatten(input_shape, name)
+    fun, output = base.flatten(input_shape, reuse, name, scope)
     x = fun(inputs)
     # helper.print_layer(inputs, x, 'flatten', reuse, name)
     if output[1:] != x.get_shape().as_list()[1:]:
@@ -20,9 +20,9 @@ def flatten(inputs, return_shape=False, reuse=False, name=None):
 
 @layers
 def reshape(inputs, output_shape, return_shape=False,
-            reuse=False, name=None):
+            reuse=False, name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = base.reshape(output_shape, name)
+    fun, output = base.reshape(output_shape, reuse, name, scope)
     x = fun(inputs)
     # helper.print_layer(inputs, x, 'reshape', reuse, name)
     if output[1:] != output_shape[1:]:

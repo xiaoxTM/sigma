@@ -57,8 +57,9 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - ceil : get the ceil location
    - bilinear : bilinear interpolation
  - graph visualization
-   - terminal print
-   - file print
+   - print no message [layers.graph=None]
+   - terminal print [layers.graph=False]
+   - save to file [layers.graph=True]
  - load / save and import / export
    - checkpoints
      - load / save
@@ -98,7 +99,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
               |                                                  \-------/
               |                                                      |
               |                                                      v
-   /------\ --|                                                   /------\
-  | master |---------------------------------------------------> | master |
-   \------/                     merge x.x.x.2                     \------/
+   /------\ --|                                                  /-------\
+  | master |--------------------------------------------------> |  master |
+   \------/                     merge x.x.x.2                    \-------/
 ```

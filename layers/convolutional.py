@@ -13,9 +13,20 @@ def embedding(inputs, table_size,
               trainable=True,
               collections=None,
               reuse=False,
-              name=None):
-    fun = convs.embedding(table_size, strategy, dtype, initializer,
-                          regularizer, trainable, collections, name)
+              summarize=True,
+              name=None,
+              scope=None):
+    fun = convs.embedding(table_size,
+                          strategy,
+                          dtype,
+                          initializer,
+                          regularizer,
+                          trainable,
+                          collections,
+                          reuse,
+                          summarize,
+                          name,
+                          scope)
     x = fun(inputs)
     # helper.print_layer(inputs, x, 'embedding', reuse, name)
     return x
@@ -94,10 +105,20 @@ def fully_conv(inputs, nouts,
                name=None,
                scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = convs.fully_conv(input_shape, nouts, weight_initializer,
-                                   weight_regularizer, bias_initializer,
-                                   bias_regularizer, act, trainable, dtype,
-                                   collections, reuse, summarize, name, scope)
+    fun, output = convs.fully_conv(input_shape,
+                                   nouts,
+                                   weight_initializer,
+                                   weight_regularizer,
+                                   bias_initializer,
+                                   bias_regularizer,
+                                   act,
+                                   trainable,
+                                   dtype,
+                                   collections,
+                                   reuse,
+                                   summarize,
+                                   name,
+                                   scope)
     return _layers(fun, inputs, output, return_shape,
                    'fully-conv', reuse, name)
 
@@ -123,15 +144,23 @@ def conv1d(inputs, nouts, kernel, stride,
            name=None,
            scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = convs.conv1d(input_shape, nouts, kernel,
-                               stride, padding,
+    fun, output = convs.conv1d(input_shape,
+                               nouts,
+                               kernel,
+                               stride,
+                               padding,
                                weight_initializer,
                                weight_regularizer,
                                bias_initializer,
                                bias_regularizer,
-                               act, trainable, dtype,
-                               collections, reuse,
-                               summarize, name, scope)
+                               act,
+                               trainable,
+                               dtype,
+                               collections,
+                               reuse,
+                               summarize,
+                               name,
+                               scope)
 
     return _layers(fun, inputs, output, return_shape,
                    'conv1d', reuse, name)
@@ -182,15 +211,22 @@ def conv2d(inputs, nouts, kernel, stride,
            name=None,
            scope=None):
     input_shape = inputs.get_shape().as_list()
-    fun, output = convs.conv2d(input_shape, nouts, kernel,
+    fun, output = convs.conv2d(input_shape,
+                               nouts,
+                               kernel,
                                stride, padding,
                                weight_initializer,
                                weight_regularizer,
                                bias_initializer,
-                               bias_regularizer, act,
-                               trainable, dtype,
-                               collections, reuse,
-                               summarize, name, scope)
+                               bias_regularizer,
+                               act,
+                               trainable,
+                               dtype,
+                               collections,
+                               reuse,
+                               summarize,
+                               name,
+                               scope)
     return _layers(fun, inputs, output, return_shape,
                    'conv2d', reuse, name)
 
@@ -242,8 +278,12 @@ def soft_conv2d(inputs, nouts, kernel, stride,
     input_shape = inputs.get_shape().as_list()
     # offset_fun, offset_output = convs.conv2d(input_shape,
     #                                          input_shape[-1]*)
-    fun, output = convs.soft_conv2d(input_shape, nouts, kernel,
-                                    stride, padding, mode,
+    fun, output = convs.soft_conv2d(input_shape,
+                                    nouts,
+                                    kernel,
+                                    stride,
+                                    padding,
+                                    mode,
                                     weight_initializer,
                                     weight_regularizer,
                                     bias_initializer,
@@ -252,9 +292,14 @@ def soft_conv2d(inputs, nouts, kernel, stride,
                                     offset_weight_regularizer,
                                     offset_bias_initializer,
                                     offset_bias_regularizer,
-                                    act, trainable, dtype,
-                                    collections, reuse,
-                                    summarize, name, scope)
+                                    act,
+                                    trainable,
+                                    dtype,
+                                    collections,
+                                    reuse,
+                                    summarize,
+                                    name,
+                                    scope)
     x, offsets = fun(inputs)
     # helper.print_layer(inputs, x, 'soft_conv2d', reuse, name)
     if output != x.get_shape().as_list():

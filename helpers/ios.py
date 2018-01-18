@@ -5,6 +5,9 @@ from ..ops import helper
 import numpy as np
 import sigma
 import h5py
+import pickle
+import gzip
+import io
 
 def encode(strings, codec='utf8'):
     if isinstance(strings, str):
@@ -38,7 +41,7 @@ def decode(strings, codec='utf8'):
                         .format(type(strings)))
 
 
-def load(session, checkpoints, saver=None, verbose=False):
+def load(session, checkpoints, saver=None, verbose=True):
     if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
@@ -70,7 +73,7 @@ def load(session, checkpoints, saver=None, verbose=False):
     return session, saver
 
 
-def save(session, checkpoints, saver=None, verbose=False, **kwargs):
+def save(session, checkpoints, saver=None, verbose=True, **kwargs):
     if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
@@ -145,13 +148,33 @@ def export_weights(filename, session, graph=None, collections=None, verbose=True
             weight_group.attrs['weight_names'] = encode(names)
 
 
-def import_model():
-    pass
+def import_model(filename, session, verbose=True, **kwargs):
+    if verbose:
+        print('importing model from {}{}{}'
+              .format(colors.fg.green, filename, colors.reset))
+    pkl = gzip.open(filename, 'rb')
+    meta, data = pickle.load(pkl, **kwargs)
+    pkl.close()
+    with io.StringIO(meta) as sio:
+        saver = tf.train.import_meta_graph(sio, **kwargs)
+    with io.StringIO(data) as sio:
+        saver.restore(session, sio)
 
 
-def export_model():
-    pass
+def export_model(filename, session, verbose=True, **kwargs):
+    if verbose:
+        print('exporting model to {}{}{}'
+              .format(colors.fg.green, filename, colors.reset))
+    if saver is None:
+        saver = tf.train.Saver()
+    pkl = gzip.open(filename, 'wb')
+    meta = tf.train.export_meta_graph(**kwargs)
+    with io.StringIO() as sio:
+        saver.save(session, sio)
+        data = sio.getvalue()
+        pkl.dummy([meta, data])
+    pkl.close()
 
 
 def export_graph(filename, ext=None):
-    helper.export_graph(filename, ext, layers.graph)
+    helper.export_graph(filename, ext)

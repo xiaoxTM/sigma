@@ -2,7 +2,7 @@ import tensorflow as tf
 from .. import colors, status, layers
 import numpy as np
 import copy
-from collections import OrderedDict
+import collections
 import os.path
 
 try:
@@ -27,6 +27,7 @@ layer_normalization = ['instance_norm', 'batch_norm', 'dropout']
 layer_pools = ['avg_pool2d', 'avg_pool2d_global',
                'max_pool2d', 'max_pool2d_global']
 
+
 def layer2color(layername):
     if layername in layer_actives:
         return 'Magenta'
@@ -45,31 +46,63 @@ def layer2color(layername):
 
 
 def name_space():
-    name_maps = OrderedDict()
-    def _name_space(x, retrieve=False):
-        if not isinstance(x, str):
+    name_maps = collections.OrderedDict()
+    def _name_space(x=None, index=None):
+        if x is None and index is None:
+            raise TypeError('`x` and `index` cannot both be None')
+        if x is not None and not isinstance(x, str):
             raise TypeError('name space requires string but given {}'
                            .format(type(x)))
-        if not retrieve:
-            if x not in name_maps.keys():
-                name_maps[x] = 0
-            nid = name_maps[x]
-            name_maps[x] += 1
-            return '{}-{}'.format(x, nid)
+        if index is not None and not isinstance(index, int):
+            raise TypeError('index space requires int but given {}'
+                           .format(type(index)))
+        if x is None:
+            return '{}-{}'.format(*list(name_maps.items())[index])
         else:
-            if x not in name_maps.keys():
-                raise ValueError('retrieving {} failed.'.format(x))
-            return name_maps[x]
+            if index is None:
+                if x not in name_maps.keys():
+                    name_maps[x] = -1
+                nid = name_maps[x] + 1
+                name_maps[x] = nid
+                return '{}-{}'.format(x, nid)
+            else:
+                if x not in name_maps.keys():
+                    raise ValueError('{} not in name maps for indexing {}'
+                                     .format(x, index))
+                size = name_maps[x] + 1
+                nid = (size + index) % size
+                return '{}-{}'.format(x, nid)
     return _name_space
 
 
 dispatch_name = name_space()
 
 
-def name_assign(name, default, reuse):
+# def name_assign(name, default, reuse):
+#     if name is None:
+#         name = dispatch_name(default, reuse)
+#     return name
+
+
+# assign_scope will return the operation scope
+#    and append layer-type to name
+# for example, given name = 'block' and ltype = conv
+#     assign_scope return layer = block/conv
+def assign_scope(name, scope, ltype, reuse=False):
+    if name is None and ltype is None:
+        raise ValueError('Either `name` or `ltype` must be None')
     if name is None:
-        name = dispatch_name(default, reuse)
-    return name
+        if reuse:
+            name = dispatch_name(ltype, -1)
+        else:
+            name = dispatch_name(ltype)
+    layer = '{}/{}'.format(name, ltype)
+    if scope is None:
+        ops_scope = tf.name_scope('{}'.format(layer))
+    else:
+        ops_scope = tf.name_scope('{}/{}'
+                                  .format(scope, layer))
+    return ops_scope, layer
 
 
 def is_tensor(x):
@@ -81,13 +114,18 @@ def shape(x):
 
 
 def name_normalize(names):
+    """ normalize variable name
+        generally, `names` is a list of :
+            [scope/]/{layer-name/layer-type}/variable-name:index
+    """
     def _normalize(name):
-        splits = name.rsplit('/')
+        splits = name.rsplit('/', 2)
         if len(splits) == 1:
             return splits[0].split(':')[0]
+        elif len(splits) == 2:
+            return name.split(':')[0]
         else:
-            return splits[-2]
-
+            return splits[0]
     if isinstance(names, str):
         return _normalize(names)
     elif isinstance(names, (tuple, list, np.ndarray)):
@@ -97,18 +135,19 @@ def name_normalize(names):
                         .format(type(names)))
 
 
-def export_graph(filename, ext, graph):
+def export_graph(filename, ext):
     if pydot is None:
         raise ImportError('Import pydot failed. make sure pydot is installed')
-    if not isinstance(graph, pydot.Dot):
-        raise TypeError('graph model is not built')
+    if not isinstance(layers._graph, pydot.Dot):
+        raise TypeError('graph model is not built. graph: {}'.format(layers._graph))
     if ext is None:
         _, ext = os.path.splitext(filename)
     if ext is None:
         ext = 'png'
     else:
         ext = ext[1:]
-    graph.write(filename, format=ext)
+    layers._graph.write(filename, format=ext)
+
 
 """ if not reuse:
         print('{}{}{} \t\t=>`[{} | {}]`=> \t\t{}{}{}'
@@ -117,7 +156,7 @@ def export_graph(filename, ext, graph):
                       colors.fg.red, output, colors.reset))
 """
 def print_layer(inputs, outputs, typename, reuse, name):
-    if layers.graph is not None:
+    if layers._graph is not None:
         if name is None:
             raise ValueError('name is not given')
         if not reuse:
@@ -129,7 +168,7 @@ def print_layer(inputs, outputs, typename, reuse, name):
                 inputname = [name_normalize(inputs.name)]
             output_shape = outputs.get_shape().as_list()
             outputname = name_normalize(outputs.name)
-            if layers.graph is False:
+            if layers._graph is False:
                 if len(inputname) == 1:
                     inputname = inputname[0]
                     input_shape = input_shape[0]
@@ -137,10 +176,10 @@ def print_layer(inputs, outputs, typename, reuse, name):
                       .format(inputname, colors.fg.green, input_shape, colors.reset,
                               colors.fg.blue, name, typename, colors.reset,
                               outputname, colors.fg.red, output_shape, colors.reset))
-            elif layers.graph is True or isinstance(layers.graph, pydot.Dot):
+            elif layers._graph is True or isinstance(layers._graph, pydot.Dot):
                 if pydot is None:
                     raise ImportError('Import pydot failed. make sure pydot is installed')
-                if layers.graph is True:
+                if layers._graph is True:
                     dot = pydot.Dot()
                     dot.set('rankdir', 'TB')
                     dot.set('concentrate', True)
@@ -150,21 +189,20 @@ def print_layer(inputs, outputs, typename, reuse, name):
                         node = pydot.Node(iname,
                                           label=label)
                         dot.add_node(node)
-                    layers.graph = dot
+                    layers._graph = dot
                 ishape = input_shape
                 if len(ishape) == 1:
                     ishape = ishape[0]
                 label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (name,
                                                                ishape,
                                                                output_shape)
-                # print('{} => {}'.format(inputname, outputs.name))
                 color = layer2color(typename)
-                layers.graph.add_node(pydot.Node(outputname,
+                layers._graph.add_node(pydot.Node(outputname,
                                                  label=label,
                                                  fillcolor=color,
                                                  style='filled'))
                 for iname in inputname:
-                    layers.graph.add_edge(pydot.Edge(iname, outputname))
+                    layers._graph.add_edge(pydot.Edge(iname, outputname))
 
 
 """ normalize axis given tensor shape

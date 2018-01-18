@@ -8,198 +8,198 @@ from .nput import load_filename_from_dir, load_from_list, one_hot
 # functions / classes for segmentation task
 #####################################################
 #####################################################
-class SegmentDataGenerator():
-    """generator for image data with augmentation
-    """
-    def __init__(self, nclass, filelist, batch_size,
-                 basepath=None,
-                 size=(320, 320),
-                 void_label=0,
-                 one_hot=True,
-                 scale=1.0,
-                 center=True,
-                 strides=0.5,
-                 mode='crop',
-                 fliplr=None,
-                 flipud=None,
-                 saturation=None,
-                 contrast=None,
-                 brightness=None,
-                 lighting_std=None,
-                 clip=[0, 255],
-                 spi=None,
-                 channel_axis=-1,
-                 num=None,
-                 sep=' ',
-                 preprocess_input=None):
-        """initialization of generator
+"""generator for image data with augmentation
+"""
+def segment_data_generator(self, nclass, filelist, batch_size,
+                           basepath=None,
+                           size=(320, 320),
+                           void_label=0,
+                           one_hot=True,
+                           scale=1.0,
+                           center=True,
+                           strides=0.5,
+                           mode='crop',
+                           fliplr=None,
+                           flipud=None,
+                           saturation=None,
+                           contrast=None,
+                           brightness=None,
+                           lighting_std=None,
+                           clip=[0, 255],
+                           spi=None,
+                           num=None,
+                           sep=' ',
+                           preprocess_input=None):
+    """ initialization of generator
 
-            Attributes
-            ----------
-            nclass : int
+        Attributes
+        ----------
+        nclass : int
                      number of class to generate
-            filelist : list / tuple / str / dict
-                       if list / tuple, dataset is given in the order of [train, valid, test]
-                       if str, dataset is given by train samples
-                       if dict, dataset is given in form of key: value
-                       Example:
-                           'vallid': /path/to/valid/samples.txt
-            batch_size : int
-                         number of samples for each batch
-            basepath : str or None
-                       if str, the samples to load will be os.path.join(basepath, samplefilename)
-                       if None, samples to load is samplefilename
-            size : tuple or None
-                   if tuple, images will be resized or cropped to `size` according to the value of `mode`
-                   if None, loaded images will have the original size
-                       **NOTE**: when given None, images to be load must have the same size
-            void_label : int
-                         label of class treated as background (void)
-            one_hot : bool
-                      return one hot format of ground truth if True
-            scale : float
-                    scale factor for each images
-                    Example:
-                        scale = 1 / 255.0 will scale images from [0, 255] to [0, 1]
-            center : bool
-                     if True, images will crop according to the center of images
-                         **NOTE**: this is useful ONLY when `mode` is crop
-            strides : float or list / tuple
-                      steps to move when crop
-            mode : str (case sensitive)
-                   mode to resize images. must be value of ['crop', 'nearest', 'lanczos', 'bilinear', 'bicubic', 'cubic']
-            fliplr / flipud / saturation / contrast / brightness / lighting_std / clip are parameters passed to SegmentDataAugmentator
-                   see @SegmentDataAugmentator for details
-            batch_size_variable : bool
-                   generator will generate batches with different size if True, otherwise generate same batch size as specified by `batch_size`
-                   ** NOTE ** this is used ONLY in `crop` mode
-            channel_axis : int
-                    specifying channel (or feature maps) axis.
-                    for theano, channel_axis = 1
-                    for tensorflow, channel_axis = -1, or classically, channel_axis = 3 for image processing (like, CNN)
+        filelist : list / tuple / str / dict
+                   if list / tuple, dataset is given in the order of
+                       [train, valid, test]
+                   if str, dataset is given by train samples
+                   if dict, dataset is given in form of key: value
+                   Example:
+                       'vallid': /path/to/valid/samples.txt
+        batch_size : int
+                     number of samples for each batch
+        basepath : str or None
+                   if str, the samples to load will be
+                       os.path.join(basepath, samplefilename)
+                   if None, samples to load is samplefilename
+        size : tuple or None
+               if tuple, images will be resized or cropped to `size`
+                   according to the value of `mode`
+               if None, loaded images will have the original size
+                   **NOTE**: when given None, images to be load
+                   must have the same size
+        void_label : int
+                     label of class treated as background (void)
+        one_hot : bool
+                  return one hot format of ground truth if True
+        scale : float
+                scale factor for each images
+                Example:
+                    scale = 1 / 255.0 will scale images from [0, 255] to [0, 1]
+        center : bool
+                 if True, images will crop according to the center of images
+                     **NOTE**: this is useful ONLY when `mode` is crop
+        strides : float or list / tuple
+                  steps to move when crop
+        mode : str (case sensitive)
+               mode to resize images. must be value of
+               ['crop', 'nearest', 'lanczos', 'bilinear', 'bicubic', 'cubic']
+        fliplr / flipud / saturation / contrast / brightness / lighting_std / clip
+               are parameters passed to SegmentDataAugmentator
+               see @SegmentDataAugmentator for details
+        batch_size_variable : bool
+               generator will generate batches with different size if True,
+               otherwise generate same batch size as specified by `batch_size`
+               ** NOTE ** this is used ONLY in `crop` mode
             preprocess_input : callable function for preprocess input before yielding data
         """
-        if isinstance(filelist, (list, tuple)):
-            if not len(filelist) in [1, 2, 3, 4]:
-                raise ValueError('file list must have 1, 2, 3 or 4 length if given as list / tuple. given {}'.format(len(filelist)))
-            self.train_samples, self.train_labels = load_filename(filelist[0], num=num, sep=sep)
-            self.train_samples = np.asarray(self.train_samples, dtype=np.string_)
-            if self.train_labels is None:
+    if isinstance(filelist, (list, tuple)):
+        if not len(filelist) in [1, 2, 3, 4]:
+            raise ValueError('file list must have 1, 2, 3 or 4 length if given as list / tuple. given {}'.format(len(filelist)))
+        _train_samples, _train_labels = load_filename(filelist[0], num=num, sep=sep)
+        _train_samples = np.asarray(_train_samples, dtype=np.string_)
+        if _train_labels is None:
+            raise ValueError('ground truth is not given to train phase')
+        _train_labels = np.asarray(_train_labels, dtype=np.string_)
+        if len(filelist) >= 2:
+            _valid_samples, _valid_labels = load_filename(filelist[1], num=num, sep=sep)
+            _valid_samples = np.asarray(_valid_samples, dtype=np.string_)
+            if _valid_labels is None:
+                raise ValueError('ground truth is not given to valid phase')
+            _valid_labels = np.asarray(_valid_labels, dtype=np.string_)
+        if len(filelist) >= 3:
+            _test_samples, _test_labels = load_filename(filelist[2], num=num, sep=sep)
+            _test_samples = np.asarray(_test_samples, dtype=np.string_)
+            if _test_labels is not None:
+                _test_labels = np.asarray(_test_labels, dtype=np.string_)
+        if len(filelist) == 4:
+            _eval_samples, _eval_labels = load_filename(filelist[3], num=num, sep=sep)
+            _eval_samples = np.asarray(_eval_samples, dtype=np.string_)
+            if _eval_labels is not None:
+                _eval_labels = np.asarray(_eval_labels, dtype=np.string_)
+    elif isinstance(filelist, str):
+        _train_samples, _train_labels = load_filename(filelist, num=num, sep=sep)
+        _train_samples = np.asarray(_train_samples, dtype=np.string_)
+        if _train_labels is None:
+            raise ValueError('ground truth is not given to train phase')
+        _train_labels = np.asarray(_train_labels, dtype=np.string_)
+    elif isinstance(filelist, dict):
+        for key in filelist.keys():
+            if key not in ['train', 'valid', 'test', 'eval']:
+                raise ValueError('Unsupported phase: {}'.format(key))
+        if 'train' in filelist.keys():
+            _train_samples, _train_labels = load_filename(filelist['train'], num=num, sep=sep)
+            _train_samples = np.asarray(_train_samples, dtype=np.string_)
+            if _train_labels is None:
                 raise ValueError('ground truth is not given to train phase')
-            self.train_labels = np.asarray(self.train_labels, dtype=np.string_)
-            if len(filelist) >= 2:
-                self.valid_samples, self.valid_labels = load_filename(filelist[1], num=num, sep=sep)
-                self.valid_samples = np.asarray(self.valid_samples, dtype=np.string_)
-                if self.valid_labels is None:
-                    raise ValueError('ground truth is not given to valid phase')
-                self.valid_labels = np.asarray(self.valid_labels, dtype=np.string_)
-            if len(filelist) >= 3:
-                self.test_samples, self.test_labels = load_filename(filelist[2], num=num, sep=sep)
-                self.test_samples = np.asarray(self.test_samples, dtype=np.string_)
-                if self.test_labels is not None:
-                    self.test_labels = np.asarray(self.test_labels, dtype=np.string_)
-            if len(filelist) == 4:
-                self.eval_samples, self.eval_labels = load_filename(filelist[3], num=num, sep=sep)
-                self.eval_samples = np.asarray(self.eval_samples, dtype=np.string_)
-                if self.eval_labels is not None:
-                    self.eval_labels = np.asarray(self.eval_labels, dtype=np.string_)
-        elif isinstance(filelist, str):
-            self.train_samples, self.train_labels = load_filename(filelist, num=num, sep=sep)
-            self.train_samples = np.asarray(self.train_samples, dtype=np.string_)
-            if self.train_labels is None:
-                raise ValueError('ground truth is not given to train phase')
-            self.train_labels = np.asarray(self.train_labels, dtype=np.string_)
-        elif isinstance(filelist, dict):
-            for key in filelist.keys():
-                if key not in ['train', 'valid', 'test', 'eval']:
-                    raise ValueError('Unsupported phase: {}'.format(key))
-            if 'train' in filelist.keys():
-                self.train_samples, self.train_labels = load_filename(filelist['train'], num=num, sep=sep)
-                self.train_samples = np.asarray(self.train_samples, dtype=np.string_)
-                if self.train_labels is None:
-                    raise ValueError('ground truth is not given to train phase')
-                self.train_labels = np.asarray(self.train_labels, dtype=np.string_)
-            if 'valid' in filelist.keys():
-                self.valid_samples, self.valid_labels = load_filename(filelist['valid'], num=num, sep=sep)
-                self.valid_samples = np.asarray(self.valid_samples, dtype=np.string_)
-                if self.valid_labels is None:
-                    raise ValueError('ground truth is not given to valid phase')
-                self.valid_labels = np.asarray(self.valid_labels, dtype=np.string_)
-            if 'test' in filelist.keys():
-                self.test_samples, self.test_labels = load_filename(filelist['test'], num=num, sep=sep)
-                self.test_samples = np.asarray(self.test_samples, dtype=np.string_)
-                if self.test_labels is not None:
-                    self.test_labels = np.asarray(self.test_labels, dtype=np.string_)
-            if 'eval' in filelist.keys():
-                self.eval_samples, self.eval_labels = load_filename(filelist['eval'], num=num, sep=sep)
-                self.eval_samples = np.asarray(self.eval_samples, dtype=np.string_)
-                if self.eval_labels is None:
-                    raise ValueError('ground truth is not given to valid phase')
-                self.eval_labels = np.asarray(self.eval_labels, dtype=np.string_)
-        else:
-            raise TypeError('file list can only be list/tuple (for providing train/valid dataset list file) or string (for providing train dataset list file). given {}'.format(type(filelist)))
+            _train_labels = np.asarray(_train_labels, dtype=np.string_)
+        if 'valid' in filelist.keys():
+            _valid_samples, _valid_labels = load_filename(filelist['valid'], num=num, sep=sep)
+            _valid_samples = np.asarray(_valid_samples, dtype=np.string_)
+            if _valid_labels is None:
+                raise ValueError('ground truth is not given to valid phase')
+            _valid_labels = np.asarray(_valid_labels, dtype=np.string_)
+        if 'test' in filelist.keys():
+            _test_samples, _test_labels = load_filename(filelist['test'], num=num, sep=sep)
+            _test_samples = np.asarray(_test_samples, dtype=np.string_)
+            if _test_labels is not None:
+                _test_labels = np.asarray(_test_labels, dtype=np.string_)
+        if 'eval' in filelist.keys():
+            _eval_samples, _eval_labels = load_filename(filelist['eval'], num=num, sep=sep)
+            _eval_samples = np.asarray(_eval_samples, dtype=np.string_)
+            if _eval_labels is None:
+                raise ValueError('ground truth is not given to valid phase')
+            _eval_labels = np.asarray(_eval_labels, dtype=np.string_)
+    else:
+        raise TypeError('file list can only be list/tuple (for providing train/valid dataset list file) or string (for providing train dataset list file). given {}'.format(type(filelist)))
 
-        self.batch_size = batch_size
-        self.basepath = basepath
-        self.nclass = nclass
-        if size is None:
-            self.size = size
-        elif isinstance(size, (list, tuple)):
-            assert len(size) == 2, 'size of list/tuple must have length of 2. given {}'.format(len(size))
-            self.size = size
-        elif isinstance(size, int):
-            self.size = [size, size]
-        else:
-            raise TypeError('size can only be list/tuple or int. given {}'.format(type(size)))
+    _batch_size = batch_size
+    _basepath = basepath
+    _nclass = nclass
+    if size is None:
+        _size = size
+    elif isinstance(size, (list, tuple)):
+        assert len(size) == 2, 'size of list/tuple must have length of 2. given {}'.format(len(size))
+        _size = size
+    elif isinstance(size, int):
+        _size = [size, size]
+    else:
+        raise TypeError('size can only be list/tuple or int. given {}'.format(type(size)))
 
-        if mode not in ('crop', 'nearest', 'lanczos', 'bilinear', 'bicubic', 'cubic'):
-            raise ValueError('Bad mode: {}'.format(mode))
-        self.mode = mode
+    if mode not in ('crop', 'nearest', 'lanczos', 'bilinear', 'bicubic', 'cubic'):
+        raise ValueError('Bad mode: {}'.format(mode))
+    _mode = mode
 
-        if void_label >= nclass:
-            raise ValueError('background / void label[{}] must less than number of class[{}]'.format(void_label, nclass))
-        self.void_label = void_label
+    if void_label >= nclass:
+        raise ValueError('background / void label[{}] must less than number of class[{}]'.format(void_label, nclass))
+    _void_label = void_label
 
-        self.scale = scale
-        self.center = center
-        self.strides = strides
-        self.spi = spi
-        self.one_hot = one_hot
-        self.asarray = True
-        self.channel_axis = channel_axis
-        self.augmentator = SegmentDataAugmentator(clip, fliplr, flipud, saturation, contrast, brightness, lighting_std)
+    _scale = scale
+    _center = center
+    _strides = strides
+    _spi = spi
+    _one_hot = one_hot
+    _asarray = True
+    #_augmentator = SegmentDataAugmentator(clip, fliplr, flipud, saturation, contrast, brightness, lighting_std)
 
-        self.preprocess_input = preprocess_input if preprocess_input is not None else lambda x: x
+    _preprocess_input = preprocess_input if preprocess_input is not None else lambda x: x
 
     @property
     def train_nsamples(self):
         if hasattr(self, 'train_samples'):
-            return len(self.train_samples)
+            return len(_train_samples)
         return 0
 
     @property
     def valid_nsamples(self):
         if hasattr(self, 'valid_samples'):
-            return len(self.valid_samples)
+            return len(_valid_samples)
         return 0
 
     @property
     def test_nsamples(self):
         if hasattr(self, 'test_samples'):
-            return len(self.test_samples)
+            return len(_test_samples)
         return 0
 
     @property
     def eval_nsamples(self):
         if hasattr(self, 'eval_samples'):
-            return len(self.eval_samples)
+            return len(_eval_samples)
         return 0
 
     @property
     def background(self):
-        return self.void_label
+        return _void_label
 
-    def generate(self, phase='train'):
+    def _generate(phase='train'):
         """generate dataset batches
 
         This function is a python generator, to call, use `next()` function
@@ -225,67 +225,63 @@ class SegmentDataGenerator():
         assert phase in ['train', 'valid', 'test', 'eval'], 'phase can only be `train`, `valid`, `test` and `eval`. given `{}`'.format(phase)
         while True: # for debug
             if phase == 'train':
-                assert hasattr(self, 'train_samples') and hasattr(self, 'train_labels')
-                index = np.arange(len(self.train_samples))
+                index = np.arange(len(_train_samples))
                 np.random.shuffle(index)
-                samples, labels = self.train_samples[index], self.train_labels[index]
+                samples, labels = _train_samples[index], _train_labels[index]
             elif phase == 'valid':
-                assert hasattr(self, 'valid_samples') and hasattr(self, 'valid_labels')
-                assert self.valid_samples is not None, 'valid_samples is not given for valid phase'
-                assert self.valid_labels is not None, 'valid_samples is not given for valid phase'
-                index = np.arange(len(self.valid_samples))
+                assert _valid_samples is not None, 'valid_samples is not given for valid phase'
+                assert _valid_labels is not None, 'valid_samples is not given for valid phase'
+                index = np.arange(len(valid_samples))
                 np.random.shuffle(index)
-                samples, labels = self.valid_samples[index], self.valid_labels[index]
+                samples, labels = _valid_samples[index], _valid_labels[index]
             elif phase == 'test':
-                assert hasattr(self, 'test_samples') and hasattr(self, 'test_labels')
-                assert self.test_samples is not None, 'test_samples is not given for test phase'
-                samples, labels = self.test_samples, self.test_labels
+                assert test_samples is not None, 'test_samples is not given for test phase'
+                samples, labels = _test_samples, _test_labels
                 if labels is None:
-                    labels = [None] * len(self.test_samples)
+                    labels = [None] * len(test_samples)
             else:
-                assert hasattr(self, 'eval_samples') and hasattr(self, 'eval_labels')
-                assert self.eval_samples is not None, 'eval_samples is not given for eval phase'
-                samples, labels = self.eval_samples, self.eval_labels
+                assert eval_samples is not None, 'eval_samples is not given for eval phase'
+                samples, labels = _eval_samples, _eval_labels
 
             inputs = []
             targets = []
             nsample = 0
             for sample, truth in zip(samples, labels):
                 label_path = truth
-                if self.basepath is not None:
-                    image_path = os.path.join(self.basepath, sample.decode('UTF-8'))
+                if _basepath is not None:
+                    image_path = os.path.join(_basepath, sample.decode('UTF-8'))
                     if truth is not None:
-                        label_path = os.path.join(self.basepath, truth.decode('UTF-8'))
+                        label_path = os.path.join(_basepath, truth.decode('UTF-8'))
                 else:
                     image_path = sample.decode('UTF-8')
                     if truth is not None:
                         label_path = truth.decode('UTF-8')
                 logging.debug('loading image')
-                image, label = load_image(image_path, label_path, self.size, self.asarray, self.scale, self.center, self.strides, self.mode, self.spi, self.void_label)
+                image, label = load_image(image_path, label_path, _size, _asarray, _scale, _center, _strides, _mode, _spi, _void_label)
                 logging.debug('done')
                 if len(image) < 0:
                     continue
                 if phase in ['train', 'valid', 'eval'] and label is None:
                     raise ValueError('ground truth must be given for phase `{}`'.format(phase))
 
-                if label is not None and self.one_hot:
-                    label = dense_one_hot(label, self.nclass)
+                if label is not None and _one_hot:
+                    label = dense_one_hot(label, _nclass)
                 # augmentation for train ONLY
                 if phase == 'train':
-                    image, label = self.augmentator.augment(image, label, self.spi!=1)
+                    image, label = _augmentator.augment(image, label, _spi!=1)
 
                 nsample += 1
                 inputs.extend(image)
                 if label is not None:
                     targets.extend(label)
 
-                if nsample == self.batch_size:
+                if nsample == _batch_size:
                     _inputs = np.asarray(inputs)
-                    if self.channel_axis == 1:
+                    if _channel_axis == 1:
                         _inputs = np.transpose(_inputs, (0, 3, 1, 2))
                     if len(targets) != 0:
                         _targets = np.asarray(targets)
-                        if self.channel_axis == 1 and self.one_hot:
+                        if _channel_axis == 1 and _one_hot:
                             _targets = np.transpose(_targets, (0, 3, 1, 2))
                         logging.debug('sample shape: {}, label shape: {}'.format(_inputs.shape, _targets.shape))
                     else:
@@ -293,11 +289,12 @@ class SegmentDataGenerator():
                     inputs = []
                     targets = []
                     nsample = 0
-                    _inputs = self.preprocess_input(_inputs)
+                    _inputs = _preprocess_input(_inputs)
                     if phase == 'test': # test phase
                         yield _inputs
                     else: # train / valid phase
                         yield _inputs, _targets
+
 
 ######################################################
 class SegmentDataAugmentator():
@@ -499,4 +496,4 @@ def generator(imagedir, batch_size,
             if onehot:
                 if y is not None:
                     y = one_hot(y, nclass)
-            yield [x, y]
+            yield [x, y], [iteration+1, iterations]
