@@ -5,6 +5,14 @@
 #    - batch-norm
 is_training = True
 
+# interstatus for visualization
+# must be one of [None, True, False]
+#    None: no output
+#    True: print layers to graph
+#          will change to instance of pydot.Dot
+#    False:print layers to terminal
+graph = None
+
 data_format='NHWC'
 # for channels-last format
 #   kernel shape: [row, col, ins, outs] for 2d

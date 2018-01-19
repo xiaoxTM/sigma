@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .. import colors, status, layers
+from .. import colors, status
 import numpy as np
 import copy
 import collections
@@ -138,15 +138,15 @@ def name_normalize(names):
 def export_graph(filename, ext):
     if pydot is None:
         raise ImportError('Import pydot failed. make sure pydot is installed')
-    if not isinstance(layers._graph, pydot.Dot):
-        raise TypeError('graph model is not built. graph: {}'.format(layers._graph))
+    if not isinstance(status.graph, pydot.Dot):
+        raise TypeError('graph model is not built. graph: {}'.format(status.graph))
     if ext is None:
         _, ext = os.path.splitext(filename)
     if ext is None:
         ext = 'png'
     else:
         ext = ext[1:]
-    layers._graph.write(filename, format=ext)
+    status.graph.write(filename, format=ext)
 
 
 """ if not reuse:
@@ -156,10 +156,10 @@ def export_graph(filename, ext):
                       colors.fg.red, output, colors.reset))
 """
 def print_layer(inputs, outputs, typename, reuse, name):
-    if layers._graph is not None:
-        if name is None:
-            raise ValueError('name is not given')
+    if status.graph is not None:
         if not reuse:
+            if name is None:
+                raise ValueError('name is not given')
             if isinstance(inputs, (list, tuple)):
                 input_shape = [shape(x) for x in inputs]
                 inputname = [name_normalize(x.name) for x in inputs]
@@ -168,7 +168,7 @@ def print_layer(inputs, outputs, typename, reuse, name):
                 inputname = [name_normalize(inputs.name)]
             output_shape = outputs.get_shape().as_list()
             outputname = name_normalize(outputs.name)
-            if layers._graph is False:
+            if status.graph is False:
                 if len(inputname) == 1:
                     inputname = inputname[0]
                     input_shape = input_shape[0]
@@ -176,10 +176,10 @@ def print_layer(inputs, outputs, typename, reuse, name):
                       .format(inputname, colors.fg.green, input_shape, colors.reset,
                               colors.fg.blue, name, typename, colors.reset,
                               outputname, colors.fg.red, output_shape, colors.reset))
-            elif layers._graph is True or isinstance(layers._graph, pydot.Dot):
+            elif status.graph is True or isinstance(status.graph, pydot.Dot):
                 if pydot is None:
                     raise ImportError('Import pydot failed. make sure pydot is installed')
-                if layers._graph is True:
+                if status.graph is True:
                     dot = pydot.Dot()
                     dot.set('rankdir', 'TB')
                     dot.set('concentrate', True)
@@ -189,7 +189,7 @@ def print_layer(inputs, outputs, typename, reuse, name):
                         node = pydot.Node(iname,
                                           label=label)
                         dot.add_node(node)
-                    layers._graph = dot
+                    status.graph = dot
                 ishape = input_shape
                 if len(ishape) == 1:
                     ishape = ishape[0]
@@ -197,12 +197,12 @@ def print_layer(inputs, outputs, typename, reuse, name):
                                                                ishape,
                                                                output_shape)
                 color = layer2color(typename)
-                layers._graph.add_node(pydot.Node(outputname,
+                status.graph.add_node(pydot.Node(outputname,
                                                  label=label,
                                                  fillcolor=color,
                                                  style='filled'))
                 for iname in inputname:
-                    layers._graph.add_edge(pydot.Edge(iname, outputname))
+                    status.graph.add_edge(pydot.Edge(iname, outputname))
 
 
 """ normalize axis given tensor shape

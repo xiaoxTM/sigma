@@ -1,11 +1,10 @@
 import inspect
 from contextlib import contextmanager
-
 from ..ops import helper
+
 
 _CONTEXT_DEFAULTS = []
 
-_graph = True
 
 @contextmanager
 def defaults(**kwargs):
