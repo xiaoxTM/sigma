@@ -40,10 +40,10 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - [x] batch_norm
    - [ ] dropout
  - pools
-   - [x] avg_pool2d
-   - [x] avg_pool2d_global
+   - [ ] avg_pool2d
+   - [ ] avg_pool2d_global
    - [x] max_pool2d
-   - [x] max_pool2d_global
+   - [ ] max_pool2d_global
 
 # Advantages
  - seamless with original tensorflow library
