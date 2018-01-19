@@ -25,6 +25,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - [x] conv3d
    - [x] deconv2d
    - [x] soft_conv2d [aka. deformable convolution]
+   - [ ] sepconv2d [aka. separable_conv2d]
  - losses
    - [x] binary_cross_entropy
    - [x] categorical_cross_entropy
