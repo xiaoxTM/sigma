@@ -64,7 +64,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - checkpoints
      - [x] load / save
    - weights
-     - [ ] import_weights / export_weights
+     - [x] import_weights / export_weights
    - model
      - [ ] import_model / export_model
 

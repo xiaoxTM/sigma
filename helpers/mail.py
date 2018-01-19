@@ -31,10 +31,11 @@ def sendmail(message, fromaddr, toaddr, passwd,
         screenshot : bool
                      attach screenshot or not
         others :
-                  NOTE that,  python3-markdown provide basic notations
-                  if more notations need, specify extensions
-                  For example, to use table notation:
-                      message = markdown.markdown(message, extesions=['markdown.extensions.tables'])
+                NOTE that,  python3-markdown provide basic notations
+                if more notations need, specify extensions
+                For example, to use table notation:
+                    message = markdown.markdown(message,
+                                                extesions=['markdown.extensions.tables'])
                   Supported extensions:
                     |        Extension     |	         “Name”                 |
                     |:--------------------:|------------------------------------|

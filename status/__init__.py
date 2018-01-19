@@ -13,12 +13,22 @@ is_training = True
 #    False:print layers to terminal
 graph = None
 
-data_format='NHWC'
+data_format = 'NHWC'
 # for channels-last format
 #   kernel shape: [row, col, ins, outs] for 2d
 # for channel-first (without batch dimension) format
 #   kernel shape: [ins, outs, row, col] for 2d
-if data_format == 'NHWC':
-    axis = -1
-else:
-    axis = 1
+
+axis = -1
+
+def set_data_format(dformat):
+    if dformat not in ['NHWC', 'NCWH']:
+        raise ValueError('`data_format` must be `NHWC` or `NCWH`. given {}'
+                         .format(dformat))
+    global axis
+    global data_format
+    data_format = dformat
+    if data_format == 'NHWC':
+        axis = -1
+    else:
+        axis = 1

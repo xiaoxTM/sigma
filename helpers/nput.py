@@ -16,19 +16,19 @@ def dense_argmax(x,
                  one_hot=True,
                  axis=-1):
     """
-       x to be the form of
-       1. (batch-size, nsamples, nclass) for axis =-1,
-          or (batch-size, nclass, nsamples) for axis=1
-       2. (batch-size, rows, cols, nclass) for axis =-1
-          or (batch-size, nclass, rows, cols) for axis=1
-       If not given / None: no transpose is done.
+        x to be the form of
+        1. (batch-size, nsamples, nclass) for axis =-1,
+           or (batch-size, nclass, nsamples) for axis=1
+        2. (batch-size, rows, cols, nclass) for axis =-1
+           or (batch-size, nclass, rows, cols) for axis=1
+        If not given / None: no transpose is done.
 
-       colormap must be either dict/list/tuple or none
-       1. dict: should have the form of {idx:[red, green, blue], ...}
-       2. list: in form of [[red, green, blue], ...]
-       3. tuple: in form of ([red, green, blue], ...)
-       All above form will return a single color image.
-       4. None: return one-hot label
+        colormap must be either dict/list/tuple or none
+        1. dict: should have the form of {idx:[red, green, blue], ...}
+        2. list: in form of [[red, green, blue], ...]
+        3. tuple: in form of ([red, green, blue], ...)
+        All above form will return a single color image.
+        4. None: return one-hot label
     """
     assert isinstance(x, np.ndarray), 'x must be instance of np.ndarray'
     assert len(x.shape) == 4 or len(x.shape) == 3, \
