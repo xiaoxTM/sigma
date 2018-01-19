@@ -32,8 +32,8 @@ def segment_data_augmentator(clip=[0, 255],
                probability for brightness augmentation operation
     """
     if isinstance(saturation, (list, tuple, np.ndarray)):
-        assert len(saturation) == 2, '`saturation` as list/tuple '
-                                     'must have size of two. given {}'
+        assert len(saturation) == 2, '`saturation` as list/tuple '\
+                                     'must have size of two. given {}'\
                                      .format(len(saturation))
     elif isinstance(saturation, (float, np.float, np.float32, np.float64)):
         saturation = [saturation, saturation]
@@ -41,8 +41,8 @@ def segment_data_augmentator(clip=[0, 255],
         raise TypeError('`saturation` support only scalar or list. given {}'
                         .format(type(saturation)))
     if isinstance(contrast, (list, tuple, np.ndarray)):
-        assert len(contrast) == 2, '`contrast` as list/tuple '
-                                   'must have size of two. given {}'
+        assert len(contrast) == 2, '`contrast` as list/tuple '\
+                                   'must have size of two. given {}'\
                                    .format(len(contrast))
     elif isinstance(contrast, (float, np.float, np.float32, np.float64)):
         contrast = [contrast, contrast]
@@ -50,8 +50,8 @@ def segment_data_augmentator(clip=[0, 255],
         raise TypeError('`contrast` support only scalar or list. given {}'
                         .format(type(contrast)))
     if isinstance(brightness, (list, tuple, np.ndarray)):
-        assert len(brightness) == 2, '`brightness` as list/tuple '
-                                     'must have size of two. given {}'
+        assert len(brightness) == 2, '`brightness` as list/tuple '\
+                                     'must have size of two. given {}'\
                                      .format(len(brightness))
     elif isinstance(brightness, (float, np.float, np.float32, np.float64)):
         brightness = [brightness, brightness]
@@ -67,8 +67,8 @@ def segment_data_augmentator(clip=[0, 255],
         color_jitter.append(_brightness)
 
     if isinstance(lighting_std, (list, tuple, np.ndarray)):
-        assert len(lighting_std) == 2, '`lighting_std` as list/tuple '
-                                       'must have size of two. given {}'
+        assert len(lighting_std) == 2, '`lighting_std` as list/tuple '\
+                                       'must have size of two. given {}'\
                                        .format(len(lighting_std))
     elif isinstance(lighting_std, (float, np.float, np.float32, np.float64)):
         lighting_std = [lighting_std, lighting_std]
@@ -77,7 +77,7 @@ def segment_data_augmentator(clip=[0, 255],
                         'given {}'.format(type(lighting_std)))
 
     if isinstance(clip, (list, tuple)):
-        assert len(clip) == 2, '`clip` of list/tuple must '
+        assert len(clip) == 2, '`clip` of list/tuple must '\
                                'have length of 2. given {}'.format(len(clip))
     elif isinstance(clip, int):
         clip = [0, clip]
@@ -313,7 +313,7 @@ def segment_data_generator(self, nclass, filelist, batch_size,
     if size is None:
         size = size
     elif isinstance(size, (list, tuple)):
-        assert len(size) == 2, 'size of list/tuple must have length'
+        assert len(size) == 2, 'size of list/tuple must have length'\
                                ' of 2. given {}'.format(len(size))
         size = size
     elif isinstance(size, int):
@@ -335,7 +335,7 @@ def segment_data_generator(self, nclass, filelist, batch_size,
                                             contrast,
                                             brightness,
                                             lighting_std)
-    if preprocess_input is None
+    if preprocess_input is None:
         preprocess_input = lambda x: x
     def _nsamples(x):
         if x is None:
@@ -365,7 +365,7 @@ def segment_data_generator(self, nclass, filelist, batch_size,
                 for phase 'test', return 'labels'
         """
         assert phase in ['train', 'valid', 'test', 'eval'],\
-               'phase can only be `train`, `valid`, `test` and `eval`. '
+               'phase can only be `train`, `valid`, `test` and `eval`. '\
                'given `{}`'.format(phase)
         while True: # for debug
             if phase == 'train':
@@ -452,7 +452,7 @@ def segment_data_generator(self, nclass, filelist, batch_size,
                         yield inputs
                     else: # train / valid phase
                         yield inputs, targets
-    return _generate,
+    return _generate, \
            map(_nsamples,
                [train_samples, valid_samples, test_samples, eval_samples])
 
@@ -523,7 +523,7 @@ def generator(imagedir, batch_size,
         gtlist = np.asarray(gtlist, dtype=np.string_)
     length = len(filelist)
     index = np.arange(length, dtype=np.int32)
-    iterations = int(length / batch_size)
+    iterations = max(int(length / batch_size), 1)
     def _generate():
         while True:
             np.random.shuffle(index)
@@ -543,4 +543,4 @@ def generator(imagedir, batch_size,
                     if y is not None:
                         y = one_hot(y, nclass)
                 yield [x, y], iteration+1
-    return _generate, iterations
+    return _generate(), iterations
