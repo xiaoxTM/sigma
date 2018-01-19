@@ -3,47 +3,47 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
 
 # Support layers
  - actives
-   - crelu
-   - relu
-   - relu6
-   - elu
-   - selu
-   - leaky_relu
-   - softmax
-   - softplus
-   - softsign
-   - sigmoid
-   - linear
+   - [x] crelu
+   - [x] relu
+   - [x] relu6
+   - [x] elu
+   - [x] selu
+   - [x] leaky_relu
+   - [x] softmax
+   - [x] softplus
+   - [x] softsign
+   - [x] sigmoid
+   - [x] linear
  - base
-   - flatten
-   - reshape (not tested)
+   - [x] flatten
+   - [ ] reshape
  - convolutional
-   - embedding (not tested)
-   - fully_conv [aka. dense]
-   - conv1d (not tested)
-   - conv2d
-   - conv3d (not tested)
-   - deconv2d
-   - soft_conv2d [aka. deformable convolution]
+   - [ ] embedding
+   - [x] fully_conv [aka. dense]
+   - [ ] conv1d
+   - [x] conv2d
+   - [x] conv3d
+   - [x] deconv2d
+   - [x] soft_conv2d [aka. deformable convolution]
  - losses
-   - binary_cross_entropy
-   - categorical_cross_entropy
-   - mean_square_error
-   - winner_takes_all (not tested)
-   - total_variation_regularize (not tested)
+   - [x] binary_cross_entropy
+   - [x] categorical_cross_entropy
+   - [x] mean_square_error
+   - [ ] winner_takes_all
+   - [ ] total_variation_regularize
  - merge
-   - concat
-   - add (not tested)
-   - mul (not tested)
+   - [x] concat
+   - [x] add
+   - [ ] mul
  - normalization
-   - instance_norm (not tested)
-   - batch_norm
-   - dropout (not tested)
+   - [x] instance_norm
+   - [x] batch_norm
+   - [ ] dropout
  - pools
-   - avg_pool2d
-   - avg_pool2d_global
-   - max_pool2d
-   - max_pool2d_global
+   - [x] avg_pool2d
+   - [x] avg_pool2d_global
+   - [x] max_pool2d
+   - [x] max_pool2d_global
 
 # Advantages
  - seamless with original tensorflow library
@@ -62,11 +62,11 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - save to file [status.graph=True]
  - load / save and import / export
    - checkpoints
-     - load / save
+     - [x] load / save
    - weights
-     - import_weights / export_weights (not tested)
+     - [ ] import_weights / export_weights
    - model
-     - import_model / export_model (not tested)
+     - [ ] import_model / export_model
 
 # Version explanation
 `sigma` version consists of three parts:
