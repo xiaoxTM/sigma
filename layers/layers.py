@@ -22,7 +22,7 @@ layer_actives = ['crelu', 'relu', 'relu6', 'elu', 'selu', 'leaky_relu',
                  'softmax', 'softplus', 'softsign', 'sigmoid', 'tanh', 'linear']
 layer_base = ['flatten', 'reshape']
 layer_convolutional = ['fully_conv', 'dense', 'conv1d', 'conv2d', 'conv3d',
-                       'soft_conv2d', 'deconv2d']
+                       'soft_conv2d', 'deconv2d', 'sepconv2d']
 layer_merge = ['concat', 'add', 'mul']
 layer_normalization = ['instance_norm', 'batch_norm', 'dropout']
 layer_pool = ['avg_pool2d', 'avg_pool2d_global',

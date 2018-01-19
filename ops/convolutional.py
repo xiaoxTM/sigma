@@ -773,3 +773,152 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
 #                      act, offsets, trainable, dtype,
 #                      -2, collections, reuse, summarize,
 #                      name, scope), out_shape
+
+
+def sepconv(sepconvop,
+            depthwise_kernel,
+            pointwise_kernel,
+            channel_multiplier,
+            weight_initializer='glorot_uniform',
+            weight_regularizer=None,
+            bias_initializer='zeros',
+            bias_regularizer=None,
+            act=None,
+            trainable=True,
+            dtype=tf.float32,
+            caxis=-1,
+            collections=None,
+            reuse=False,
+            summarize=True,
+            name=None,
+            scope=None):
+    # NOTE that the parameters:
+    #          `caxis`
+    #      is setup to deal with de-convolutional op
+    #      whose output is kernel_shape[-2]
+    #      instead of kernel_shape[-1]
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          sepconvop.__name__[1:],
+                                          reuse)
+    act = actives.get(act)
+    depthwise = mm.malloc('depthwise-weight',
+                          depthwise_kernel,
+                          dtype,
+                          weight_initializer,
+                          weight_regularizer,
+                          trainable,
+                          collections,
+                          reuse,
+                          name,
+                          scope)
+    pointwise = mm.malloc('pointwise-weight',
+                          pointwise_kernel,
+                          dtype,
+                          weight_initializer,
+                          weight_regularizer,
+                          trainable,
+                          collecitons,
+                          reuse,
+                          name,
+                          scope)
+    if summarize and not reuse:
+        tf.summary.histogram(weight.name, weight)
+
+    if not isinstance(bias_initializer, bool) or bias_initializer is True:
+        bias = mm.malloc('bias',
+                         (pointwise_kernel[status.axis],),
+                         dtype,
+                         bias_initializer,
+                         bias_regularizer,
+                         trainable,
+                         collections,
+                         reuse,
+                         name,
+                         scope)
+        if summarize and not reuse:
+            tf.summary.histogram(bias.name, bias)
+    else:
+        bias = False
+    def _sepconv(x):
+        with ops_scope:
+            x = sepconvop(x, depthwise, pointwise)
+            if bias:
+                x = tf.nn.bias_add(x, bias)
+            x = act(x)
+        return x
+    return _sepconv
+
+
+def sepconv2d(input_shape, nouts, kernel,
+              stride=1,
+              padding='valid',
+              channel_multiplier=1,
+              rate=1,
+              weight_initializer='glorot_uniform',
+              weight_regularizer=None,
+              bias_initializer='zeros',
+              bias_regularizer=None,
+              act=None,
+              trainable=True,
+              dtype=tf.float32,
+              collections=None,
+              reuse=False,
+              summarize=True,
+              name=None,
+              scope=None):
+    if len(input_shape) != 4:
+        raise ValueError('conv2d require input shape {}[batch-size, rows,'
+                         'cols, channels]{}, given {}{}{}'
+                         .format(colors.fg.green, colors.reset, colors.fg.red,
+                                 input_shape, colors.reset))
+
+    kernel = helper.norm_input_2d(kernel)
+    stride = helper.norm_input_2d(stride)
+    output_shape = helper.get_output_shape(input_shape, nouts,
+                                           kernel, stride, padding)
+    depthwise_kernel = [*kernel[1:-1], input_shape[status.axis], channel_multiplier]
+    pointwise_kernel = [1, 1,
+                        input_shape[status.axis]*channel_multiplier,
+                        nouts]
+    """
+    input: 4-D Tensor with shape according to data_format.
+    depthwise_filter: 4-D Tensor with shape
+        [filter_height, filter_width, in_channels, channel_multiplier].
+        Contains in_channels convolutional filters of depth 1.
+    pointwise_filter: 4-D Tensor with shape
+        [1, 1, channel_multiplier * in_channels, out_channels].
+        Pointwise filter to mix channels after depthwise_filter
+        has convolved spatially.
+    strides: 1-D of size 4. The strides for the depthwise convolution
+        for each dimension of input.
+    padding: A string, either 'VALID' or 'SAME'. The padding algorithm.
+        See the comment here
+    rate: 1-D of size 2. The dilation rate in which we sample input values
+        across the height and width dimensions in atrous convolution.
+        If it is greater than 1, then all values of strides must be 1.
+    name: A name for this operation (optional).
+    data_format: The data format for input. Either "NHWC" (default) or "NCHW".
+    """
+    def _sepconv2d(x, depthwise_filter, pointwise_filter):
+        return tf.nn.separable_conv2d(x, depthwise_filter,
+                                      pointwise_filter,
+                                      stride, padding, rate,
+                                      name, status.data_format)
+
+    return _separable_conv(_separable_conv2d,
+                           depthwise_kernel,
+                           pointwise_kernel,
+                           channels_multiplier,
+                           weight_initializer,
+                           weight_regularizer,
+                           bias_initializer,
+                           bias_regularizer,
+                           act,
+                           trainable,
+                           dtype,
+                           collections,
+                           reuse,
+                           summarize,
+                           name,
+                           scope), output_shape

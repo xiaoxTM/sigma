@@ -353,7 +353,8 @@ def conv3d(inputs, nouts, kernel, stride,
     **TODO** atruos_convxd_tranpose
 """
 @layers
-def deconv2d(inputs, output_shape, nouts, kernel, stride,
+def deconv2d(inputs, output_shape, nouts, kernel,
+             stride=1,
              padding='valid',
              weight_initializer='glorot_uniform',
              weight_regularizer=None,
@@ -380,3 +381,45 @@ def deconv2d(inputs, output_shape, nouts, kernel, stride,
 
     return _layers(fun, inputs, output, return_shape,
                    'deconv2d', reuse, name)
+
+
+@layers
+def sepconv2d(inputs, nouts, kernel,
+              stride=1,
+              padding='valid',
+              channel_multiplier=1,
+              rate=1,
+              weight_initializer='glorot_uniform',
+              weight_regularizer=None,
+              bias_initializer='zeros',
+              bias_regularizer=None,
+              act=None,
+              trainable=True,
+              dtype=tf.float32,
+              return_shape=False,
+              collections=None,
+              reuse=False,
+              summarize=True,
+              name=None,
+              scope=None):
+    input_shape = inputs.get_shape().as_list()
+    fun, output = convs.sepconv2d(input_shape,
+                                  nouts,
+                                  kernel,
+                                  stride,
+                                  padding,
+                                  channel_multiplier,
+                                  rate,
+                                  weight_initializer,
+                                  weight_regularizer,
+                                  bias_initializer,
+                                  bias_regularizer,
+                                  act, trainable,
+                                  dtype,
+                                  collections,
+                                  reuse,
+                                  summarize,
+                                  name,
+                                  scope)
+    return _layer(fun, inputs, output, return_shape,
+                  'sepconv2d', reuse, name)
