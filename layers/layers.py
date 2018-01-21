@@ -1,4 +1,5 @@
 import inspect
+import functools
 from contextlib import contextmanager
 from ..ops import helper
 from .. import status
@@ -79,13 +80,11 @@ def defaults(*args, **kwargs):
         if not callable(arg):
             raise TypeError('args at {}-th is not callable. given {}'
                             .format(idx, arg))
-    if len(args) != 0:
-        raise NotImplementedError('specification of functions not implemented '
-                                  'but will be in the future')
+
+    list_args = list(map(lambda x:inspect.signature(x.__wrapped__), args))
     global _CONTEXT_DEFAULTS_
-    # print([arg for arg in args])
+    # print([arg.__wrapped__ for arg in args])
     context_keys = _CONTEXT_DEFAULTS_.keys()
-    list_args = list(args)
     for k,v in kwargs.items():
         value = [v, list_args]
         if k in context_keys:
@@ -178,6 +177,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
         fun layername(inputs, [...], reuse, name) => x[, output_shape]
 """
 def layers(fun):
+    @functools.wraps(fun)
     def _wrap(*args, **kwargs):
         # parameters = inspect.getfullargspec(fun)[0]
         signature = inspect.signature(fun)
@@ -188,7 +188,6 @@ def layers(fun):
         for name, parameter in items:
             if name not in kwargs.keys():
                 # if parameter and the corresponding function in context
-                # print('name:', name)
                 if name in _CONTEXT_DEFAULTS_.keys():
                     lists = _CONTEXT_DEFAULTS_[name]
                     found = False
