@@ -128,7 +128,9 @@ dense = fully_conv
 """ 1-D convolutional operation
 """
 @layers
-def conv1d(inputs, nouts, kernel, stride,
+def conv1d(inputs, nouts,
+           kshape=3,
+           stride=1,
            padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
@@ -146,7 +148,7 @@ def conv1d(inputs, nouts, kernel, stride,
     input_shape = inputs.get_shape().as_list()
     fun, output = convs.conv1d(input_shape,
                                nouts,
-                               kernel,
+                               kshape,
                                stride,
                                padding,
                                weight_initializer,
@@ -167,7 +169,7 @@ def conv1d(inputs, nouts, kernel, stride,
 
 
 # @layers
-# def soft_conv1d(inputs, nouts, kernel, stride, padding='valid',
+# def soft_conv1d(inputs, nouts, kshape, stride, padding='valid',
 #                 offsets=None, offsets_trainable=False,
 #                 weight_initializer='glorot_uniform',
 #                 weight_regularizer=None,
@@ -180,7 +182,7 @@ def conv1d(inputs, nouts, kernel, stride,
 #                 name=None, scope=None):
 #     input_shape = inputs.get_shape().as_list()
 #     fun, output = convs.soft_conv1d(input_shape, nouts,
-#                                     kernel, stride, padding,
+#                                     kshape, stride, padding,
 #                                     weight_initializer,
 #                                     weight_regularizer,
 #                                     bias_initializer,
@@ -195,7 +197,9 @@ def conv1d(inputs, nouts, kernel, stride,
 """ 2-D convolutional operation
 """
 @layers
-def conv2d(inputs, nouts, kernel, stride,
+def conv2d(inputs, nouts,
+           kshape=3,
+           stride=1,
            padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
@@ -213,7 +217,7 @@ def conv2d(inputs, nouts, kernel, stride,
     input_shape = inputs.get_shape().as_list()
     fun, output = convs.conv2d(input_shape,
                                nouts,
-                               kernel,
+                               kshape,
                                stride, padding,
                                weight_initializer,
                                weight_regularizer,
@@ -237,7 +241,7 @@ def conv2d(inputs, nouts, kernel, stride,
         x if return_offsets is False,
         x, offsets if return_offsets is true.
             mode = 'naive' / 'nearest'
-                offsets in the form of [[batch, row, col, channel, kernel],
+                offsets in the form of [[batch, row, col, channel, kshape],
                                          ...
                                        ] for 2D, e.g., images
             mode = 'bilinear'
@@ -253,7 +257,9 @@ def conv2d(inputs, nouts, kernel, stride,
             therefore, 'bilinear' have 4 times of length than 'naive' / 'nearest'
 """
 @layers
-def soft_conv2d(inputs, nouts, kernel, stride,
+def soft_conv2d(inputs, nouts,
+                kshape=3,
+                stride=1,
                 padding='valid',
                 mode='bilinear',
                 return_offsets=False,
@@ -280,7 +286,7 @@ def soft_conv2d(inputs, nouts, kernel, stride,
     #                                          input_shape[-1]*)
     fun, output = convs.soft_conv2d(input_shape,
                                     nouts,
-                                    kernel,
+                                    kshape,
                                     stride,
                                     padding,
                                     mode,
@@ -320,7 +326,9 @@ def soft_conv2d(inputs, nouts, kernel, stride,
 """ 3-D convolutional operation
 """
 @layers
-def conv3d(inputs, nouts, kernel, stride,
+def conv3d(inputs, nouts,
+           kshape=3,
+           stride=1,
            padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
@@ -337,7 +345,7 @@ def conv3d(inputs, nouts, kernel, stride,
            scope=None):
     # TODO: atruous_convxd
     fun, output = convs.conv3d(scope, input_shape, nouts,
-                               kernel, stride, padding,
+                               kshape, stride, padding,
                                weight_initializer,
                                weight_regularizer,
                                bias_initializer,
@@ -353,7 +361,8 @@ def conv3d(inputs, nouts, kernel, stride,
     **TODO** atruos_convxd_tranpose
 """
 @layers
-def deconv2d(inputs, output_shape, nouts, kernel,
+def deconv2d(inputs, output_shape, nouts,
+             kshape=3,
              stride=1,
              padding='valid',
              weight_initializer='glorot_uniform',
@@ -371,7 +380,7 @@ def deconv2d(inputs, output_shape, nouts, kernel,
              scope=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = convs.deconv2d(input_shape, output_shape,
-                                 nouts, kernel, stride, padding,
+                                 nouts, kshape, stride, padding,
                                  weight_initializer,
                                  weight_regularizer,
                                  bias_initializer,
@@ -384,7 +393,8 @@ def deconv2d(inputs, output_shape, nouts, kernel,
 
 
 @layers
-def sepconv2d(inputs, nouts, kernel,
+def sepconv2d(inputs, nouts,
+              kshape=3,
               stride=1,
               padding='valid',
               channel_multiplier=1,
@@ -405,7 +415,7 @@ def sepconv2d(inputs, nouts, kernel,
     input_shape = inputs.get_shape().as_list()
     fun, output = convs.sepconv2d(input_shape,
                                   nouts,
-                                  kernel,
+                                  kshape,
                                   stride,
                                   padding,
                                   channel_multiplier,

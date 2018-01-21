@@ -150,7 +150,7 @@ def fully_conv(input_shape, nouts,
 
 """ 1-D convolutional operation
 """
-def conv1d(input_shape, nouts, kernel,
+def conv1d(input_shape, nouts, kshape,
            stride=1,
            padding='valid',
            weight_initializer='glorot_uniform',
@@ -170,13 +170,13 @@ def conv1d(input_shape, nouts, kernel,
                          '{}[batch-size, cols, channels]{}, given {}{}{}'
                          .format(colors.fg.green, colors.reset,
                                  colors.fg.red, input_shape, colors.reset))
-    kernel = helper.norm_input_1d(kernel)
+    kshape = helper.norm_input_1d(kshape)
     stride = helper.norm_input_id(stride)
     # helper.get_output_shape requires all inputs (except padding)
     # to have same length and be all list / tuple
     output_shape = helper.get_output_shape(input_shape, nouts,
-                                           kernel, stride, padding)
-    kernel_shape = [kernel[1], input_shape[-1], nouts]
+                                           kshape, stride, padding)
+    kernel_shape = [kshape[1], input_shape[-1], nouts]
     # tf.nn.conv1d requires stride to be integer
     # collapse dimension into scalar
     stride = stride[1]
@@ -195,7 +195,7 @@ def conv1d(input_shape, nouts, kernel,
 
 """ 2-D convolutional operation
 """
-def conv2d(input_shape, nouts, kernel,
+def conv2d(input_shape, nouts, kshape,
            stride=1,
            padding='valid',
            weight_initializer='glorot_uniform',
@@ -215,11 +215,11 @@ def conv2d(input_shape, nouts, kernel,
                          'cols, channels]{}, given {}{}{}'
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 input_shape, colors.reset))
-    kernel = helper.norm_input_2d(kernel)
+    kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
-                                           kernel, stride, padding)
-    kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
+                                           kshape, stride, padding)
+    kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     def _conv2d(x, weight):
         return tf.nn.conv2d(x, weight, stride, padding.upper())
     return conv(convop=_conv2d, kernel_shape=kernel_shape,
@@ -235,7 +235,8 @@ def conv2d(input_shape, nouts, kernel,
 
 """ 3-D convolutional operation
 """
-def conv3d(input_shape, nouts, kernel,
+def conv3d(input_shape, nouts,
+           kshape=3,
            stride=1, padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
@@ -251,11 +252,11 @@ def conv3d(input_shape, nouts, kernel,
         raise ValueError('{}conv2d require input shape [batch-size, rows,'
                          'cols, channels], given {}{}'
                          .format(colors.fg.red, input_shape, colors.reset))
-    kernel = helper.norm_input_3d(kernel)
+    kshape = helper.norm_input_3d(kshape)
     stride = helper.norm_input_3d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
-                                           kernel, stride, padding)
-    kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
+                                           kshape, stride, padding)
+    kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     def _conv3d(x, weight):
         return tf.nn.conv3d(x, weight, stride, padding)
     return conv(convop=_conv3d, kernel_shape=kernel_shape,
@@ -272,30 +273,37 @@ def conv3d(input_shape, nouts, kernel,
 """ 2-D transpose convolutional operation
 """
 def deconv2d(input_shape, output_shape, nout,
-             kernel, stride=1, padding='valid',
+             kshape=3,
+             stride=1,
+             padding='valid',
              weight_initializer='glorot_uniform',
              weight_regularizer=None,
              bias_initializer='zeros',
              bias_regularizer=None,
-             act=None, trainable=True, dtype=tf.float32,
-             collections=None, reuse=False,
-             summarize=True, name=None, scope=None):
+             act=None,
+             trainable=True,
+             dtype=tf.float32,
+             collections=None,
+             reuse=False,
+             summarize=True,
+             name=None,
+             scope=None):
     # NOTE: unlike normal convolutional, whose weights has shape of
     #       => [height, width, inputs_channels, output_channels]
     #       de-convolutional weights has shape of:
     #       => [height, width, output_channels, inputs_channels]
     #       the run-time input shape:
     #       if padding == 'valid'
-    #           [batch-size, ceil((output_shape[1:-1] - kernel[1:-1] + 1) / stride[1:-1])]
+    #           [batch-size, ceil((output_shape[1:-1] - kshape[1:-1] + 1) / stride[1:-1])]
     #       else:
     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
     if len(input_shape) != 4:
         raise ValueError('{}deconv2d require input shape [batch-size,'
                          'rows, cols, channels], given {}{}'
                          .format(colors.fg.red, input_shape, colors.reset))
-    kernel = helper.norm_input_2d(kernel)
+    kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
-    kernel_shape = [*kernel[1:-1], nout, input_shape[-1]]
+    kernel_shape = [*kshape[1:-1], nout, input_shape[-1]]
     out_shape = output_shape
     if out_shape is None:
         out_shape = input_shape
@@ -327,7 +335,8 @@ def deconv2d(input_shape, output_shape, nout,
                 name=name, scope=scope), out_shape
 
 
-def soft_conv(input_shape, kernel_shape,
+def soft_conv(input_shape,
+              kshape=3,
               stride=1, padding='valid', mode='naive',
               weight_initializer='glorot_uniform',
               weight_regularizer=None,
@@ -359,11 +368,11 @@ def soft_conv(input_shape, kernel_shape,
         dim_stride[idx] = stride[dim]
         dim_strided_shape[idx] = int(
                         np.ceil(float(input_shape[dim]) / float(stride[dim])))
-    nkernels = np.prod(kernel_shape[:dimlen])
+    nkernels = np.prod(kshape[:dimlen])
     ndims = np.prod([int(sh / st) for sh, st in zip(dim_shape, dim_stride)])
     # offsets_shape = [-1] + dim_shape + [nkernels, dimlen]
     weight = mm.malloc('weight',
-                       [nkernels]+kernel_shape[dimlen:],
+                       [nkernels]+kshape[dimlen:],
                        dtype,
                        weight_initializer,
                        weight_regularizer,
@@ -376,7 +385,7 @@ def soft_conv(input_shape, kernel_shape,
         tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
-                         (kernel_shape[-1],),
+                         (kshape[-1],),
                          dtype,
                          bias_initializer,
                          bias_regularizer,
@@ -398,7 +407,7 @@ def soft_conv(input_shape, kernel_shape,
     kwargs = {
         'input_shape':input_shape,
         'nouts':nkernels * dimlen,
-        'kernel':kernel_shape,
+        'kshape':kshape,
         'stride':stride,
         'padding':padding,
         'weight_initializer':offset_weight_initializer,
@@ -422,7 +431,7 @@ def soft_conv(input_shape, kernel_shape,
     grids = np.meshgrid(*grids, indexing='ij')
     grids = np.stack(grids, axis=-1)
     kgrids = [np.arange(-int(k / 2), int(k / 2)+1, dtype=np.float32)
-                for k in kernel_shape[:dimlen]]
+                for k in kshape[:dimlen]]
     kgrids = np.meshgrid(*kgrids, indexing='ij')
     # [[[i, j]_0, [i, j]_1, ... [i, j]_krow]_0,... _kcols]
     kgrids = np.stack(kgrids, axis=-1)
@@ -611,7 +620,7 @@ def soft_conv(input_shape, kernel_shape,
 
 # """ 1-D convolutional operation
 # """
-# def soft_conv1d(input_shape, nouts, kernel, stride,
+# def soft_conv1d(input_shape, nouts, kshape, stride,
 #                 padding='valid',
 #                 weight_initializer=None,
 #                 weight_regularizer=None,
@@ -629,14 +638,14 @@ def soft_conv(input_shape, kernel_shape,
 #                          '{}[batch-size, cols, channels]{}, given {}{}{}'
 #                          .format(colors.fg.green, colors.reset,
 #                                  colors.fg.red, input_shape, colors.reset))
-#     kernel = helper.norm_input_1d(kernel)
+#     kshape = helper.norm_input_1d(kshape)
 #     stride = helper.norm_input_id(stride)
 #
 #     # helper.get_output_shape requires all inputs (except padding)
 #     # to have same length and be all list / tuple
 #     output_shape = helper.get_output_shape(input_shape, nouts,
-#                                            kernel, stride, padding)
-#     kernel_shape = [kernel[1], input_shape[-1], nouts]
+#                                            kshape, stride, padding)
+#     kernel_shape = [kshape[1], input_shape[-1], nouts]
 #
 #     return soft_conv(input_shape, nouts, kernel_shape,
 #                      weight_initializer, weight_regularizer,
@@ -648,7 +657,8 @@ def soft_conv(input_shape, kernel_shape,
 
 """ 2-D convolutional operation
 """
-def soft_conv2d(input_shape, nouts, kernel, stride=1,
+def soft_conv2d(input_shape, nouts,
+                kshape=3, stride=1,
                 padding='valid', mode='bilinear',
                 weight_initializer='glorot_uniform',
                 weight_regularizer=None,
@@ -668,11 +678,11 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
                         .format(colors.fg.green, colors.reset, colors.fg.red,
                                 input_shape, colors.reset))
 
-    kernel = helper.norm_input_2d(kernel)
+    kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
-                                           kernel, stride, padding)
-    kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
+                                           kshape, stride, padding)
+    kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     return soft_conv(input_shape,
                      kernel_shape, stride,
                      padding, mode,
@@ -691,7 +701,7 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
 
 # """ 3-D convolutional operation
 # """
-# def soft_conv3d(input_shape, nouts, kernel, stride, padding='valid',
+# def soft_conv3d(input_shape, nouts, kshape, stride, padding='valid',
 #                 weight_initializer=None, weight_regularizer=None,
 #                 bias_initializer=None, bias_regularizer=None, act=None,
 #                 trainable=True, dtype=tf.float32, collections=None,
@@ -705,12 +715,12 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
 #                          'cols, channels], given {}{}'
 #                          .format(colors.fg.red, input_shape, colors.reset))
 #
-#     kernel = helper.norm_input_3d(kernel)
+#     kshape = helper.norm_input_3d(kshape)
 #     stride = helper.norm_input_3d(stride)
 #
 #     output_shape = helper.get_output_shape(input_shape, nouts,
-#                                            kernel, stride, padding)
-#     kernel_shape = [*kernel[1:-1], input_shape[-1], nouts]
+#                                            kshape, stride, padding)
+#     kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
 #
 #     return soft_conv(input_shape, nouts, kernel_shape,
 #                      weight_initializer, weight_regularizer,
@@ -723,7 +733,7 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
 # """ 2-D transpose convolutional operation
 # """
 # def soft_deconv2d(input_shape, output_shape,
-#                   nout, kernel, stride,
+#                   nout, kshape, stride,
 #                   padding='valid',
 #                   weight_initializer=None,
 #                   weight_regularizer=None,
@@ -737,7 +747,7 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
 #     #       [height, width, output_channels, inputs_channels]
 #     #       the run-time input shape:
 #     #       if padding == 'valid'
-#     #           [batch-size, ceil((output_shape[1:-1] - kernel[1:-1] + 1) / stride[1:-1])]
+#     #           [batch-size, ceil((output_shape[1:-1] - kshape[1:-1] + 1) / stride[1:-1])]
 #     #       else:
 #     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
 #     if name is None:
@@ -747,9 +757,9 @@ def soft_conv2d(input_shape, nouts, kernel, stride=1,
 #                          'rows, cols, channels], given {}{}'
 #                          .format(colors.fg.red, input_shape, colors.reset))
 #
-#     kernel = helper.norm_input_2d(kernel)
+#     kshape = helper.norm_input_2d(kshape)
 #     stride = helper.norm_input_2d(stride)
-#     kernel_shape = [*kernel[1:-1], nout, input_shape[-1]]
+#     kernel_shape = [*kshape[1:-1], nout, input_shape[-1]]
 #     out_shape = output_shape
 #     if out_shape is None:
 #         out_shape = input_shape
@@ -850,7 +860,8 @@ def sepconv(sepconvop,
     return _sepconv
 
 
-def sepconv2d(input_shape, nouts, kernel,
+def sepconv2d(input_shape, nouts,
+              kshape=3,
               stride=1,
               padding='valid',
               channel_multiplier=1,
@@ -873,11 +884,11 @@ def sepconv2d(input_shape, nouts, kernel,
                          .format(colors.fg.green, colors.reset, colors.fg.red,
                                  input_shape, colors.reset))
 
-    kernel = helper.norm_input_2d(kernel)
+    kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
-                                           kernel, stride, padding)
-    depthwise_kernel = [*kernel[1:-1], input_shape[status.axis], channel_multiplier]
+                                           kshape, stride, padding)
+    depthwise_kernel = [*kshape[1:-1], input_shape[status.axis], channel_multiplier]
     pointwise_kernel = [1, 1,
                         input_shape[status.axis]*channel_multiplier,
                         nouts]

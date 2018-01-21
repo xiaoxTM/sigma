@@ -115,23 +115,23 @@ def normalize_axes(tensor_shape, axis=status.axis):
     return axis
 
 
-def get_output_shape(input_shape, nouts, kernel, stride, padding):
+def get_output_shape(input_shape, nouts, kshape, stride, padding):
     typecheck = map(lambda x, y: isinstance(x, y),
-                    [input_shape, kernel, stride],
+                    [input_shape, kshape, stride],
                     [(list, tuple)]*3)
     if not np.all(typecheck):
-        raise TypeError('type of input, kernel, stride not all '
+        raise TypeError('type of input, kshape, stride not all '
                         'list / tuple, given{}{}{}, {}{}{}, {}{}{}'
                         .format(colors.fg.red, type(input_shape), colors.reset,
-                                colors.fg.red, type(kernel), colors.reset,
+                                colors.fg.red, type(kshape), colors.reset,
                                 colors.fg.red, type(stride), colors.reset))
 
-    if len(input_shape) != len(kernel) or \
+    if len(input_shape) != len(kshape) or \
        len(input_shape) != len(stride):
-        raise ValueError('shape of input, kernel, stride not match,'
+        raise ValueError('shape of input, kshape, stride not match,'
                          ' given {}{}{}, {}{}{}, {}{}{}'
                          .format(colors.fg.red, len(input_shape), colors.reset,
-                                 colors.fg.red, len(kernel), colors.reset,
+                                 colors.fg.red, len(kshape), colors.reset,
                                  colors.fg.red, len(stride), colors.reset))
 
     padding = padding.upper()
@@ -149,12 +149,12 @@ def get_output_shape(input_shape, nouts, kernel, stride, padding):
     else:
         for idx in index[1:-1]:
             # NOTE: unlike normal convolutional operation, which is:
-            #           ceil((image-size - kernel-size) / stride) + 1
+            #           ceil((image-size - kshape-size) / stride) + 1
             #       tensorflow calculate the output shape in another way:
-            #           ceil((image-size - kernel-size + 1) / stride)
+            #           ceil((image-size - kshape-size + 1) / stride)
             out_shape[idx] = int(
               np.ceil(
-                float(input_shape[idx] - kernel[idx] + 1) / float(stride[idx])
+                float(input_shape[idx] - kshape[idx] + 1) / float(stride[idx])
             ))
     out_shape[-1] = nouts
     return out_shape
@@ -167,15 +167,14 @@ def norm_input_1d(shape):
         if len(shape) == 1:
             shape = [1, shape[0], 1]
         elif len(shape) != 3:
-            raise ValueError('conv1d require input shape {}[batch-size,'
+            raise ValueError('require input shape {}[batch-size,'
                              ' cols, channels]{}, given {}{}{}'
                              .format(colors.fg.green, colors.reset,
-                                     colors.fg.red, input_shape, colors.reset))
+                                     colors.fg.red, shape, colors.reset))
     else:
-        raise TypeError('kernel for conv1d require {}int/list/tuple{} '
-                        'type, given {}`{}`{}'
+        raise TypeError('shape require {}int/list/tuple{} type, given {}`{}`{}'
                         .format(colors.fg.green, colors.reset,
-                                colors.fg.red, type(kernel), colors.reset))
+                                colors.fg.red, type(shape), colors.reset))
     return shape
 
 
@@ -188,15 +187,14 @@ def norm_input_2d(shape):
         elif len(shape) == 2:
             shape = [1, shape[0], shape[1], 1]
         elif len(shape) != 4:
-            raise ValueError('conv1d require input shape {}[batch-size, '
+            raise ValueError('require input shape {}[batch-size, '
                              'rows, cols, channels]{}, given {}{}{}'
                              .format(colors.fg.green, colors.reset,
-                                     colors.fg.red, input_shape, colors.reset))
+                                     colors.fg.red, shape, colors.reset))
     else:
-        raise TypeError('kernel for conv1d require '
-                        '{}int/list/tuple{} type, given {}`{}`{}'
+        raise TypeError('shape requires {}int/list/tuple{} type, given {}`{}`{}'
                         .format(colors.fg.green, colors.reset,
-                                colors.fg.red, type(kernel), colors.reset))
+                                colors.fg.red, type(shape), colors.reset))
     return shape
 
 
@@ -209,12 +207,11 @@ def norm_input_3d(shape):
         elif len(shape) == 3:
             shape = [1, shape[0], shape[1], shape[2], 1]
         elif len(shape) != 5:
-            raise ValueError('conv1d require input shape {}[batch-size, '
+            raise ValueError('require input shape {}[batch-size, '
                              'depths, rows, cols, channels]{}, given {}{}{}'
                              .format(colors.fg.green, colors.reset,
                                      colors.fg.red, input_shape, colors.reset))
     else:
-        raise TypeError('kernel for conv1d require '
-                        '{}int/list/tuple{} type, given {}`{}`{}'
+        raise TypeError('shape requires {}int/list/tuple{} type, given {}`{}`{}'
                         .format(colors.fg.green, colors.reset,
-                                colors.fg.red, type(kernel), colors.reset))
+                                colors.fg.red, type(kshape), colors.reset))

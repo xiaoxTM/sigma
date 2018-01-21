@@ -15,9 +15,9 @@ graph = None
 
 data_format = 'NHWC'
 # for channels-last format
-#   kernel shape: [row, col, ins, outs] for 2d
+#   kshape shape: [row, col, ins, outs] for 2d
 # for channel-first (without batch dimension) format
-#   kernel shape: [ins, outs, row, col] for 2d
+#   kshape shape: [ins, outs, row, col] for 2d
 
 axis = -1
 

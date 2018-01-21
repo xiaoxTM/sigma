@@ -20,7 +20,7 @@ def get_fans(shape):
         fan_out = shape[1]
     else:
         # Assuming convolution kernels (2D, 3D, or more).
-        # kernel shape: (..., input_depth, depth)
+        # kshape shape: (..., input_depth, depth)
         receptive_field_size = 1.
         for dim in shape[:-2]:
             receptive_field_size *= dim

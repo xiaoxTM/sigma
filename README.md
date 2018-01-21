@@ -31,7 +31,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine `A`rmory. Unlike `
    - [x] categorical_cross_entropy
    - [x] mean_square_error
    - [ ] winner_takes_all
-   - [ ] total_variation_regularize
+   - [x] total_variation_regularize
  - merge
    - [x] concat
    - [x] add

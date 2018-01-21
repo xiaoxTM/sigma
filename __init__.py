@@ -1,4 +1,4 @@
-from .layers import defaults, _colormaps
+from .layers import defaults, _colormaps, placeholder
 from . import status
 import os
 import os.path

@@ -1,14 +1,16 @@
 import tensorflow as tf
 from . import helper
+from .. import status
 
 
-def base_pool2d(input_shape, fun, psize, stride, padding, axis, reuse, name, scope):
+def base_pool2d(input_shape, fun, pshape, stride,
+                padding, reuse, name, scope):
     if stride is None:
-        stride = psize
+        stride = pshape
     stride = helper.norm_input_2d(stride)
-    psize = helper.norm_input_2d(psize)
-    out_shape = helper.get_output_shape(input_shape, input_shape[axis],
-                                        psize, stride, padding)
+    pshape = helper.norm_input_2d(pshape)
+    out_shape = helper.get_output_shape(input_shape, input_shape[status.axis],
+                                        pshape, stride, padding)
 
     ltype = fun.__name__.rsplit('.', 1)
     if len(ltype) > 1:
@@ -18,11 +20,12 @@ def base_pool2d(input_shape, fun, psize, stride, padding, axis, reuse, name, sco
     ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
     def _base_pool2d(x):
         with ops_scope:
-            return fun(x, psize, stride, padding.upper(), name=name)
+            return fun(x, pshape, stride, padding.upper(),
+                       data_format=status.data_format, name=name)
     return _base_pool2d, out_shape
 
 
-def base_pool2d_global(input_shape, fun, axis, reuse, name, scope):
+def base_pool2d_global(input_shape, fun, reuse, name, scope):
     # if none and e.g., fun.__name__ == 'tf.nn.max_pool'
     #    name = max_pool
     ltype = fun.__name__.rsplit('.', 1)
@@ -32,39 +35,60 @@ def base_pool2d_global(input_shape, fun, axis, reuse, name, scope):
         ltype = ltype[0]
     ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
     axes = [idx for idx, _ in enumerate(input_shape)]
-    del axes[axis]
+    del axes[status.axis]
     del axes[0]
     def _base_pool2d_global(x):
         with ops_scope:
             return fun(x, axis=axes, name=name)
-    return _base_pool2d_global, [input_shape[0], input_shape[axis]]
+    return _base_pool2d_global, [input_shape[0], input_shape[status.axis]]
 
 
-def avg_pool2d(input_shape, psize, stride=None,
-               padding='same', axis=-1, reuse=False, name=None, scope=None):
-    return base_pool2d(input_shape, tf.nn.avg_pool, psize,
-                       stride, padding, axis, reuse, name, scope)
+def avg_pool2d(input_shape,
+               pshape=2,
+               stride=None,
+               padding='same',
+               reuse=False,
+               name=None,
+               scope=None):
+    return base_pool2d(input_shape, tf.nn.avg_pool, pshape,
+                       stride, padding, reuse, name, scope)
 
 
-def avg_pool2d_global(input_shape, axis=-1, reuse=False,
-                      name=None, scope=None):
+def avg_pool2d_global(input_shape,
+                      reuse=False,
+                      name=None,
+                      scope=None):
     return base_pool2d_global(input_shape, tf.reduce_mean,
-                              axis, reuse, name, scope)
+                              reuse, name, scope)
 
 
-def max_pool2d(input_shape, psize, stride=None,
-               padding='same', axis=-1, reuse=False, name=None, scope=None):
-    return base_pool2d(input_shape, tf.nn.max_pool, psize,
-                       stride, padding, axis, reuse, name, scope)
+def max_pool2d(input_shape,
+               pshape=2,
+               stride=None,
+               padding='same',
+               reuse=False,
+               name=None,
+               scope=None):
+    return base_pool2d(input_shape, tf.nn.max_pool, pshape,
+                       stride, padding, reuse, name, scope)
 
 
-def max_pool2d_global(inputs, axis=-1, reuse=False, name=None, scope=None):
+def max_pool2d_global(inputs,
+                      reuse=False,
+                      name=None,
+                      scope=None):
     return base_pool2d_global(input_shape, tf.reduce_max,
-                              axis, reuse, name, scope)
+                              reuse, name, scope)
 
 
-def resize(input_shape, output_shape, factor=None, mode='bilinear',
-           align_corners=False, reuse=False, name=None, scope=None):
+def resize(input_shape,
+           output_shape=None,
+           factor=None,
+           mode='bilinear',
+           align_corners=False,
+           reuse=False,
+           name=None,
+           scope=None):
     if output_shape is None:
         if factor is None:
             raise ValueError('cannot feed bilinear with both '
