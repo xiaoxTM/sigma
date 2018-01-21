@@ -52,7 +52,7 @@ def get_gen(set_name, batch_size, translate, scale,
 
 def model_regular(x, winit, nclass=10):
     with sigma.defaults(stride=1, padding='same', act='relu',
-                        kernel=3, weight_initializer=winit):
+                        kshape=3, weight_initializer=winit):
 
         x = layers.convs.conv2d(x, 32)
         x = layers.norm.batch_norm(x, act=None)
@@ -73,7 +73,7 @@ def model_regular(x, winit, nclass=10):
 
 def model_soft(x, winit, mode, nclass=10):
     with sigma.defaults(stride=1, padding='same', act='relu',
-                        kernel=3, weight_initializer=winit):
+                        kshape=3, weight_initializer=winit):
         x = layers.convs.soft_conv2d(x, 32)
         x = layers.norm.batch_norm(x, act=None)
 
