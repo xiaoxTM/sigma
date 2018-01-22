@@ -1,7 +1,7 @@
 from ..ops import actives, helper
-from .layers import layers
+from .core import layer
 
-@layers
+@layer
 def crelu(inputs, reuse=False, name=None, scope=None):
     return actives.crelu(reuse, name, scope)(inputs)
 
@@ -10,7 +10,7 @@ def crelu(inputs, reuse=False, name=None, scope=None):
     calculates:
         max(x, 0)
 """
-@layers
+@layer
 def relu(inputs, reuse=False, name=None, scope=None):
     return actives.relu(reuse, name, scope)(inputs)
 
@@ -19,7 +19,7 @@ def relu(inputs, reuse=False, name=None, scope=None):
     calculates:
         min(max(x, 0), 6)
 """
-@layers
+@layer
 def relu6(inputs, reuse=False, name=None, scope=None):
     return actives.relu6(reuse, name, scope)(inputs)
 
@@ -28,7 +28,7 @@ def relu6(inputs, reuse=False, name=None, scope=None):
     calculates:
         exp(x) -1 if x < 0 else x
 """
-@layers
+@layer
 def elu(inputs, reuse=False, name=None, scope=None):
     return actives.elu(reuse, name, scope)(inputs)
 
@@ -37,7 +37,7 @@ def elu(inputs, reuse=False, name=None, scope=None):
     calculates:
         scale * alpha * (exp(x) -1)
 """
-@layers
+@layer
 def selu(inputs,
          alpha=1.6732632423543772848170429916717,
          scale=1.0507009873554804934193349852946,
@@ -51,7 +51,7 @@ def selu(inputs,
     calculates:
         max(x, alpha*x)
 """
-@layers
+@layer
 def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
     return actives.leaky_relu(alpha, reuse, name, scope)(inputs)
 
@@ -60,7 +60,7 @@ def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
     calculates:
         exp(x) / reduce_sum(exp(x), dim)
 """
-@layers
+@layer
 def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
     return actives.softmax(dim, reuse, name, scope)(inputs)
 
@@ -69,7 +69,7 @@ def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
     calculates:
         log(exp(x) + 1)
 """
-@layers
+@layer
 def softplus(inputs, reuse=False, name=None, scope=None):
     return actives.softplus(reuse, name, scope)(inputs)
 
@@ -78,7 +78,7 @@ def softplus(inputs, reuse=False, name=None, scope=None):
     calculates:
         x / (abs(x) + 1)
 """
-@layers
+@layer
 def softsign(inputs, reuse=False, name=None, scope=None):
     return actives.softsign(reuse, name, scope)(inputs)
 
@@ -87,7 +87,7 @@ def softsign(inputs, reuse=False, name=None, scope=None):
     calculates:
         1 / (1 + exp(-x))
 """
-@layers
+@layer
 def sigmoid(inputs, reuse=False, name=None, scope=None):
     return actives.sigmoid(reuse, name, scope)(inputs)
 
@@ -96,7 +96,7 @@ def sigmoid(inputs, reuse=False, name=None, scope=None):
     calculates:
         (exp(x) -1) / (exp(x) + 1)
 """
-@layers
+@layer
 def tanh(inputs, reuse=False, name=None, scope=None):
     return actives.tanh(reuse, name, scope)(inputs)
 
@@ -105,6 +105,6 @@ def tanh(inputs, reuse=False, name=None, scope=None):
     calculates:
         x
 """
-@layers
+@layer
 def linear(inputs, reuse=False, name=None, scope=None):
     return actives.linear(reuse, name, scope)(inputs)

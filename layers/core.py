@@ -172,11 +172,11 @@ def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
                     status.graph.add_edge(pydot.Edge(iname, outputname))
 
 
-""" layers decorator
-        layers decorated using @layers must have the spec:
+""" layer decorator
+        layer decorated using @layer must have the spec:
         fun layername(inputs, [...], reuse, name) => x[, output_shape]
 """
-def layers(fun):
+def layer(fun):
     @functools.wraps(fun)
     def _wrap(*args, **kwargs):
         # parameters = inspect.getfullargspec(fun)[0]

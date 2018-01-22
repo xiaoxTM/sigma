@@ -1,6 +1,6 @@
 from ..ops import pools, helper
 from .. import colors
-from .layers import layers
+from .core import layer
 import logging
 import tensorflow as tf
 
@@ -37,7 +37,7 @@ def _pool_global(inputs,
     return x
 
 
-@layers
+@layer
 def avg_pool2d(inputs,
                pshape=2,
                stride=None,
@@ -51,7 +51,7 @@ def avg_pool2d(inputs,
                  reuse, name, scope)
 
 
-@layers
+@layer
 def avg_pool2d_global(inputs,
                       return_shape=False,
                       reuse=False,
@@ -62,7 +62,7 @@ def avg_pool2d_global(inputs,
                         name, scope)
 
 
-@layers
+@layer
 def max_pool2d(inputs,
                pshape=2,
                stride=None,
@@ -76,7 +76,7 @@ def max_pool2d(inputs,
                  reuse, name, scope)
 
 
-@layers
+@layer
 def max_pool2d_global(inputs,
                       return_shape=False,
                       reuse=False,

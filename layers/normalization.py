@@ -1,9 +1,9 @@
 from ..ops import normalization as norms
 from ..ops import helper
 import tensorflow as tf
-from .layers import layers
+from .core import layer
 
-@layers
+@layer
 def instance_norm(inputs,
                   offset_initializer='zeros',
                   scale_initializer='ones',
@@ -36,7 +36,7 @@ def instance_norm(inputs,
     return x
 
 
-@layers
+@layer
 def batch_norm(inputs,
                momentum=0.99,
                offset_initializer='zeros',
@@ -77,7 +77,7 @@ def batch_norm(inputs,
     return x
 
 
-@layers
+@layer
 def dropout(inputs, pkeep, noise_shape=None,
             seed=None, name=None):
     return norms.dropout(pkeep, noise_shape, seed, name)(inputs)

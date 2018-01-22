@@ -20,6 +20,7 @@ setup(name='sigma',
           'smtplib',
           'email',
           'subprocess',
+          'functools',
           'json'
       ],
       zip_safe=False)

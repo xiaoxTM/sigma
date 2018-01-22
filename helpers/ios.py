@@ -54,13 +54,15 @@ def load(session, checkpoints,
     if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
-        raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. given {}{}{}'
+        raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
+                        'given {}{}{}'
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red, type(saver), colors.reset)
                         )
     if not isinstance(session, tf.Session):
-        raise TypeError('`{}session{}` must be instance of {}tf.Session{}. given {}{}{}'
+        raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
+                        'given {}{}{}'
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red, type(session), colors.reset)
@@ -91,20 +93,24 @@ def save(session, checkpoints,
     if saver is None:
         saver = tf.train.Saver()
     if not isinstance(saver, tf.train.Saver):
-        raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. given {}{}{}'
+        raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
+                        'given {}{}{}'
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red, type(saver), colors.reset)
                         )
     if not isinstance(session, tf.Session):
-        raise TypeError('`{}session{}` must be instance of {}tf.Session{}. given {}{}{}'
+        raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
+                        'given {}{}{}'
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red, type(session), colors.reset)
                         )
     if not os.path.isdir(checkpoints):
         raise FileNotFoundError('Directory {}{}{} not found'
-                                .format(colors.fg.red, checkpoints, colors.reset))
+                                .format(colors.fg.red,
+                                        checkpoints,
+                                        colors.reset))
     if verbose:
         print('{}saving check point to {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
@@ -178,7 +184,8 @@ def export_weights(filename, session,
                     # print('param', param)
                     val = session.run(param)
                     # print('val:', val)
-                    pset = weight_group.create_dataset(str(param.name), val.shape,
+                    pset = weight_group.create_dataset(str(param.name),
+                                                       val.shape,
                                                        dtype=val.dtype)
                     names.append(param.name)
                     if not val.shape:

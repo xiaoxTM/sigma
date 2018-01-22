@@ -28,7 +28,7 @@ def name_space():
                 return '{}-{}'.format(x, nid)
             else:
                 if x not in name_maps.keys():
-                    raise ValueError('{} not in name maps for indexing {}'
+                    raise ValueError('`{}` not in name maps for indexing {}'
                                      .format(x, index))
                 size = name_maps[x] + 1
                 nid = (size + index) % size

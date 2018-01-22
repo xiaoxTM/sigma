@@ -5,5 +5,5 @@ from . import pools
 from . import base
 from . import merge
 from . import losses
-from .layers import defaults, _colormaps
+from .core import defaults, _colormaps, layer
 from .base import placeholder

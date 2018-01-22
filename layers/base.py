@@ -1,12 +1,12 @@
 import tensorflow as tf
 from .. import colors
 from ..ops import base, helper
-from .layers import layers
+from .core import layer
 
 def placeholder(dtype, shape=None, name=None):
     return tf.placeholder(dtype, shape, name)
 
-@layers
+@layer
 def flatten(inputs, return_shape=False, reuse=False, name=None, scope=None):
     input_shape = inputs.get_shape().as_list()
     fun, output = base.flatten(input_shape, reuse, name, scope)
@@ -21,7 +21,7 @@ def flatten(inputs, return_shape=False, reuse=False, name=None, scope=None):
     return x
 
 
-@layers
+@layer
 def reshape(inputs, output_shape, return_shape=False,
             reuse=False, name=None, scope=None):
     input_shape = inputs.get_shape().as_list()

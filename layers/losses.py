@@ -1,6 +1,5 @@
-from ..ops import losses, helper
-from ..ops import regularizers
-from .layers import layers
+from ..ops import losses, helper, regularizers
+
 
 def _loss(fun, logits, labels, typename, reuse, name):
     x = fun(logits, labels)

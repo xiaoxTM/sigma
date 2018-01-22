@@ -1,11 +1,10 @@
 from ..ops import merge, helper
 from .. import colors
-from .layers import layers
+from .core import layer
 import tensorflow as tf
 
-def _merge(fun, inputs, output, typename, return_shape, reuse, name):
+def _merge(fun, inputs, output, typename, return_shape):
     x = fun(inputs)
-    # helper.print_layer(inputs, x, typename, reuse, name)
     if output != x.get_shape().as_list():
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
@@ -17,25 +16,35 @@ def _merge(fun, inputs, output, typename, return_shape, reuse, name):
     return x
 
 
-@layers
-def concat(inputs, axis=-1, return_shape=False, reuse=False, name='concat'):
+@layer
+def concat(inputs,
+           axis=-1,
+           return_shape=False,
+           reuse=False,
+           name='concat',
+           scope=None):
     inputs_shape = [ip.get_shape().as_list() for ip in inputs]
-    fun, output = merge.concat(inputs_shape, axis, name)
-    return _merge(fun, inputs, output, 'concatenate',
-                  return_shape, reuse, name)
+    fun, output = merge.concat(inputs_shape, axis, reuse, name, scope)
+    return _merge(fun, inputs, output, 'concatenate', return_shape)
 
 
-@layers
-def add(inputs, return_shape=False, reuse=False, name='add'):
+@layer
+def add(inputs,
+        return_shape=False,
+        reuse=False,
+        name='add',
+        scope=None):
     input_shape = [ip.get_shape().as_list() for ip in inputs]
-    fun, output = merge.add(input_shape, name)
-    return _merge(fun, inputs, output, 'add',
-                  return_shape, reuse, name)
+    fun, output = merge.add(input_shape, reuse, name, scope)
+    return _merge(fun, inputs, output, 'add', return_shape)
 
 
-@layers
-def mul(inputs, return_shape=False, reuse=False, name='mul'):
+@layer
+def mul(inputs,
+        return_shape=False,
+        reuse=False,
+        name='mul',
+        scope=None):
     input_shape = [ip.get_shape().as_list() for ip in inputs]
-    fun, output = merge.mul(input_shape, name)
-    return _merge(fun, inputs, output, 'mul',
-                  return_shape, reuse, name)
+    fun, output = merge.mul(input_shape, reuse, name, scope)
+    return _merge(fun, inputs, output, 'mul', return_shape)

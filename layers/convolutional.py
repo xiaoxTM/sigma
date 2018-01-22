@@ -2,9 +2,9 @@ import tensorflow as tf
 from ..ops import convolutional as convs
 from ..ops import helper
 from .. import colors
-from .layers import layers
+from .core import layer
 
-@layers
+@layer
 def embedding(inputs, table_size,
               strategy='mod',
               dtype=tf.float32,
@@ -89,7 +89,7 @@ def _layers(fun, inputs, output, return_shape, typename, reuse, name):
 
 """ fully convolutional operation
 """
-@layers
+@layer
 def fully_conv(inputs, nouts,
                weight_initializer='glorot_uniform',
                weight_regularizer=None,
@@ -127,7 +127,7 @@ dense = fully_conv
 
 """ 1-D convolutional operation
 """
-@layers
+@layer
 def conv1d(inputs, nouts,
            kshape=3,
            stride=1,
@@ -168,7 +168,7 @@ def conv1d(inputs, nouts,
                    'conv1d', reuse, name)
 
 
-# @layers
+# @layer
 # def soft_conv1d(inputs, nouts, kshape, stride, padding='valid',
 #                 offsets=None, offsets_trainable=False,
 #                 weight_initializer='glorot_uniform',
@@ -196,7 +196,7 @@ def conv1d(inputs, nouts,
 
 """ 2-D convolutional operation
 """
-@layers
+@layer
 def conv2d(inputs, nouts,
            kshape=3,
            stride=1,
@@ -256,7 +256,7 @@ def conv2d(inputs, nouts,
                 are used to bilinear interpolation
             therefore, 'bilinear' have 4 times of length than 'naive' / 'nearest'
 """
-@layers
+@layer
 def soft_conv2d(inputs, nouts,
                 kshape=3,
                 stride=1,
@@ -325,7 +325,7 @@ def soft_conv2d(inputs, nouts,
 
 """ 3-D convolutional operation
 """
-@layers
+@layer
 def conv3d(inputs, nouts,
            kshape=3,
            stride=1,
@@ -360,7 +360,7 @@ def conv3d(inputs, nouts,
 """ 2-D transpose convolutional operation
     **TODO** atruos_convxd_tranpose
 """
-@layers
+@layer
 def deconv2d(inputs, output_shape, nouts,
              kshape=3,
              stride=1,
@@ -392,7 +392,7 @@ def deconv2d(inputs, output_shape, nouts,
                    'deconv2d', reuse, name)
 
 
-@layers
+@layer
 def sepconv2d(inputs, nouts,
               kshape=3,
               stride=1,
