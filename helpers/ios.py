@@ -8,6 +8,101 @@ import h5py
 import pickle
 import gzip
 import io
+from timeit import default_timer as timer
+
+def intsize(x, cminus=False):
+    if x > 0:
+        return int(np.log10(x)) + 1
+    elif x == 0:
+        return 1
+    else:
+        if cminus:
+            return int(np.log10(-x)) + 2
+        else:
+            return int(np.log10(-x)) + 1
+
+
+def line(iterable,
+         brief=True,
+         nprompts=10,
+         epochs=None,
+         enum=False,
+         timeit=False,
+         accuracy=5,
+         message=None,
+         nc='x',
+         cc='+'):
+    """ show line message
+    """
+    if epochs is None:
+        try:
+            epochs = len(iterable)
+        except TypeError:
+            raise TypeError('getting the length of `iterable` failed')
+    if message is None:
+        message = 'Epoch:'
+    nc = nc.encode('utf8')
+    cc = cc.encode('utf8')
+    iterations = np.ceil(epochs / float(nprompts))
+    _prompt = np.asarray([cc] * (nprompts + 1), dtype=np.string_)
+    epochsize = intsize(epochs)
+    beg = None
+    elapsed = None
+    if brief:
+        if timeit:
+            spec = '\r{} [{{:{}}}, {{:3}}%] -- {{:.{}}}(s)'.format(message,
+                                                                   nprompts,
+                                                                   accuracy)
+        else:
+            spec = '\r{} [{{:{}}}, {{:3}}%]'.format(message, nprompts)
+    else:
+        if timeit:
+            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
+                   ' -- {{:.{}}}(s)'.format(message,
+                                            epochsize,
+                                            epochsize,
+                                            nprompt,
+                                            accuracy)
+        else:
+            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]'.format(message,
+                                                                       epochsize,
+                                                                       epochsize,
+                                                                       nprompt)
+    totaltime = 0
+    for idx, epoch in enumerate(iterable):
+        beg = timer()
+        if enum:
+            epoch = [idx, epoch]
+        yield epoch
+        idx += 1
+        div = int(np.ceil(idx / iterations - 1))
+        if div > epochs:
+            div = epochs - 1
+        if div > 0:
+            _prompt[:div] = cc
+        if _prompt[div] == nc or idx == epochs:
+            _prompt[div] = cc
+        else:
+            _prompt[div] = nc
+        totaltime += (timer() - beg)
+        elapsed = totaltime / idx
+        percentage = int(idx * 100 / epochs)
+        prompt = _prompt[:div+1].tostring().decode('utf-8')
+        if brief:
+            if timeit:
+                print(spec.format(prompt, percentage, elapsed), end='')
+            else:
+                print(spec.format(prompt, percentage), end='')
+        else:
+            if timeit:
+                print(spec.format(prompt, idx, epochs, percentage, elapsed),
+                      end='')
+            else:
+                print(spec.format(prompt, idx, epochs, percentage), end='')
+    if timeit:
+        print('\nTotal time elapsed:{}(s)'.format(totaltime))
+    else:
+        print()
 
 
 def encode(strings, codec='utf8'):
