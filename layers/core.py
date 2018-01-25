@@ -3,6 +3,7 @@ import functools
 from contextlib import contextmanager
 from ..ops import helper
 from .. import status
+import os.path
 
 try:
     import pydot_ng as pydot

@@ -1013,5 +1013,5 @@ def generator(imagedir, batch_size,
                 if onehot:
                     if y is not None:
                         y = one_hot(y, nclass)
-                yield [x, y], iteration+1
+                yield [x, y], iteration
     return _generate(), iterations
