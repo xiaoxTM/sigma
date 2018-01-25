@@ -6,7 +6,7 @@ import json
 import logging
 
 
-__version__ = '0.1.0'
+__version__ = '0.1.2'
 
 
 def set_print(mode=True):

@@ -40,6 +40,7 @@ def histogram_from_list_multiprocess(listname, nclass, basepath):
     worker.close()
     return distributes, distributes / np.sum(distributes)
 
+
 def histogram_from_list_simple(listname, nclass, basepath):
     assert isinstance(listname, (list, tuple))
     distributes = np.zeros(nclass)
@@ -52,12 +53,14 @@ def histogram_from_list_simple(listname, nclass, basepath):
             distributes[nc] += np.sum(label == nc)
     return distributes, distributes / np.sum(distributes)
 
+
 def histogram_from_list(listname, nclass, basepath,
                         multiprocess=1):
     if multiprocess != 1:
         return histogram_from_list_multiprocess(listname, nclass, basepath)
     else:
         return histogram_from_list_simple(listname, nclass, basepath)
+
 
 def histogram_from_file(listname, nclass,
                         basepath=None,
@@ -69,6 +72,7 @@ def histogram_from_file(listname, nclass,
                                'if no ground truth file given'
     return histogram_from_list(gtlist, nclass, basepath, multiprocess)
 
+
 def histogram_from_dir(dirname, nclass, multiprocess, namefilter=None):
     listname = []
     if namefilter is None:
@@ -78,6 +82,7 @@ def histogram_from_dir(dirname, nclass, multiprocess, namefilter=None):
             if namefilter(os.path.join(root, f)):
                 listname.append(os.path.join(root, f))
     return histogram_from_list(listname, nclass, None, multiprocess)
+
 
 def estimate_class_weights_from_file(listname, nclass,
                                      basepath=None,
@@ -101,6 +106,7 @@ def estimate_class_weights_from_file(listname, nclass,
     else:
         return np.exp(-distributes)
 
+
 def estimate_class_weights_from_dir(dirname, nclass,
                                     normalize=True,
                                     multiprocess=1,
@@ -118,6 +124,7 @@ def estimate_class_weights_from_dir(dirname, nclass,
     else:
         return np.exp(-distributes)
 
+
 def distribute_multiprocess_worker(params):
     filename, gtname, nclass = params
     image = sm.imread(filename)
@@ -130,6 +137,7 @@ def distribute_multiprocess_worker(params):
             hist, _ = np.histogram(single[position], np.arange(257))
             distributes[channel, nc, :] += hist
     return distributes
+
 
 def distribute_from_list_multiprocess(filename, gtname, nclass,
                                       basepath, multiprocess):
@@ -160,6 +168,7 @@ def distribute_from_list_multiprocess(filename, gtname, nclass,
     worker.close()
     return distributes
 
+
 def distribute_from_list_simple(filename, gtname, nclass, basepath):
     assert isinstance(filename, (list, tuple))
     assert isinstance(gtname, (list, tuple))
@@ -178,12 +187,14 @@ def distribute_from_list_simple(filename, gtname, nclass, basepath):
                 distributes[channel, nc, :] += hist
     return distributes
 
+
 def distribute_from_list(filename, gtname, nclass, basepath, multiprocess=1):
     if multiprocess != 1:
         return distribute_from_list_multiprocess(filename, gtname, nclass,
                                                  basepath, multiprocess)
     else:
         return distribute_from_list_simple(filename, gtname, nclass, basepath)
+
 
 def distribute_from_file(listname, nclass,
                          basepath=None,
@@ -198,6 +209,7 @@ def distribute_from_file(listname, nclass,
                                'if no ground truth file given'
     return distribute_from_list(filelist, gtlist, nclass,
                                 basepath, multiprocess)
+
 
 if __name__ == '__main__':
     print(distribute_from_file('/home/xiaox/studio/db/camvid/segnet/test.txt',

@@ -403,7 +403,6 @@ def soft_conv(input_shape,
                          '"naive" / "nearest" / '
                          '"floor" / "ceil" / "bilinear".'
                          ' given {}'.format(mode))
-
     kwargs = {
         'input_shape':input_shape,
         'nouts':nkernels * dimlen,
@@ -424,7 +423,6 @@ def soft_conv(input_shape,
         'scope':scope
     }
     # print('offset conv parameters:', kwargs)
-
     #with _scope:
     grids = [np.arange(0, s, t, dtype=np.float32)
               for s,t in zip(dim_shape, dim_stride)]
@@ -445,7 +443,6 @@ def soft_conv(input_shape,
     #    [rows, cols, krowsm * kcols, 2]
     #  =>[rows * cols * krows * kcols, 2]
     grids = grids.reshape((-1, dimlen))
-
     with ops_scope:
         if input_len == 3: # 1d
             convop = conv1d(**kwargs)[0]
@@ -493,7 +490,6 @@ def soft_conv(input_shape,
             offset_grids = tf.floor(offset_grids)
         elif mode == 'ceil':
             offset_grids = tf.ceil(offset_grids)
-
         offset_grids = tf.cast(offset_grids, dtype=tf.int32)
         unstacks = tf.unstack(offset_grids, axis=-1)
         for dim, bound in enumerate(dim_shape):
@@ -834,7 +830,6 @@ def sepconv(sepconvop,
                           scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
-
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          (pointwise_kernel[status.axis],),
@@ -893,23 +888,23 @@ def sepconv2d(input_shape, nouts,
                         input_shape[status.axis]*channel_multiplier,
                         nouts]
     """
-    input: 4-D Tensor with shape according to data_format.
-    depthwise_filter: 4-D Tensor with shape
-        [filter_height, filter_width, in_channels, channel_multiplier].
-        Contains in_channels convolutional filters of depth 1.
-    pointwise_filter: 4-D Tensor with shape
-        [1, 1, channel_multiplier * in_channels, out_channels].
-        Pointwise filter to mix channels after depthwise_filter
-        has convolved spatially.
-    strides: 1-D of size 4. The strides for the depthwise convolution
-        for each dimension of input.
-    padding: A string, either 'VALID' or 'SAME'. The padding algorithm.
-        See the comment here
-    rate: 1-D of size 2. The dilation rate in which we sample input values
-        across the height and width dimensions in atrous convolution.
-        If it is greater than 1, then all values of strides must be 1.
-    name: A name for this operation (optional).
-    data_format: The data format for input. Either "NHWC" (default) or "NCHW".
+        input: 4-D Tensor with shape according to data_format.
+        depthwise_filter: 4-D Tensor with shape
+            [filter_height, filter_width, in_channels, channel_multiplier].
+            Contains in_channels convolutional filters of depth 1.
+        pointwise_filter: 4-D Tensor with shape
+            [1, 1, channel_multiplier * in_channels, out_channels].
+            Pointwise filter to mix channels after depthwise_filter
+            has convolved spatially.
+        strides: 1-D of size 4. The strides for the depthwise convolution
+            for each dimension of input.
+        padding: A string, either 'VALID' or 'SAME'. The padding algorithm.
+            See the comment here
+        rate: 1-D of size 2. The dilation rate in which we sample input values
+            across the height and width dimensions in atrous convolution.
+            If it is greater than 1, then all values of strides must be 1.
+        name: A name for this operation (optional).
+        data_format: The data format for input. Either "NHWC" (default) or "NCHW".
     """
     def _sepconv2d(x, depthwise_filter, pointwise_filter):
         return tf.nn.separable_conv2d(x, depthwise_filter,
@@ -917,19 +912,19 @@ def sepconv2d(input_shape, nouts,
                                       stride, padding, rate,
                                       name, status.data_format)
 
-    return _separable_conv(_separable_conv2d,
-                           depthwise_kernel,
-                           pointwise_kernel,
-                           channels_multiplier,
-                           weight_initializer,
-                           weight_regularizer,
-                           bias_initializer,
-                           bias_regularizer,
-                           act,
-                           trainable,
-                           dtype,
-                           collections,
-                           reuse,
-                           summarize,
-                           name,
-                           scope), output_shape
+    return sepconv(_sepconv2d,
+                   depthwise_kernel,
+                   pointwise_kernel,
+                   channels_multiplier,
+                   weight_initializer,
+                   weight_regularizer,
+                   bias_initializer,
+                   bias_regularizer,
+                   act,
+                   trainable,
+                   dtype,
+                   collections,
+                   reuse,
+                   summarize,
+                   name,
+                   scope), output_shape
