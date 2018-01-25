@@ -1,3 +1,5 @@
+from sys import platform
+
 black = '\033[30m'
 red = '\033[31m'
 green = '\033[32m'
@@ -13,3 +15,20 @@ yellow = '\033[93m'
 lightblue = '\033[94m'
 pink = '\033[95m'
 lightcyan = '\033[96m'
+
+if platform.startswith('win'):
+    black = ''
+    red = ''
+    green = ''
+    orange = ''
+    blue = ''
+    purple = ''
+    cyan = ''
+    lightgray = ''
+    darkgray = ''
+    lightred = ''
+    lightgreen = ''
+    yellow = ''
+    lightblue = ''
+    pink = ''
+    lightcyan = ''

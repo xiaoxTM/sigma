@@ -26,6 +26,7 @@ def line(iterable,
          brief=True,
          nprompts=10,
          epochs=None,
+         multiplier=1,
          enum=False,
          timeit=False,
          accuracy=5,
@@ -43,37 +44,40 @@ def line(iterable,
         message = 'Epoch:'
     nc = nc.encode('utf8')
     cc = cc.encode('utf8')
-    iterations = np.ceil(epochs / float(nprompts))
+    iterations = np.ceil(epochs / float(nprompts)) * multiplier
     _prompt = np.asarray([cc] * (nprompts + 1), dtype=np.string_)
     epochsize = intsize(epochs)
     beg = None
     elapsed = None
     if brief:
         if timeit:
-            spec = '\r{} [{{:{}}}, {{:3}}%] -- {{:.{}}}(s)'.format(message,
-                                                                   nprompts,
-                                                                   accuracy)
+            spec = '\r{} [{{:{}}}, {{:3}}%] {{}} -- {{:.{}}}(s)' \
+                   .format(message, nprompts, accuracy)
         else:
-            spec = '\r{} [{{:{}}}, {{:3}}%]'.format(message, nprompts)
+            spec = '\r{} [{{:{}}}, {{:3}}%] {{}} '.format(message, nprompts)
     else:
         if timeit:
-            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
+            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
                    ' -- {{:.{}}}(s)'.format(message,
                                             epochsize,
                                             epochsize,
                                             nprompt,
                                             accuracy)
         else:
-            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]'.format(message,
-                                                                       epochsize,
-                                                                       epochsize,
-                                                                       nprompt)
+            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
+                   .format(message, epochsize, epochsize, nprompt)
     totaltime = 0
     for idx, epoch in enumerate(iterable):
         beg = timer()
         if enum:
             epoch = [idx, epoch]
-        yield epoch
+        ret = yield epoch
+        totaltime += (timer() - beg)
+        elapsed = totaltime / idx
+        if ret is None:
+            ret = ''
+        else:
+            ret = '{}{}{}'.format(colors.fg.blue, ret, colors.reset)
         idx += 1
         div = int(np.ceil(idx / iterations - 1))
         if div > epochs:
@@ -84,8 +88,6 @@ def line(iterable,
             _prompt[div] = cc
         else:
             _prompt[div] = nc
-        totaltime += (timer() - beg)
-        elapsed = totaltime / idx
         percentage = int(idx * 100 / epochs)
         prompt = _prompt[:div+1].tostring().decode('utf-8')
         if brief:
