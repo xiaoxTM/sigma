@@ -5,6 +5,8 @@ import os.path
 import json
 import logging
 
+import tensorflow as tf
+
 
 __version__ = '0.1.2'
 
@@ -35,3 +37,10 @@ else:
     status.set_data_format('NHWC')
     with open(config_path, 'w') as f:
         json.dump(config, f)
+
+def session(target='', graph=None, config=None, initializers=None):
+    sess = tf.Session(target, graph, config)
+    sess.run(tf.global_variables_initializer())
+    if initializers is not None:
+        sess.run(initializers)
+    return sess

@@ -23,7 +23,7 @@ def intsize(x, cminus=False):
 
 
 def line(iterable,
-         brief=True,
+         brief=False,
          nprompts=10,
          epochs=None,
          multiplier=1,
@@ -41,11 +41,12 @@ def line(iterable,
         except TypeError:
             raise TypeError('getting the length of `iterable` failed')
     if message is None:
-        message = 'Epoch:'
+        message = ''
     nc = nc.encode('utf8')
     cc = cc.encode('utf8')
-    iterations = np.ceil(epochs / float(nprompts)) * multiplier
-    _prompt = np.asarray([cc] * (nprompts + 1), dtype=np.string_)
+    step = (nprompts / (epochs * multiplier))
+    print('step:', step)
+    _prompt = np.asarray([nc] * nprompts, dtype=np.string_)
     epochsize = intsize(epochs)
     beg = None
     elapsed = None
@@ -59,48 +60,54 @@ def line(iterable,
         if timeit:
             spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
                    ' -- {{:.{}}}(s)'.format(message,
+                                            nprompts,
                                             epochsize,
                                             epochsize,
-                                            nprompt,
                                             accuracy)
         else:
             spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
-                   .format(message, epochsize, epochsize, nprompt)
+                   .format(message, epochsize, epochsize, nprompts)
     totaltime = 0
+    prev = 0
     for idx, epoch in enumerate(iterable):
-        beg = timer()
+        time_beg = timer()
         if enum:
             epoch = [idx, epoch]
         ret = yield epoch
-        totaltime += (timer() - beg)
+
+        block_beg = idx * step
+        totaltime += (timer() - time_beg)
+        idx += 1
         elapsed = totaltime / idx
         if ret is None:
             ret = ''
         else:
             ret = '{}{}{}'.format(colors.fg.blue, ret, colors.reset)
-        idx += 1
-        div = int(np.ceil(idx / iterations - 1))
-        if div > epochs:
-            div = epochs - 1
-        if div > 0:
-            _prompt[:div] = cc
-        if _prompt[div] == nc or idx == epochs:
-            _prompt[div] = cc
+        if block_beg > nprompts:
+            block_beg = nprompts - step
+        block_end = int(min(max(block_beg + step, 1), nprompts))
+        block_beg = int(block_beg)
+        if _prompt[block_beg] == nc or prev != block_beg:
+            _prompt[block_beg:block_end] = cc
+            if prev != block_beg:
+                _prompt[prev:block_beg] = cc
         else:
-            _prompt[div] = nc
+            _prompt[block_beg:block_end] = nc
+        prev = block_beg
         percentage = int(idx * 100 / epochs)
-        prompt = _prompt[:div+1].tostring().decode('utf-8')
+        prompt = _prompt[:block_end+1].tostring().decode('utf-8')
+        #print('specification:', spec)
         if brief:
             if timeit:
-                print(spec.format(prompt, percentage, elapsed), end='')
+                message = spec.format(prompt, percentage, ret, elapsed)
             else:
-                print(spec.format(prompt, percentage), end='')
+                message = spec.format(prompt, percentage, ret)
         else:
             if timeit:
-                print(spec.format(prompt, idx, epochs, percentage, elapsed),
-                      end='')
+                message = spec.format(prompt, idx, epochs, percentage, ret, elapsed)
             else:
-                print(spec.format(prompt, idx, epochs, percentage), end='')
+                message = spec.format(prompt, idx, epochs, ret, percentage)
+        print(message, end='')
     if timeit:
         print('\nTotal time elapsed:{}(s)'.format(totaltime))
     else:
