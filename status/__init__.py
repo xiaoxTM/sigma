@@ -13,6 +13,8 @@ is_training = True
 #    False:print layers to terminal
 graph = None
 
+epsilon = 1e-5
+
 data_format = 'NHWC'
 # for channels-last format
 #   kshape shape: [row, col, ins, outs] for 2d

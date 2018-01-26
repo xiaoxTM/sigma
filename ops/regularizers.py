@@ -31,12 +31,15 @@ def regularize(l1=0.0, l2=0.0):
     in case of x : [batch-size, neurons, channels]
         return mean([batch-size, 1:, channels] - [batch-size, :neurons-1, channels]) / (neurons)
 """
-def total_variation_regularizer(shape):
+def total_variation_regularizer(shape, reuse=False, name=None, scope=None):
     axes = list(range(len(shape)))
     del axes[status.axis]
     del axes[0]
     indices = [np.arange(s) for s in shape]
-
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'total_variation_regularizer',
+                                          reuse)
     def _differ(x, axis):
         previous = np.copy(indices)
         latter = np.copy(indices)

@@ -3,8 +3,6 @@ from .. import colors
 from ..ops import base, helper
 from .core import layer
 
-def placeholder(dtype, shape=None, name=None):
-    return tf.placeholder(dtype, shape, name)
 
 @layer
 def flatten(inputs, return_shape=False, reuse=False, name=None, scope=None):

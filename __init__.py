@@ -1,5 +1,7 @@
-from .layers import defaults, _colormaps, placeholder
-from . import status
+from .layers import defaults, _colormaps
+from .ops import placeholder
+from .engine import run, session, predict
+from . import status, helpers
 import os
 import os.path
 import json
@@ -24,6 +26,7 @@ if os.path.isfile(config_path):
         config = json.load(f)
     set_print(config.get('graph', None))
     status.set_data_format(config.get('data_format', 'NHWC'))
+    status.epsilon = config.get('epsilon', 1e-5)
     cmap = config.get('colormaps', None)
     if cmap is not None:
         _colormaps.update(cmap)
@@ -32,15 +35,9 @@ else:
     os.makedirs(os.path.join(os.environ['HOME'], '.sigma'), exist_ok=True)
     config = {'graph': None,
               'data_format':'NHWC',
+              'epsilon':status.epsilon,
               'colormaps':_colormaps}
     set_print(None)
     status.set_data_format('NHWC')
     with open(config_path, 'w') as f:
         json.dump(config, f)
-
-def session(target='', graph=None, config=None, initializers=None):
-    sess = tf.Session(target, graph, config)
-    sess.run(tf.global_variables_initializer())
-    if initializers is not None:
-        sess.run(initializers)
-    return sess

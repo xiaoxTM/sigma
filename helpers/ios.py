@@ -1,117 +1,13 @@
 import tensorflow as tf
-import os.path
 from .. import colors, layers, status
+import os.path
 import numpy as np
 import sigma
 import h5py
 import pickle
 import gzip
 import io
-from timeit import default_timer as timer
 
-def intsize(x, cminus=False):
-    if x > 0:
-        return int(np.log10(x)) + 1
-    elif x == 0:
-        return 1
-    else:
-        if cminus:
-            return int(np.log10(-x)) + 2
-        else:
-            return int(np.log10(-x)) + 1
-
-
-def line(iterable,
-         brief=False,
-         nprompts=10,
-         epochs=None,
-         multiplier=1,
-         enum=False,
-         timeit=False,
-         accuracy=5,
-         message=None,
-         nc='x',
-         cc='+'):
-    """ show line message
-    """
-    if epochs is None:
-        try:
-            epochs = len(iterable)
-        except TypeError:
-            raise TypeError('getting the length of `iterable` failed')
-    if message is None:
-        message = '@'
-    nc = nc.encode('utf8')
-    cc = cc.encode('utf8')
-    step = (nprompts / (epochs * multiplier))
-    _prompt = np.asarray([nc] * nprompts, dtype=np.string_)
-    epochsize = intsize(epochs)
-    beg = None
-    elapsed = None
-    if brief:
-        if timeit:
-            spec = '\r{} [{{:{}}}, {{:3}}%] {{}} -- {{:.{}}}(s)  {{}}' \
-                   .format(message, nprompts, accuracy)
-        else:
-            spec = '\r{} [{{:{}}}, {{:3}}%] {{}} '.format(message, nprompts)
-    else:
-        if timeit:
-            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
-                   ' -- {{:.{}}}(s) {{}}'.format(message,
-                                                     nprompts,
-                                                     epochsize,
-                                                     epochsize,
-                                                     accuracy)
-        else:
-            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
-                   .format(message, epochsize, epochsize, nprompts)
-    def _line():
-        totaltime = 0
-        prev = 0
-        for idx, epoch in enumerate(iterable):
-            time_beg = timer()
-            if enum:
-                epoch = [idx, epoch]
-            ret = (yield epoch)
-
-            block_beg = idx * step
-            totaltime += (timer() - time_beg)
-            idx += 1
-            elapsed = totaltime / idx
-            if ret is None:
-                ret = ''
-            else:
-                ret = '{}{}{}'.format(colors.fg.blue, ret, colors.reset)
-            if block_beg > nprompts:
-                block_beg = nprompts - step
-            block_end = int(min(max(block_beg + step, 1), nprompts))
-            block_beg = int(block_beg)
-            if _prompt[block_beg] == nc or prev != block_beg:
-                _prompt[block_beg:block_end] = cc
-                if prev != block_beg:
-                    _prompt[prev:block_beg] = cc
-            else:
-                _prompt[block_beg:block_end] = nc
-            prev = block_beg
-            percentage = int(idx * 100 / epochs)
-            prompt = _prompt[:block_end+1].tostring().decode('utf-8')
-            # print('specification:', spec)
-            if brief:
-                if timeit:
-                    message = spec.format(prompt, percentage, elapsed, ret)
-                else:
-                    message = spec.format(prompt, percentage, ret)
-            else:
-                if timeit:
-                    message = spec.format(prompt, idx, epochs, percentage, elapsed, ret)
-                else:
-                    message = spec.format(prompt, idx, epochs, percentage, ret)
-            # print(message, end='')
-        if timeit:
-            print('\nTotal time elapsed:{}(s)'.format(totaltime))
-        else:
-            print()
-    return _line
 
 def encode(strings, codec='utf8'):
     if isinstance(strings, str):
@@ -170,11 +66,11 @@ def load(session, checkpoints,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red, type(session), colors.reset)
                         )
-    if not os.path.isdir(checkpoints):
-        raise FileNotFoundError('Directory {}{}{} not found'
-                                .format(colors.fg.red,
-                                        checkpoints,
-                                        colors.reset))
+    # if not os.path.isdir(checkpoints):
+    #     raise FileNotFoundError('Directory {}{}{} not found'
+    #                             .format(colors.fg.red,
+    #                                     checkpoints,
+    #                                     colors.reset))
     ckpt = tf.train.get_checkpoint_state(os.path.dirname(checkpoints))
     if ckpt and ckpt.model_checkpoint_path:
         if verbose:
@@ -209,11 +105,11 @@ def save(session, checkpoints,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red, type(session), colors.reset)
                         )
-    if not os.path.isdir(checkpoints):
-        raise FileNotFoundError('Directory {}{}{} not found'
-                                .format(colors.fg.red,
-                                        checkpoints,
-                                        colors.reset))
+    # if not os.path.isdir(checkpoints):
+    #     raise FileNotFoundError('Directory {}{}{} not found'
+    #                             .format(colors.fg.red,
+    #                                     checkpoints,
+    #                                     colors.reset))
     if verbose:
         print('{}saving check point to {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,

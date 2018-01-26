@@ -51,13 +51,13 @@ def assign_scope(name, scope, ltype, reuse=False):
             name = dispatch_name(ltype, -1)
         else:
             name = dispatch_name(ltype)
-    layer = '{}/{}'.format(name, ltype)
+    name = '{}/{}'.format(name, ltype)
     if scope is None:
-        ops_scope = tf.name_scope('{}'.format(layer))
+        ops_scope = tf.name_scope('{}'.format(name))
     else:
         ops_scope = tf.name_scope('{}/{}'
-                                  .format(scope, layer))
-    return ops_scope, layer
+                                  .format(scope, name))
+    return ops_scope, name
 
 
 def is_tensor(x):

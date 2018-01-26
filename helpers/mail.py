@@ -2,7 +2,6 @@ import smtplib
 import subprocess as sp
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-# from email.mime.image import MIMEImage
 from email.mime.base import MIMEBase
 from email import encoders
 
@@ -12,9 +11,11 @@ from datetime import datetime
 import sys
 import traceback
 
+
 def error_traceback():
     exc_type, exc_value, exc_tb = sys.exc_info()
     return repr(traceback.format_exception(exc_type, exc_value, exc_tb))
+
 
 def sendmail(message, fromaddr, toaddr, passwd,
              subject=None,
