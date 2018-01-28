@@ -282,41 +282,6 @@ def load_pickle(name, **kwargs):
     return database
 
 
-def next_batch(dataset, iteration, batch_size, shuffle=True):
-    if isinstance(dataset, (tuple, list)):
-        if len(dataset) == 1:
-            x = dataset[0]
-            y = None
-        elif len(dataset) == 2:
-            x, y = dataset
-        else:
-            raise ValueError('`dataset` must have length '
-                             'of 2 when given list/tuple')
-    elif isinstance(dataset, np.ndarray):
-        x = dataset
-        y = None
-    else:
-        raise TypeError('`dataset` must be list/tuple or np.ndarray. '
-                         'given {}'.format(type(dataset)))
-    if not isinstance(x, np.ndarray):
-        x = np.asarray(x)
-    if not isinstance(y, np.ndarray):
-        y = np.asarray(y)
-    if iteration == 0 and shuffle:
-        idx = np.arange(len(x), dtype=np.int32)
-        np.random.shuffle(idx)
-        x = x[idx]
-        if y is not None:
-            y = y[idx]
-    beg = batch_size * iteration
-    if beg >= len(x):
-        beg = 0
-    end = min(beg + batch_size, len(x))
-    if y is None:
-        return x[beg:end]
-    return x[beg:end], y[beg:end]
-
-
 def stack(array, axis=0, interval=0, value=0.0):
     """ stack images
     """

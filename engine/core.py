@@ -1,5 +1,4 @@
-from .. import helpers
-from .. import colors
+from .. import helpers, colors, dbs
 from ..ops import helper
 from timeit import default_timer as timer
 import tensorflow as tf
@@ -206,15 +205,60 @@ def _loss_filter(save='all'):
 def run(x, xtensor, optimizer, loss,
         y=None,
         ytensor=None,
+        nclass=None,
         metrics=None,
         epochs=1000,
         batch_size=32,
+        shuffle=True,
         valids=None,
         graph=None,
         config=None,
         checkpoints=None,
         logs=None,
         save='all'):
+    """ run to train networks
+        Attributes
+        ==========
+            x : np.ndarray or list / tuple
+                samples to train
+            xtensor : tf.placeholder
+                      input placeholder of the network
+            optimizer : tf.optimizer
+                        optimizer to update network parameter
+            loss : tf.Tensor
+                   objectives network tries to minimize / maximize
+            y : np.ndarray or list / tuple / None
+                ground truth for x.
+            ytensor : tf.placeholder / None
+                      y placeholder of the network
+            nclass : int / None
+                     number of class for classification
+                     Note, None indicates no one_hot op when generate
+                     (sample, label) pairs
+            metrics : tf.Op / None
+                      measurement of result accuracy
+            epochs : int
+                     `epochs` times to run optimization
+            batch_size : int
+                         batch size for SGD-based optimizer
+            shuffle : bool
+                      whether should shuffle dataset after each epoch
+            valids : np.ndarray or list / tuple
+                     validation dataset for evaluation
+            graph : tf.Graph / None
+            config : tf.ProtoConfig / None
+            checkpoints : string
+                          checkpoints for restoring / saving parameters
+            logs : string
+                   logs directory for tensorboard
+            save : string, `all` / `max` / `min`
+                   saving parameter policy.
+                   `all` : save each iteration of all epochs
+                   `max` : save only max loss / accuracy iteration
+                   `min` : save only min loss / accuracy iteration
+                   (NOTE: loss that is been saved will be shown in green,
+                          while loss that is ignored will be shonw in red)
+    """
     ans = session(graph=graph,
                    config=config,
                    checkpoints=checkpoints,
@@ -223,12 +267,12 @@ def run(x, xtensor, optimizer, loss,
     saver = ans.get('saver', None)
     summarize = ans.get('summarize', None)
     writer = ans.get('writer', None)
-    iterations = len(x)
     if y is not None:
         data = [x, y]
     else:
         data = x
-    progressor = line(range(iterations), timeit=True, nprompts=20, enum=True)
+    generator, nsamples, iterations = dbs.make_generator(data, batch_size, shuffle, nclass)
+    progressor = line(range(nsamples), timeit=True, nprompts=20, enum=True)
     trainop = {'optimizer':optimizer, 'loss':loss}
     saverop = _loss_filter(save)
     if summarize is not None:
@@ -238,15 +282,18 @@ def run(x, xtensor, optimizer, loss,
         print('Epoch: {}'.format(epoch+1))
         progress = progressor()
         for (idx, iteration) in progress:
-            sample, label = helpers.next_batch(data, idx, batch_size)
-            if label is not None:
+            samples, step = next(generator)
+            labels = None
+            if isinstance(samples, (list, tuple)):
+                samples, labels = samples
+            if labels is not None:
                 rdict = sess.run(trainop,
-                                 feed_dict={xtensor:sample,
-                                            ytensor:label
+                                 feed_dict={xtensor:samples,
+                                            ytensor:labels
                                            })
             else:
                 rdict = sess.run(trainop,
-                                 feed_dict={xtensor:sample})
+                                 feed_dict={xtensor:samples})
             if writer is not None:
                 writer.add_summary(rdict['summarize'], global_step=epoch)
             _loss = rdict['loss']
@@ -265,10 +312,29 @@ def run(x, xtensor, optimizer, loss,
                                           colors.reset))
             if need_save and saver is not None:
                 helpers.save(sess, checkpoints, saver, write_meta_graph=False, verbose=False)
+        if valids is not None:
+            validates(valids, batch_size)
     if writer is not None:
         writer.close()
     sess.close()
 
 
-def train():
-    pass
+def train(x, xtensor, optimizer, loss,
+          y=None,
+          ytensor=None,
+          nclass=None,
+          metrics=None,
+          epochs=1000,
+          batch_size=32,
+          shuffle=True,
+          valids=None,
+          graph=None,
+          config=None,
+          checkpoints=None,
+          logs=None,
+          save='all'):
+    optimizer = ops.optimizers.get(optimizer)
+    loss = ops.losses.get(loss)
+    metrics = ops.metrics.get(metrics)
+    run(x, xtensor, optimizer, loss, y, ytensor, nclass, metrics, epochs,
+        batch_size, shuffle, valids, graph, config, checkpoints, logs, save)

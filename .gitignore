@@ -103,3 +103,5 @@ ENV/
 test/data/*
 apps/gan/exp
 test/mnist_keras.py
+
+cache
