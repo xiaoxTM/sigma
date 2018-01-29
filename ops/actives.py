@@ -1,12 +1,11 @@
-import tensorflow as tf
 from .. import colors
-from . import helper
+from . import helper, core
 
 def crelu(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'crelu', reuse)
     def _crelu(x):
         with ops_scope:
-            return tf.nn.crelu(x, name)
+            return core.crelu(x, name)
     return _crelu
 
 
@@ -18,7 +17,7 @@ def relu(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'relu', reuse)
     def _relu(x):
         with ops_scope:
-            return tf.nn.relu(x, name)
+            return core.relu(x, name)
     return _relu
 
 
@@ -30,7 +29,7 @@ def relu6(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'relu6', reuse)
     def _relu6(x):
         with ops_scope:
-            return tf.nn.relu6(x, name)
+            return core.relu6(x, name)
     return _relu6
 
 
@@ -42,9 +41,8 @@ def elu(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'elu', reuse)
     def _elu(x):
         with ops_scope:
-            return tf.nn.elu(x, name)
+            return core.elu(x, name)
     return _elu
-
 
 
 """ elu activates
@@ -59,7 +57,7 @@ def selu(alpha=1.6732632423543772848170429916717,
     ops_scope, name = helper.assign_scope(name, scope, 'selu', reuse)
     def _selu(x):
         with ops_scope:
-            return scale * alpha * (tf.exp(x) - 1)
+            return scale * alpha * (core.exp(x) - 1)
     return _selu
 
 
@@ -70,14 +68,14 @@ def selu(alpha=1.6732632423543772848170429916717,
 def leaky_relu(alpha=0.2, reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'leaky_relu', reuse)
     if tf.__version__ >= '1.4.0':
-        run = tf.nn.leaky_relu
+        run = core.leaky_relu
     else:
         def _run(x, alpha, name):
-            return tf.maximum(x, x * alpha, name)
+            return core.maximum(x, x * alpha, name)
         run = _run
     def _leaky_relu(x):
         with ops_scope:
-            return run(x, alpha, name)
+            return core.leaky_relu(x, alpha, name)
     return _leaky_relu
 
 
@@ -89,7 +87,7 @@ def softmax(dim=-1, reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'softmax', reuse)
     def _softmax(x):
         with ops_scope:
-            return tf.nn.softmax(x, dim, name)
+            return core.softmax(x, dim, name)
     return _softmax
 
 
@@ -101,7 +99,7 @@ def softplus(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'softplus', reuse)
     def _softplus(x):
         with ops_scope:
-            return tf.nn.softplus(x, name)
+            return core.softplus(x, name)
     return _softplus
 
 
@@ -113,7 +111,7 @@ def softsign(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'softsign', reuse)
     def _softsign(x):
         with ops_scope:
-            return tf.nn.softsign(x, name)
+            return core.softsign(x, name)
     return _softsign
 
 
@@ -125,7 +123,7 @@ def sigmoid(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'sigmoid', reuse)
     def _sigmoid(x):
         with ops_scope:
-            return tf.nn.sigmoid(x, name)
+            return core.sigmoid(x, name)
     return _sigmoid
 
 
@@ -137,7 +135,7 @@ def tanh(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'tanh', reuse)
     def _tanh(x):
         with ops_scope:
-            return tf.nn.tanh(x, name)
+            return core.tanh(x, name)
     return _tanh
 
 

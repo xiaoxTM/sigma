@@ -1,16 +1,15 @@
-from ..ops import merge, helper
+from ..ops import merge, core
 from .. import colors
 from .core import layer
-import tensorflow as tf
 
 def _merge(fun, inputs, output, typename, return_shape):
     x = fun(inputs)
-    if output != x.get_shape().as_list():
+    xshape = core.shape(x)
+    if output != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(),
-                                 colors.reset))
+                                 colors.fg.red, xshape, colors.reset))
     if return_shape:
         x = [x, output]
     return x
@@ -23,7 +22,7 @@ def concat(inputs,
            reuse=False,
            name='concat',
            scope=None):
-    inputs_shape = [ip.get_shape().as_list() for ip in inputs]
+    inputs_shape = [core.shape(ip) for ip in inputs]
     fun, output = merge.concat(inputs_shape, axis, reuse, name, scope)
     return _merge(fun, inputs, output, 'concatenate', return_shape)
 
@@ -34,7 +33,7 @@ def add(inputs,
         reuse=False,
         name='add',
         scope=None):
-    input_shape = [ip.get_shape().as_list() for ip in inputs]
+    input_shape = [core.shape(ip) for ip in inputs]
     fun, output = merge.add(input_shape, reuse, name, scope)
     return _merge(fun, inputs, output, 'add', return_shape)
 
@@ -45,6 +44,6 @@ def mul(inputs,
         reuse=False,
         name='mul',
         scope=None):
-    input_shape = [ip.get_shape().as_list() for ip in inputs]
+    input_shape = [core.shape(ip) for ip in inputs]
     fun, output = merge.mul(input_shape, reuse, name, scope)
     return _merge(fun, inputs, output, 'mul', return_shape)

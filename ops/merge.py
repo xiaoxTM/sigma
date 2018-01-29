@@ -1,7 +1,7 @@
-import tensorflow as tf
+#import tensorflow as tf
 import numpy as np
 from .. import colors
-from . import helper
+from . import helper, core
 
 def concat(inputs_shape, axis=-1, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
@@ -26,7 +26,7 @@ def concat(inputs_shape, axis=-1, reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'concat', reuse)
     def _concat(x):
         with ops_scope:
-            return tf.concat(x, axis, name)
+            return core.concat(x, axis, name)
     return _concat, output_shape
 
 def add(inputs_shape, reuse=False, name=None, scope=None):
@@ -50,7 +50,7 @@ def add(inputs_shape, reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'add', reuse)
     def _add(x):
         with ops_scope:
-            return tf.add_n(x, name)
+            return core.add(x, name)
     return _add, output_shape
 
 def mul(inputs_shape, reuse=False, name=None, scope=None):
@@ -74,5 +74,5 @@ def mul(inputs_shape, reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'mul', reuse)
     def _mul(x):
         with ops_scope:
-            return tf.multiply(inputs, name)
+            return core.multiply(inputs, name)
     return _mul

@@ -15,8 +15,8 @@ def embedding(table_shape,
               regularizer=None,
               trainable=True,
               collections=None,
-              reuse=False,
               summarize=True,
+              reuse=False,
               name=None,
               scope=None):
     """ table shape should be:
@@ -60,8 +60,8 @@ def conv(convop, kernel_shape,
          dtype=tf.float32,
          bias_axis=-1,
          collections=None,
-         reuse=False,
          summarize=True,
+         reuse=False,
          name=None,
          scope=None):
     # NOTE that the parameters:
@@ -118,10 +118,14 @@ def fully_conv(input_shape, nouts,
                weight_regularizer=None,
                bias_initializer='zeros',
                bias_regularizer=None,
-               act=None, trainable=True,
-               dtype=tf.float32, collections=None,
-               reuse=False, summarize=True,
-               name=None, scope=None):
+               act=None,
+               trainable=True,
+               dtype=tf.float32,
+               collections=None,
+               summarize=True,
+               reuse=False,
+               name=None,
+               scope=None):
     if len(input_shape) != 2:
         raise ValueError('fully_conv require input shape {}[batch-size,'
                          'channels]{}, given {}{}{}'
@@ -142,8 +146,8 @@ def fully_conv(input_shape, nouts,
                 dtype=dtype,
                 bias_axis=-1,
                 collections=collections,
-                reuse=reuse,
                 summarize=summarize,
+                reuse=reuse,
                 name=name,
                 scope=scope), output_shape
 
@@ -161,8 +165,8 @@ def conv1d(input_shape, nouts, kshape,
            trainable=True,
            dtype=tf.float32,
            collections=None,
-           reuse=False,
            summarize=True,
+           reuse=False,
            name=None,
            scope=None):
     if len(input_shape) != 3:
@@ -182,15 +186,21 @@ def conv1d(input_shape, nouts, kshape,
     stride = stride[1]
     def _conv1d(x, weight):
         return tf.nn.conv1d(x, weight, stride, padding.upper())
-    return conv(convop=_conv1d, kernel_shape=kernel_shape,
+    return conv(convop=_conv1d,
+                kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
                 weight_regularizer=weight_regularizer,
                 bias_initializer=bias_initializer,
                 bias_regularizer=bias_regularizer,
-                act=act, trainable=trainable, dtype=dtype,
-                bias_axis=-1, collections=collections,
-                reuse=reuse, summarize=summarize,
-                name=name, scope=scope), output_shape
+                act=act,
+                trainable=trainable,
+                dtype=dtype,
+                bias_axis=-1,
+                collections=collections,
+                summarize=summarize,
+                reuse=reuse,
+                name=name,
+                scope=scope), output_shape
 
 
 """ 2-D convolutional operation
@@ -206,8 +216,8 @@ def conv2d(input_shape, nouts, kshape,
            trainable=True,
            dtype=tf.float32,
            collections=None,
-           reuse=False,
            summarize=True,
+           reuse=False,
            name=None,
            scope=None):
     if len(input_shape) != 4:
@@ -222,32 +232,41 @@ def conv2d(input_shape, nouts, kshape,
     kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     def _conv2d(x, weight):
         return tf.nn.conv2d(x, weight, stride, padding.upper())
-    return conv(convop=_conv2d, kernel_shape=kernel_shape,
+    return conv(convop=_conv2d,
+                kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
                 weight_regularizer=weight_regularizer,
                 bias_initializer=bias_initializer,
                 bias_regularizer=bias_regularizer,
-                act=act, trainable=trainable, dtype=dtype,
-                bias_axis=-1, collections=collections,
-                reuse=reuse, summarize=summarize,
-                name=name, scope=scope), output_shape
+                act=act,
+                trainable=trainable,
+                dtype=dtype,
+                bias_axis=-1,
+                collections=collections,
+                summarize=summarize,
+                reuse=reuse,
+                name=name,
+                scope=scope), output_shape
 
 
 """ 3-D convolutional operation
 """
 def conv3d(input_shape, nouts,
            kshape=3,
-           stride=1, padding='valid',
+           stride=1,
+           padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
            bias_initializer='zeros',
            bias_regularizer=None,
-           act=None, trainable=True,
-           dtype=tf.float32, collections=None,
-           reuse=False, summarize=True,
-           name=None, scope=None):
-    if tf.is_tensor(inputs):
-        input_shape = inputs.get_shape().as_list()
+           act=None,
+           trainable=True,
+           dtype=tf.float32,
+           collections=None,
+           summarize=True,
+           reuse=False,
+           name=None,
+           scope=None):
     if len(input_shape) != 4:
         raise ValueError('{}conv2d require input shape [batch-size, rows,'
                          'cols, channels], given {}{}'
@@ -266,7 +285,7 @@ def conv3d(input_shape, nouts,
                 bias_regularizer=bias_regularizer,
                 act=act, trainable=trainable, dtype=dtype,
                 bias_axis=-1, collections=collections,
-                reuse=reuse, summarize=summarize,
+                summarize=summarize, reuse=reuse,
                 name=name, scope=scope), output_shape
 
 
@@ -284,8 +303,8 @@ def deconv2d(input_shape, output_shape, nout,
              trainable=True,
              dtype=tf.float32,
              collections=None,
-             reuse=False,
              summarize=True,
+             reuse=False,
              name=None,
              scope=None):
     # NOTE: unlike normal convolutional, whose weights has shape of
@@ -331,13 +350,15 @@ def deconv2d(input_shape, output_shape, nout,
                 bias_regularizer=bias_regularizer,
                 act=act, trainable=trainable, dtype=dtype,
                 bias_axis=-2, collections=collections,
-                reuse=reuse, summarize=summarize,
+                summarize=summarize, reuse=reuse,
                 name=name, scope=scope), out_shape
 
 
 def soft_conv(input_shape,
               kshape=3,
-              stride=1, padding='valid', mode='naive',
+              stride=1,
+              padding='valid',
+              mode='naive',
               weight_initializer='glorot_uniform',
               weight_regularizer=None,
               bias_initializer='zeros',
@@ -346,9 +367,14 @@ def soft_conv(input_shape,
               offset_weight_regularizer=None,
               offset_bias_initializer=None,
               offset_bias_regularizer=None,
-              act=None, trainable=True,
-              dtype=tf.float32, collections=None, reuse=False,
-              summarize=True, name=None, scope=None):
+              act=None,
+              trainable=True,
+              dtype=tf.float32,
+              collections=None,
+              summarize=True,
+              reuse=False,
+              name=None,
+              scope=None):
     ops_scope, name = helper.assign_scope(name,
                                           scope,
                                           'soft_conv',
@@ -654,8 +680,10 @@ def soft_conv(input_shape,
 """ 2-D convolutional operation
 """
 def soft_conv2d(input_shape, nouts,
-                kshape=3, stride=1,
-                padding='valid', mode='bilinear',
+                kshape=3,
+                stride=1,
+                padding='valid',
+                mode='bilinear',
                 weight_initializer='glorot_uniform',
                 weight_regularizer=None,
                 bias_initializer='zeros',
@@ -664,10 +692,14 @@ def soft_conv2d(input_shape, nouts,
                 offset_weight_regularizer=None,
                 offset_bias_initializer=None,
                 offset_bias_regularizer=None,
-                act=None, trainable=True,
-                dtype=tf.float32, collections=None,
-                reuse=False, summarize=True,
-                name=None, scope=None):
+                act=None,
+                trainable=True,
+                dtype=tf.float32,
+                collections=None,
+                summarize=True,
+                reuse=False,
+                name=None,
+                scope=None):
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
                          'cols, channels]{}, given {}{}{}'
@@ -680,8 +712,10 @@ def soft_conv2d(input_shape, nouts,
                                            kshape, stride, padding)
     kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     return soft_conv(input_shape,
-                     kernel_shape, stride,
-                     padding, mode,
+                     kernel_shape,
+                     stride,
+                     padding,
+                     mode,
                      weight_initializer,
                      weight_regularizer,
                      bias_initializer,
@@ -690,9 +724,14 @@ def soft_conv2d(input_shape, nouts,
                      offset_weight_regularizer,
                      offset_bias_initializer,
                      offset_bias_regularizer,
-                     act, trainable, dtype,
-                     collections, reuse, summarize,
-                     name, scope), output_shape
+                     act,
+                     trainable,
+                     dtype,
+                     collections,
+                     summarize,
+                     reuse,
+                     name,
+                     scope), output_shape
 
 
 # """ 3-D convolutional operation
@@ -794,8 +833,8 @@ def sepconv(sepconvop,
             dtype=tf.float32,
             caxis=-1,
             collections=None,
-            reuse=False,
             summarize=True,
+            reuse=False,
             name=None,
             scope=None):
     # NOTE that the parameters:
@@ -869,8 +908,8 @@ def sepconv2d(input_shape, nouts,
               trainable=True,
               dtype=tf.float32,
               collections=None,
-              reuse=False,
               summarize=True,
+              reuse=False,
               name=None,
               scope=None):
     if len(input_shape) != 4:
@@ -924,7 +963,7 @@ def sepconv2d(input_shape, nouts,
                    trainable,
                    dtype,
                    collections,
-                   reuse,
                    summarize,
+                   reuse,
                    name,
                    scope), output_shape

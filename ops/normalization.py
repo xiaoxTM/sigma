@@ -1,7 +1,5 @@
 import tensorflow as tf
-from . import mm
-from . import helper
-from . import actives
+from . import mm, helper, actives, core
 from .. import status
 
 def instance_norm(input_shape,
@@ -12,8 +10,8 @@ def instance_norm(input_shape,
                   epsilon=0.003,
                   act=None,
                   trainable=True,
-                  reuse=False,
                   collections=None,
+                  reuse=False,
                   name=None,
                   scope=None):
     ops_scope, name = helper.assign_scope(name,
@@ -57,7 +55,7 @@ def instance_norm(input_shape,
     def _instance_norm(x):
         with ops_scope:
             mean, variance = tf.nn.moments(x, axes, keep_dims=True)
-            normalized = (x - mean) / tf.sqrt(variance + epsilon)
+            normalized = (x - mean) / core.sqrt(variance + epsilon)
             if scale is not None:
                 normalized = scale * normalized
             if offset is not None:
@@ -81,8 +79,8 @@ def batch_norm(input_shape,
                act=None,
                trainable=True,
                fused=False,
-               reuse=False,
                collections=None,
+               reuse=False,
                name=None,
                scope=None):
     """ batch normalization layer
@@ -190,7 +188,7 @@ def batch_norm(input_shape,
             # print('x shape:', x.get_shape().as_list())
             x, mean, variance = tf.nn.fused_batch_norm(x, scale,
                                                        offset, epsilon=epsilon)
-            x = tf.reshape(x, x_shape)
+            x = core.reshape(x, x_shape)
         else:
             mean, variance = tf.nn.moments(x, axis, keep_dims=True)
             # tf.nn.batch_normalize(x, mean, variance, offset,
@@ -209,13 +207,13 @@ def batch_norm(input_shape,
 
     def _infer(x):
         if fused:
-            x_shape = x.get_shape().as_list()
+            x_shape = core.shape(x)
             for _ in range(4 - x.get_shape().ndims):
                 x = tf.expand_dims(x, 1)
             x, mean, variance = tf.nn.fused_batch_norm(x, scale,
                                          offset, moving_mean, moving_variance,
                                          epsilon, is_training=False)
-            x = tf.reshape(x, x_shape)
+            x = core.reshape(x, x_shape)
         else:
             mean, variance = tf.nn.moments(x, axis, keep_dims=True)
             x = tf.nn.batch_normalization(x, moving_mean, moving_variance,

@@ -1,19 +1,17 @@
-from ..ops import pools, helper
+from ..ops import pools, core
 from .. import colors
 from .core import layer
-import logging
-import tensorflow as tf
 
 def _pool(inputs, op, pshape, stride, padding,
           return_shape, reuse, name, scope):
-    fun, output = op(inputs.get_shape().as_list(), pshape,
+    fun, output = op(core.shape(inputs), pshape,
                      stride, padding, reuse, name, scope)
     x = fun(inputs)
-    # helper.print_layer(inputs, x, op.__name__, reuse, name)
-    if output != x.get_shape().as_list():
+    xshape = core.shape(x)
+    if output != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
-                         .format(output, x.get_shape().as_list()))
+                         .format(output, xshape))
     if return_shape:
         x = [x, output]
     return x
@@ -25,13 +23,13 @@ def _pool_global(inputs,
                  reuse,
                  name,
                  scope):
-    fun, output = op(inputs.get_shape().as_list(), reuse, name, scope)
+    fun, output = op(core.shape(inputs), reuse, name, scope)
     x = fun(inputs)
-    # helper.print_layer(inputs, x, op.__name__, reuse, name)
-    if output != x.get_shape().as_list():
+    xshape = core.shape(x)
+    if output != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
-                         .format(output, x.get_shape().as_list()))
+                         .format(output, xshape))
     if return_shape:
         x = [x, output]
     return x

@@ -1,4 +1,4 @@
-from ..ops import losses, helper, regularizers
+from ..ops import losses, helper, regularizers, core
 
 """ termology
     ----------
@@ -86,7 +86,7 @@ def total_variation_regularize(inputs,
                                reuse=False,
                                name=None,
                                scope=None):
-    shape = inputs.get_shape().as_list()
+    shape = core.shape(inputs)
     return regularizers.total_variation_regularizer(shape,
                                                     reuse,
                                                     name,

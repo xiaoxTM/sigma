@@ -1,5 +1,5 @@
 import tensorflow as tf
-from . import helper
+from . import helper, core
 from .. import status
 
 
@@ -28,14 +28,14 @@ def binary_cross_entropy(axis,
     def _binary_cross_entropy(x, labels):
         with scope:
             if not onehot:
-                depth = x.get_shape().as_list()[axis]
-                labels = tf.one_hot(labels, depth)
+                depth = core.shape(x)[axis]
+                labels = core.one_hot(labels, depth)
             if not logits:
                 # source code borrowed from:
                 #     @keras.backend.tensorflow_backend.py
-                x = tf.clip_by_value(x, statis.epsilon, 1- statis.epsilon)
-                x = tf.log(x / (1-x))
-            return tf.reduce_mean(
+                x = core.clip(x, statis.epsilon, 1- statis.epsilon)
+                x = core.log(x / (1-x))
+            return core.mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
                                                         logits=x,
                                                         name=name),
@@ -53,10 +53,10 @@ def categorical_cross_entropy(axis,
     def _categorical_cross_entropy(x, labels):
         with scope:
             if not onehot:
-                depth = x.get_shape().as_list()[axis]
-                labels = tf.one_hot(labels, depth)
+                depth = core.shape(x)[axis]
+                labels = core.one_hot(labels, depth)
             if logits:
-                return tf.reduce_mean(
+                return core.mean(
                     tf.nn.softmax_cross_entropy_with_logits(labels=labels,
                                                             logits=x,
                                                             name=name),
@@ -64,12 +64,12 @@ def categorical_cross_entropy(axis,
             else:
                 # source code borrowed from:
                 #     @keras.backend.tensorflow_backend.py
-                x /= tf.reduce_sum(x,
-                                   len(x.get_shape())-1,
-                                   True)
-                x = tf.clip_by_value(x, statis.epsilon, 1-statis.epsilon)
-            return -tf.reduce_sum(label * tf.log(x),
-                                  len(output.get_shape())-1)
+                x /= core.sum(x,
+                              len(x.get_shape())-1,
+                              True)
+                x = core.clip(x, statis.epsilon, 1-statis.epsilon)
+            return -core.sum(label * core.log(x),
+                             len(output.get_shape())-1)
     return _categorical_cross_entropy
 
 
@@ -83,9 +83,9 @@ def mean_square_error(axis,
     def _mean_square_error(x, labels):
         with scope:
             if not onehot:
-                depth = x.get_shape().as_list()[axis]
-                labels = tf.one_hot(labels, depth)
-            return tf.reduce_mean(tf.square(x - labels), axis=axis)
+                depth = core.shape(x)[axis]
+                labels = core.one_hot(labels, depth)
+            return core.mean(core.square(x - labels), axis=axis)
     return _mean_square_error
 
 
@@ -99,9 +99,9 @@ def mean_absolute_error(axis,
     def _mean_sabsolute_error(x, labels):
         with scope:
             if not onehot:
-                depth = x.get_shape().as_list()[axis]
-                labels = tf.one_hot(labels, depth)
-            return tf.reduce_mean(tf.abs(x - labels), axis=axis)
+                depth = core.shape(x)[axis]
+                labels = core.one_hot(labels, depth)
+            return core.mean(core.abs(x - labels), axis=axis)
     return _mean_absolute_error
 
 
@@ -114,13 +114,27 @@ def winner_takes_all(axis,
                      scope=None):
     def _winner_takes_all(x, labels):
         with scope:
-            shape = x.get_shape().as_list()
-            pred = tf.argmax(logits, axis=axis)
+            shape = core.shape(x)
+            pred = core.argmax(logits, axis=axis)
             if onehot:
-                pred = tf.one_hot(pred, shape[axis])
+                pred = core.one_hot(pred, shape[axis])
             loss_tensor = tf.where(pred==labels,
-                                   tf.zeros_like(labels),
-                                   tf.ones_like(labels))
-            loss_matrix = tf.reshape(loss_tensor, (shape[0], -1))
-            return tr.reduce_mean(loss_matrix, axis=axis)
+                                   core.zeros_like(labels),
+                                   core.ones_like(labels))
+            loss_matrix = core.reshape(loss_tensor, (shape[0], -1))
+            return core.mean(loss_matrix, axis=axis)
     return _winner_takes_all
+
+
+def get(loss):
+    """ get loss from None | string | callable function
+    """
+    if losses is None:
+        return None
+    elif isinstance(losses, str):
+        return eval('{}(status.axis)'.format(losses))
+    elif callable(losses):
+        return losses
+    else:
+        raise ValueError('cannot get losses `{}` with type {}'
+                         .format(losses, type(losses)))

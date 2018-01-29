@@ -1,6 +1,6 @@
 import tensorflow as tf
 from ..ops import convolutional as convs
-from ..ops import helper
+from ..ops import helper, core
 from .. import colors
 from .core import layer
 
@@ -12,8 +12,8 @@ def embedding(inputs, table_size,
               regularizer=None,
               trainable=True,
               collections=None,
-              reuse=False,
               summarize=True,
+              reuse=False,
               name=None,
               scope=None):
     fun = convs.embedding(table_size,
@@ -23,8 +23,8 @@ def embedding(inputs, table_size,
                           regularizer,
                           trainable,
                           collections,
-                          reuse,
                           summarize,
+                          reuse,
                           name,
                           scope)
     x = fun(inputs)
@@ -33,11 +33,11 @@ def embedding(inputs, table_size,
 
 def _layers(fun, inputs, output, return_shape, typename, reuse, name):
     x = fun(inputs)
-    if output != x.get_shape().as_list():
+    if output != core.shape(x):
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, x.get_shape(), colors.reset))
+                                 colors.fg.red, core.shape(x), colors.reset))
     if return_shape:
         x = [x, output]
     return x
@@ -77,10 +77,10 @@ def _layers(fun, inputs, output, return_shape, typename, reuse, name):
                           session.run(tf.global_variables_initializer())
                        ```
                       )
-        reuse : bool
-                whether should reuse weight / bias instead of allocat new
         summarize : bool
                     if True, write to tf.summary.histogram
+        reuse : bool
+                whether should reuse weight / bias instead of allocat new
         name : string | None
                variable name when allocating one
 """
@@ -98,11 +98,11 @@ def fully_conv(inputs, nouts,
                dtype=tf.float32,
                return_shape=False,
                collections=None,
-               reuse=False,
                summarize=True,
+               reuse=False,
                name=None,
                scope=None):
-    input_shape = inputs.get_shape().as_list()
+    input_shape = core.shape(inputs)
     fun, output = convs.fully_conv(input_shape,
                                    nouts,
                                    weight_initializer,
@@ -113,8 +113,8 @@ def fully_conv(inputs, nouts,
                                    trainable,
                                    dtype,
                                    collections,
-                                   reuse,
                                    summarize,
+                                   reuse,
                                    name,
                                    scope)
     return _layers(fun, inputs, output, return_shape,
@@ -139,11 +139,11 @@ def conv1d(inputs, nouts,
            dtype=tf.float32,
            return_shape=False,
            collections=None,
-           reuse=False,
            summarize=True,
+           reuse=False,
            name=None,
            scope=None):
-    input_shape = inputs.get_shape().as_list()
+    input_shape = core.shape(inputs)
     fun, output = convs.conv1d(input_shape,
                                nouts,
                                kshape,
@@ -157,8 +157,8 @@ def conv1d(inputs, nouts,
                                trainable,
                                dtype,
                                collections,
-                               reuse,
                                summarize,
+                               reuse,
                                name,
                                scope)
 
@@ -208,11 +208,11 @@ def conv2d(inputs, nouts,
            dtype=tf.float32,
            return_shape=False,
            collections=None,
-           reuse=False,
            summarize=True,
+           reuse=False,
            name=None,
            scope=None):
-    input_shape = inputs.get_shape().as_list()
+    input_shape = core.shape(inputs)
     fun, output = convs.conv2d(input_shape,
                                nouts,
                                kshape,
@@ -225,8 +225,8 @@ def conv2d(inputs, nouts,
                                trainable,
                                dtype,
                                collections,
-                               reuse,
                                summarize,
+                               reuse,
                                name,
                                scope)
     return _layers(fun, inputs, output, return_shape,
@@ -274,14 +274,11 @@ def soft_conv2d(inputs, nouts,
                 dtype=tf.float32,
                 return_shape=False,
                 collections=None,
-                reuse=False,
                 summarize=True,
+                reuse=False,
                 name=None,
                 scope=None):
-    # with tf.name_scope(''):
-    input_shape = inputs.get_shape().as_list()
-    # offset_fun, offset_output = convs.conv2d(input_shape,
-    #                                          input_shape[-1]*)
+    input_shape = core.shape(inputs)
     fun, output = convs.soft_conv2d(input_shape,
                                     nouts,
                                     kshape,
@@ -300,17 +297,17 @@ def soft_conv2d(inputs, nouts,
                                     trainable,
                                     dtype,
                                     collections,
-                                    reuse,
                                     summarize,
+                                    reuse,
                                     name,
                                     scope)
     x, offsets = fun(inputs)
-    # helper.print_layer(inputs, x, 'soft_conv2d', reuse, name)
-    if output != x.get_shape().as_list():
+    xshape = core.shape(x)
+    if output != xshape:
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, x.get_shape(), colors.reset))
+                                 colors.fg.red, xshape, colors.reset))
     if return_offsets:
         x = [x, offsets]
     if return_shape:
@@ -337,20 +334,21 @@ def conv3d(inputs, nouts,
            dtype=tf.float32,
            return_shape=False,
            collections=None,
-           reuse=False,
            summarize=True,
+           reuse=False,
            name=None,
            scope=None):
     # TODO: atruous_convxd
-    fun, output = convs.conv3d(scope, input_shape, nouts,
+    input_shape = core.shape(inputs)
+    fun, output = convs.conv3d(input_shape, nouts,
                                kshape, stride, padding,
                                weight_initializer,
                                weight_regularizer,
                                bias_initializer,
                                bias_regularizer, act,
                                trainable, dtype,
-                               collections, reuse,
-                               summarize, name, scope)
+                               collections, summarize,
+                               reuse, name, scope)
     return _layers(fun, inputs, output, return_shape,
                    'conv3d', reuse, name)
 
@@ -372,11 +370,11 @@ def deconv2d(inputs, output_shape, nouts,
              dtype=tf.float32,
              return_shape=False,
              collections=None,
-             reuse=False,
              summarize=True,
+             reuse=False,
              name=None,
              scope=None):
-    input_shape = inputs.get_shape().as_list()
+    input_shape = core.shape(inputs)
     fun, output = convs.deconv2d(input_shape, output_shape,
                                  nouts, kshape, stride, padding,
                                  weight_initializer,
@@ -384,7 +382,7 @@ def deconv2d(inputs, output_shape, nouts,
                                  bias_initializer,
                                  bias_regularizer,
                                  act, trainable, dtype, collections,
-                                 reuse, summarize, name, scope)
+                                 summarize, reuse, name, scope)
 
     return _layers(fun, inputs, output, return_shape,
                    'deconv2d', reuse, name)
@@ -406,11 +404,11 @@ def sepconv2d(inputs, nouts,
               dtype=tf.float32,
               return_shape=False,
               collections=None,
-              reuse=False,
               summarize=True,
+              reuse=False,
               name=None,
               scope=None):
-    input_shape = inputs.get_shape().as_list()
+    input_shape = core.shape(inputs)
     fun, output = convs.sepconv2d(input_shape,
                                   nouts,
                                   kshape,
@@ -425,8 +423,8 @@ def sepconv2d(inputs, nouts,
                                   act, trainable,
                                   dtype,
                                   collections,
-                                  reuse,
                                   summarize,
+                                  reuse,
                                   name,
                                   scope)
     return _layer(fun, inputs, output, return_shape,

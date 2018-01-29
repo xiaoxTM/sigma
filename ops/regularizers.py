@@ -1,14 +1,15 @@
 import tensorflow as tf
 import numpy as np
+from . import core
 from .. import status
 
 def regularize(l1=0.0, l2=0.0):
     def _regularize(x):
         regularization = 0.
         if l1:
-            regularization += tf.reduce_sum(l1 * tf.abs(x))
+            regularization += core.sum(l1 * core.abs(x))
         if l2:
-            regularization += tf.reduce_sum(l2 * tf.square(x))
+            regularization += core.sum(l2 * core.square(x))
         return regularization
 
     return _regularize

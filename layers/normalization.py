@@ -12,26 +12,30 @@ def instance_norm(inputs,
                   epsilon=0.003,
                   act=None,
                   trainable=True,
-                  reuse=False,
                   collections=None,
+                  reuse=False,
                   name=None,
                   scope=None):
-    input_shape = inputs.get_shape().as_list()
-    fun = norms.instance_norm(input_shape=input_shape,
-                             offset_initializer=offset_initializer,
-                             scale_initializer=scale_initializer,
-                             offset_regularizer=offset_regularizer,
-                             scale_regularizer=scale_regularizer,
-                             epsilon=epsilon, act=act, trainable=trainable,
-                             reuse=reuse, collections=collections,
-                             name=name, scope=scope)
+    input_shape = core.shape(inputs)
+    fun = norms.instance_norm(input_shape,
+                             offset_initializer,
+                             scale_initializer,
+                             offset_regularizer,
+                             scale_regularizer,
+                             epsilon,
+                             act,
+                             trainable,
+                             collections,
+                             reuse,
+                             name,
+                             scope)
     x = fun(inputs)
-    if input_shape != x.get_shape().as_list():
+    xshape = core.shape(x)
+    if input_shape != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, input_shape, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(),
-                                 colors.reset))
+                                 colors.fg.red, xshape, colors.reset))
     return x
 
 
@@ -48,31 +52,34 @@ def batch_norm(inputs,
                act=None,
                trainable=True,
                fused=True,
-               reuse=False,
                collections=None,
+               reuse=False,
                name=None,
                scope=None):
-    input_shape = inputs.get_shape().as_list()
-    fun = norms.batch_norm(input_shape=input_shape,
-                          momentum=momentum,
-                          offset_initializer=offset_initializer,
-                          scale_initializer=scale_initializer,
-                          offset_regularizer=offset_regularizer,
-                          scale_regularizer=scale_regularizer,
-                          moving_mean_initializer=moving_mean_initializer,
-                          moving_variance_initializer=moving_variance_initializer,
-                          epsilon=epsilon, act=act, trainable=trainable,
-                          fused=fused, reuse=reuse,
-                          collections=collections,
-                          name=name, scope=scope)
+    input_shape = core.shape(inputs)
+    fun = norms.batch_norm(input_shape,
+                          momentum,
+                          offset_initializer,
+                          scale_initializer,
+                          offset_regularizer,
+                          scale_regularizer,
+                          moving_mean_initializer,
+                          moving_variance_initializer,
+                          epsilon,
+                          act,
+                          trainable,
+                          fused,
+                          collections,
+                          reuse,
+                          name,
+                          scope)
     x = fun(inputs)
-    # helper.print_layer(inputs, x, 'batch_norm', reuse, name)
-    if input_shape != x.get_shape().as_list():
+    xshape = core.shape(x)
+    if input_shape != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
                          .format(colors.fg.green, input_shape, colors.reset,
-                                 colors.fg.red, x.get_shape().as_list(),
-                                 colors.reset))
+                                 colors.fg.red, xshape, colors.reset))
     return x
 
 

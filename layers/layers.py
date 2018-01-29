@@ -1,7 +1,7 @@
 import inspect
 import functools
 from contextlib import contextmanager
-from ..ops import helper
+from ..ops import helper, core
 from .. import status
 
 try:
@@ -80,7 +80,6 @@ def defaults(*args, **kwargs):
         if not callable(arg):
             raise TypeError('args at {}-th is not callable. given {}'
                             .format(idx, arg))
-
     list_args = list(map(lambda x:inspect.signature(x.__wrapped__), args))
     global _CONTEXT_DEFAULTS_
     # print([arg.__wrapped__ for arg in args])
@@ -131,9 +130,9 @@ def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
                 input_shape = [shape(x) for x in inputs]
                 inputname = [helper.name_normalize(x.name) for x in inputs]
             else:
-                input_shape = [inputs.get_shape().as_list()]
+                input_shape = [core.shape(inputs)]
                 inputname = [helper.name_normalize(inputs.name)]
-            output_shape = outputs.get_shape().as_list()
+            output_shape = core.shape(outputs)
             outputname = helper.name_normalize(outputs.name)
             if status.graph is False:
                 if len(inputname) == 1:

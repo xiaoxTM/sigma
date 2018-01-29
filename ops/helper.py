@@ -64,10 +64,6 @@ def is_tensor(x):
     return tf.contrib.framework.is_tensor(x)
 
 
-def shape(x):
-    return x.get_shape().as_list()
-
-
 def name_normalize(names):
     """ normalize variable name
         generally, `names` is a list of :
