@@ -1,6 +1,6 @@
 try:
-    from sklearn import manifold, decomposition, ensemble,
-                        discriminant_analysis, random_projection
+    from sklearn import manifold, decomposition, ensemble
+    from sklearn import discriminant_analysis, random_projection
 except:
     raise ImportError('Library sklearn not found. To enable it, '
           'please install scikit-learn.')

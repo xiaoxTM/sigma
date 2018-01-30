@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
 from . import core
-from .. import status
 
 def regularize(l1=0.0, l2=0.0):
     def _regularize(x):
@@ -34,7 +33,7 @@ def regularize(l1=0.0, l2=0.0):
 """
 def total_variation_regularizer(shape, reuse=False, name=None, scope=None):
     axes = list(range(len(shape)))
-    del axes[status.axis]
+    del axes[core.axis]
     del axes[0]
     indices = [np.arange(s) for s in shape]
     ops_scope, name = helper.assign_scope(name,

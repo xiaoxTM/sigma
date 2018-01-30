@@ -1,5 +1,34 @@
 import tensorflow as tf
 
+epsilon = 1e-5
+data_format = 'NHWC'
+
+# floating data type
+float16 = tf.float16
+float32 = tf.float32
+float64 = tf.float64
+bfloat16 = tf.bfloat16
+
+# integer data type
+int8 = tf.int8
+uint8 = tf.uint8
+int16 = tf.int16
+uint16 = tf.uint16
+int32 = tf.int32
+uint32 = tf.uint32
+int64 = tf.int64
+uint64 = tf.uint64
+
+bool = tf.bool
+string = tf.string
+
+# quantized integer
+qint8 = tf.qint8
+quint8 = tf.quint8
+qint16 = tf.qint16
+quint16 = tf.quint16
+qint32 = tf.qint32
+
 def placeholder(dtype, shape=None, name=None):
     return tf.placeholder(dtype, shape, name)
 
@@ -8,7 +37,7 @@ def shape(x):
     return x.get_shape().as_list()
 
 
-def tshape(x, name=None, out_type=tf.int32):
+def tshape(x, name=None, out_type=int32):
     return tf.shape(x, name, out_type)
 
 
@@ -19,14 +48,14 @@ def reshape(x, output_shape,
 
 def argmax(x,
            axis=None,
-           dtype='int64',
+           dtype=int64,
            name=None):
     return tf.argmax(x, axis, dtype, name)
 
 
 def argmin(x,
            axis=None,
-           dtype='int64',
+           dtype=int64,
            name=None):
     return tf.argmin(x, axis, dtype, name)
 
@@ -82,6 +111,7 @@ def pow(x, y, name=None):
 def log(x, name=None):
     return tf.log(x, name)
 
+
 def sum(x,
         axis=None,
         keepdims=None,
@@ -95,6 +125,10 @@ def concat(inputs, axis, name='concat'):
 
 def add(inputs, name=None):
     return tf.add_n(inputs, name)
+
+
+def bias_add(x, bias, data_format=None, name=None):
+    return tf.nn.bias_add(x, bias, data_format, name)
 
 
 def square(x, name=None):
@@ -149,7 +183,7 @@ def clip(x, minv, maxv, name=None):
 """
 """
 
-def zeros(shape, dtype=tf.float32, name=None):
+def zeros(shape, dtype=float32, name=None):
     return tf.zeros(shape, dtype, name)
 
 
@@ -157,11 +191,11 @@ def zeros_like(x, dtype=None, name=None, optimize=True):
     return tf.zeros_like(x, dtype, name, optimize)
 
 
-def ones(shape, dtype=tf.float32, name=None):
+def ones(shape, dtype=float32, name=None):
     return tf.ones(shape, dtype, name)
 
 
-def ones_like(x, dtype=tf.float32, name=None, optimize=True):
+def ones_like(x, dtype=float32, name=None, optimize=True):
     return tf.ones_like(x, dtype, name, optimize)
 
 
@@ -172,6 +206,14 @@ def one_hot(indices, depth,
             dtype=None,
             name=None):
     return tf.one_hot(indices, depth, pos_value, neg_value, axis, dtype, name)
+
+
+def constant(value,
+             dtype=None,
+             shape=None,
+             name='const',
+             verify_shape=False):
+    return tf.constant(value, dtype, shape, name, verify_shape)
 
 
 #===========================================================
@@ -225,3 +267,36 @@ def sigmoid(x, name=None):
 
 def tanh(x, name=None):
     return tf.nn.tanh(x, name)
+
+
+def random_normal(*args, **kwargs):
+    return tf.random_normal(*args, **kwargs)
+
+
+def random_uniform(*args, **kwargs):
+    return tf.random_uniform(*args, **kwargs)
+
+
+def truncated_normal(*args, **kwargs):
+    return tf.truncated_normal(*args, **kwargs)
+
+
+# convolutional operations
+def embedding(*args, **kwargs):
+    return tf.nn.embedding_lookup(*args, **kwargs)
+
+
+def conv2d(*args, **kwargs):
+    return tf.nn.conv2d(*args, **kwargs)
+
+
+def conv3d(*args, **kwargs):
+    return tf.nn.conv3d(*args, **kwargs)
+
+
+def deconv2d(*args, **kwargs):
+    return tf.nn.conv2d_transpose(*args, **kwargs)
+
+
+def sepconv2d(*args, **kwargs):
+    return tf.nn.separable_conv2d(*args, **kwargs)

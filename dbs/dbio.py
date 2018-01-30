@@ -6,6 +6,10 @@ import os.path
 import logging
 from ..helpers import nput
 
+def save_image(filename, image):
+    sm.imsave(filename, image)
+
+
 #####################################################
 def load_image(filename,
                gtname=None,

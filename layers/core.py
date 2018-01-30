@@ -1,10 +1,8 @@
 import inspect
 import functools
 from contextlib import contextmanager
-from ..ops import helper
-from .. import status
+from ..ops import helper, core
 import os.path
-
 
 try:
     import pydot_ng as pydot
@@ -19,6 +17,18 @@ except ImportError:
 
 
 _CONTEXT_DEFAULTS_ = {}
+
+
+__graph__ = None
+
+
+__defaults__ = {'padding' : 'valid',
+                'summarize' : True,
+                'weight_initializer' : 'glorot_uniform',
+                'weight_regularizer' : None,
+                'bias_initializer' : 'zeros',
+                'bias_regularizer' : None
+               }
 
 
 __layers__ = {'actives': ['crelu',
@@ -51,7 +61,7 @@ __layers__ = {'actives': ['crelu',
              }
 
 
-_colormaps = {'actives' : 'Magenta',
+__colormaps__ = {'actives' : 'Magenta',
               'base' : 'Red',
               'convs' : 'Blue',
               'merge' : 'Cyan',
@@ -61,11 +71,29 @@ _colormaps = {'actives' : 'Magenta',
              }
 
 
+# interstatus for visualization
+# must be one of [None, True, False]
+#    None: no output
+#    True: print layers to graph
+#          will change to instance of pydot.Dot
+#    False:print layers to terminal
+# for channels-last format
+#   kshape shape: [row, col, ins, outs] for 2d
+# for channel-first (without batch dimension) format
+#   kshape shape: [ins, outs, row, col] for 2d
+def set_print(mode=True):
+    global __graph__
+    if mode is None or isinstance(mode, bool):
+        __graph__ = mode
+    else:
+        raise TypeError('mode must be None or True/False, given {}'.format(mode))
+
+
 def _layer2color(lname):
     for k,v in __layers__.items():
         if lname in v:
-            return _colormaps[k]
-    return _colormaps['other']
+            return __colormaps__[k]
+    return __colormaps__['other']
 
 
 @contextmanager
@@ -85,7 +113,6 @@ def defaults(*args, **kwargs):
 
     list_args = list(map(lambda x:inspect.signature(x.__wrapped__), args))
     global _CONTEXT_DEFAULTS_
-    # print([arg.__wrapped__ for arg in args])
     context_keys = _CONTEXT_DEFAULTS_.keys()
     for k,v in kwargs.items():
         value = [v, list_args]
@@ -94,7 +121,6 @@ def defaults(*args, **kwargs):
             _CONTEXT_DEFAULTS_[k].append(v)
         else:
             _CONTEXT_DEFAULTS_[k] = [value]
-    # print('context:', _CONTEXT_DEFAULTS_)
     yield _CONTEXT_DEFAULTS_
     for k in kwargs.keys():
         # remove the latest value
@@ -105,17 +131,18 @@ def defaults(*args, **kwargs):
 
 
 def export_graph(filename, ext):
+    global __graph__
     if pydot is None:
         raise ImportError('Import pydot failed. make sure pydot is installed')
-    if not isinstance(status.graph, pydot.Dot):
-        raise TypeError('graph model is not built. graph: {}'.format(status.graph))
+    if not isinstance(__graph__, pydot.Dot):
+        raise TypeError('graph model is not built. graph: {}'.format(__graph__))
     if ext is None:
         _, ext = os.path.splitext(filename)
     if ext is None:
         ext = 'png'
     else:
         ext = ext[1:]
-    status.graph.write(filename, format=ext)
+    __graph__.write(filename, format=ext)
 
 
 """ if not reuse:
@@ -125,53 +152,61 @@ def export_graph(filename, ext):
                       colors.fg.red, output, colors.reset))
 """
 def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
-    if status.graph is not None:
+    global __graph__
+    if __graph__ is not None:
         if not reuse:
+            is_input_layer = False
             if name is None:
                 raise ValueError('name is not given')
             if isinstance(inputs, (list, tuple)):
-                input_shape = [shape(x) for x in inputs]
-                inputname = [helper.name_normalize(x.name) for x in inputs]
+                if helper.is_tensor(inputs[0]):
+                    input_shape = [shape(x) for x in inputs]
+                    inputname = [helper.name_normalize(x.name) for x in inputs]
+                else:
+                    is_input_layer = True
+                    input_shape = inputs
+                    inputname = helper.dispatch_name('input')
             else:
-                input_shape = [inputs.get_shape().as_list()]
+                input_shape = [core.shape(inputs)]
                 inputname = [helper.name_normalize(inputs.name)]
-            output_shape = outputs.get_shape().as_list()
+            output_shape = core.shape(outputs)
             outputname = helper.name_normalize(outputs.name)
-            if status.graph is False:
+            if __graph__ is False:
                 if len(inputname) == 1:
                     inputname = inputname[0]
                     input_shape = input_shape[0]
                 print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
-                      .format(inputname, colors.fg.green, input_shape, colors.reset,
+                      .format(inputname,
+                              colors.fg.green, input_shape, colors.reset,
                               colors.fg.blue, name, typename, colors.reset,
                               outputname, colors.fg.red, output_shape, colors.reset))
-            elif status.graph is True or isinstance(status.graph, pydot.Dot):
+            elif __graph__ is True or isinstance(__graph__, pydot.Dot):
                 if pydot is None:
                     raise ImportError('Import pydot failed. make sure pydot is installed')
-                if status.graph is True:
+                if __graph__ is True:
                     dot = pydot.Dot()
                     dot.set('rankdir', 'TB')
                     dot.set('concentrate', True)
                     dot.set_node_defaults(shape='record')
                     for iname, ishape in zip(inputname, input_shape):
                         label = '%s\n|{{%s}}' % (iname, ishape)
-                        node = pydot.Node(iname,
-                                          label=label)
+                        node = pydot.Node(iname, label=label)
                         dot.add_node(node)
-                    status.graph = dot
-                ishape = input_shape
-                if len(ishape) == 1:
-                    ishape = ishape[0]
-                label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (name,
-                                                               ishape,
-                                                               output_shape)
-                color = _layer2color(typename)
-                status.graph.add_node(pydot.Node(outputname,
-                                                 label=label,
-                                                 fillcolor=color,
-                                                 style='filled'))
-                for iname in inputname:
-                    status.graph.add_edge(pydot.Edge(iname, outputname))
+                    __graph__ = dot
+                if not is_input_layer:
+                    ishape = input_shape
+                    if len(ishape) == 1:
+                        ishape = ishape[0]
+                    label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (name,
+                                                                   ishape,
+                                                                   output_shape)
+                    color = _layer2color(typename)
+                    __graph__.add_node(pydot.Node(outputname,
+                                                  label=label,
+                                                  fillcolor=color,
+                                                  style='filled'))
+                    for iname in inputname:
+                        __graph__.add_edge(pydot.Edge(iname, outputname))
 
 
 """ layer decorator
@@ -221,8 +256,6 @@ def layer(fun):
         inputs = kwargs.pop('inputs')
         kwargs.pop('reuse')
         kwargs.pop('name')
-        # print('func:', fun.__name__)
-        # print('kwargs keys:', kwargs.keys())
         _print_layer(inputs, outputs, fun.__name__, reuse, name, **kwargs)
         return x
     return _wrap

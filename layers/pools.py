@@ -2,8 +2,15 @@ from ..ops import pools, core
 from .. import colors
 from .core import layer
 
-def _pool(inputs, op, pshape, stride, padding,
-          return_shape, reuse, name, scope):
+def _pool(inputs,
+          op,
+          pshape,
+          stride,
+          padding,
+          return_shape,
+          reuse,
+          name,
+          scope):
     fun, output = op(core.shape(inputs), pshape,
                      stride, padding, reuse, name, scope)
     x = fun(inputs)
@@ -44,9 +51,15 @@ def avg_pool2d(inputs,
                reuse=False,
                name='avg_pool2d',
                scope=None):
-    return _pool(inputs, pools.avg_pool2d, pshape,
-                 stride, padding, return_shape,
-                 reuse, name, scope)
+    return _pool(inputs,
+                 pools.avg_pool2d,
+                 pshape,
+                 stride,
+                 padding,
+                 return_shape,
+                 reuse,
+                 name,
+                 scope)
 
 
 @layer
@@ -55,9 +68,12 @@ def avg_pool2d_global(inputs,
                       reuse=False,
                       name='avg_pool2d_global',
                       scope=None):
-    return _pool_global(inputs, pools.avg_pool2d_global,
-                        return_shape, reuse,
-                        name, scope)
+    return _pool_global(inputs,
+                        pools.avg_pool2d_global,
+                        return_shape,
+                        reuse,
+                        name,
+                        scope)
 
 
 @layer
@@ -69,9 +85,15 @@ def max_pool2d(inputs,
                reuse=False,
                name='max_pool2d',
                scope=None):
-    return _pool(inputs, pools.max_pool2d, pshape,
-                 stride, padding, return_shape,
-                 reuse, name, scope)
+    return _pool(inputs,
+                 pools.max_pool2d,
+                 pshape,
+                 stride,
+                 padding,
+                 return_shape,
+                 reuse,
+                 name,
+                 scope)
 
 
 @layer
@@ -80,6 +102,9 @@ def max_pool2d_global(inputs,
                       reuse=False,
                       name='max_pool2d_global',
                       scope=None):
-    return _pool_global(inputs, pools.max_pool2d_global,
-                        return_shape, reuse,
-                        name, scope)
+    return _pool_global(inputs,
+                        pools.max_pool2d_global,
+                        return_shape,
+                        reuse,
+                        name,
+                        scope)

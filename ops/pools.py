@@ -1,7 +1,6 @@
 import tensorflow as tf
 from . import helper
-from .. import status
-
+from . import ops
 
 def base_pool2d(input_shape, fun, pshape, stride,
                 padding, reuse, name, scope):
@@ -9,7 +8,7 @@ def base_pool2d(input_shape, fun, pshape, stride,
         stride = pshape
     stride = helper.norm_input_2d(stride)
     pshape = helper.norm_input_2d(pshape)
-    out_shape = helper.get_output_shape(input_shape, input_shape[status.axis],
+    out_shape = helper.get_output_shape(input_shape, input_shape[core.axis],
                                         pshape, stride, padding)
 
     ltype = fun.__name__.rsplit('.', 1)
@@ -21,7 +20,7 @@ def base_pool2d(input_shape, fun, pshape, stride,
     def _base_pool2d(x):
         with ops_scope:
             return fun(x, pshape, stride, padding.upper(),
-                       data_format=status.data_format, name=name)
+                       data_format=core.data_format, name=name)
     return _base_pool2d, out_shape
 
 
@@ -35,12 +34,12 @@ def base_pool2d_global(input_shape, fun, reuse, name, scope):
         ltype = ltype[0]
     ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
     axes = [idx for idx, _ in enumerate(input_shape)]
-    del axes[status.axis]
+    del axes[core.axis]
     del axes[0]
     def _base_pool2d_global(x):
         with ops_scope:
             return fun(x, axis=axes, name=name)
-    return _base_pool2d_global, [input_shape[0], input_shape[status.axis]]
+    return _base_pool2d_global, [input_shape[0], input_shape[core.axis]]
 
 
 def avg_pool2d(input_shape,

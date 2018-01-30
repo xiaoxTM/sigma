@@ -4,4 +4,19 @@ from . import pools
 from . import helper
 from . import base
 from . import losses
+from . import core
 from .base import placeholder
+
+def get():
+    return {'data_format' : core.data_format,
+            'epsilon' : core.epsilon
+           }
+
+
+def set(config):
+    if config is not None:
+        core.epsilon = config.get('epsilon', 1e-5)
+        core.data_format = config.get('data_format', 'NHWC')
+    else:
+        core.epsilon = 1e-5
+        core.data_format = 'NHWC'

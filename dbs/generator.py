@@ -20,7 +20,8 @@ def segment_data_augmentator(clip=[0, 255],
         Attributes
         ----------
         clip : list / tuple or int
-               used to clip value when augmentating with `saturation`, `contrast`, `brightness` or `lighting_std`
+               used to clip value when augmentating with
+               `saturation`, `contrast`, `brightness` or `lighting_std`
         fliplr : float
                probability for horizontal flipping augmentation operation
         flipup : float

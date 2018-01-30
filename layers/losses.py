@@ -1,4 +1,5 @@
 from ..ops import losses, helper, regularizers, core
+from .core import layer
 
 """ termology
     ----------
@@ -7,6 +8,7 @@ from ..ops import losses, helper, regularizers, core
 """
 
 
+@layer
 def binary_cross_entropy(inputs, labels,
                          axis=None,
                          logits=True,
@@ -22,6 +24,7 @@ def binary_cross_entropy(inputs, labels,
                                        scope)(inputs, labels)
 
 
+@layer
 def categorical_cross_entropy(inputs, labels,
                               axis=None,
                               logits=True,
@@ -37,6 +40,7 @@ def categorical_cross_entropy(inputs, labels,
                                             scope)(inputs, labels)
 
 
+@layer
 def mean_square_error(inputs, labels,
                       axis=None,
                       logits=True,
@@ -52,6 +56,7 @@ def mean_square_error(inputs, labels,
                                     scope)(inputs, labels)
 
 
+@layer
 def mean_absolute_error(inputs, labels,
                         axis=None,
                         logits=True,
@@ -67,6 +72,7 @@ def mean_absolute_error(inputs, labels,
                                       scope)(inputs, labels)
 
 
+@layer
 def winner_takes_all(inputs, labels,
                      axis=None,
                      logits=True,
@@ -82,6 +88,7 @@ def winner_takes_all(inputs, labels,
                                    scope)(inputs, labels)
 
 
+@layer
 def total_variation_regularize(inputs,
                                reuse=False,
                                name=None,

@@ -1,5 +1,5 @@
 from .. import helpers, colors, dbs
-from ..ops import helper
+import ops
 from timeit import default_timer as timer
 import tensorflow as tf
 import numpy as np
@@ -18,21 +18,21 @@ def intsize(x, cminus=False):
             return int(np.log10(-x)) + 1
 
 
-def predict(input_shape,
-            predop=None,
-            axis=None,
-            dtype='int64',
-            reuse=False,
-            name=None,
-            scope=None):
-    ops_scope, name = helper.assign_scope(name, scope, 'flatten', reuse)
+def predict_op(input_shape,
+               predop=None,
+               axis=None,
+               dtype=core.int64,
+               reuse=False,
+               name=None,
+               scope=None):
+    ops_scope, name = helper.assign_scope(name, scope, 'prediction', reuse)
     if predop is None:
-        predop = tf.argmax
+        predop = ops.core.argmax
     elif isinstance(predop, str):
         if predop == 'argmax':
-            predop = tf.argmax
+            predop = ops.core.argmax
         elif predop == 'argmin':
-            predop = tf.argmin
+            predop = ops.core.argmin
         else:
             raise ValueError('`predop` must be one of `argmax` or `argmin`.'
                              ' given {}'.format(predop))
@@ -53,10 +53,46 @@ def predict(input_shape,
     #     axis = 2
     # elif rank == 4: #[batch-size, rows, cols, depth]
     #     axis = 3
-    def _predict(x):
+    def _predict_op(x):
         with ops_scope:
             return predop(x, axis, name)
-    return _predict
+    return _predict_op
+
+
+def predict(session, x, xtensor, ypred,
+            predop='argmax',
+            axis=None,
+            dtype=core.int64,
+            nclass=None,
+            checkpoints=None,
+            savedir=None,
+            reuse=False,
+            name=None,
+            scope=None):
+    predop = predict_op(core.shape(ypred),
+                        predop,
+                        axis,
+                        dtype,
+                        reuse,
+                        name,
+                        scope)
+    ypred = predop(ypred)
+    if checkpoints is not None:
+        sess, saver = helpers.load(sess, checkpoints, verbose=True)
+    generator, nsamples, iterations = dbs.make_generator(x, batch_size, False, nclass)
+    progressor = line(range(nsamples), timeit=True, nprompts=20, enum=True)
+    preds = []
+    for (idx, iteration) in progress():
+        samples, step = next(generator)
+        _ypred = sess.run(ypred, feed_dict={xtensor:samples})
+        if savedir is None:
+            preds.append(_ypred)
+        else:
+            os.makedirs(savedir, exist_ok=True)
+            for i, images in enumerate(zip(samples, _ypred.astype(np.int8))):
+                dbs.dbio.save_image('{}/{}.png'.format(idx, i),
+                                helpers.stack(images, interval=10, value=[0, 0, 0]))
+    return preds
 
 
 def session(target='',
@@ -156,7 +192,6 @@ def line(iterable,
             prev = block_beg
             percentage = int(idx * 100 / epochs)
             prompt = _prompt[:block_end+1].tostring().decode('utf-8')
-            # print('specification:', spec)
             if brief:
                 if timeit:
                     message = spec.format(prompt, percentage, elapsed, ret)
@@ -298,22 +333,20 @@ def run(x, xtensor, optimizer, loss,
                 writer.add_summary(rdict['summarize'], global_step=epoch)
             _loss = rdict['loss']
             need_save = saverop(_loss, best_result)
-            if (idx+1) < iterations:
+            if (idx+1) < iterations: # if generator not stop iterate
                 if need_save:
-                    progress.send(' -- loss: {}{:.6}{}'
-                                  .format(colors.fg.green,
-                                          _loss,
-                                          colors.reset))
                     best_result = _loss
+                    progress.send(' -- loss: {}{:.6}{} / {}{:.6}{}'
+                                  .format(colors.fg.green, _loss, colors.reset,
+                                          colors.fg.green, best_result, colors.reset))
                 else:
-                    progress.send(' -- loss: {}{:.6}{}'
-                                  .format(colors.fg.red,
-                                          _loss,
-                                          colors.reset))
+                    progress.send(' -- loss: {}{:.6}{} / {}{:.6}{}'
+                                  .format(colors.fg.red, _loss, colors.reset,
+                                          colors.green, best_result, colors.reset))
             if need_save and saver is not None:
                 helpers.save(sess, checkpoints, saver, write_meta_graph=False, verbose=False)
-        if valids is not None:
-            validates(valids, batch_size)
+        #if valids is not None:
+        #    validates(valids, batch_size)
     if writer is not None:
         writer.close()
     sess.close()
@@ -335,6 +368,6 @@ def train(x, xtensor, optimizer, loss,
           save='all'):
     optimizer = ops.optimizers.get(optimizer)
     loss = ops.losses.get(loss)
-    metrics = ops.metrics.get(metrics)
+    #metrics = ops.metrics.get(metrics)
     run(x, xtensor, optimizer, loss, y, ytensor, nclass, metrics, epochs,
         batch_size, shuffle, valids, graph, config, checkpoints, logs, save)

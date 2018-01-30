@@ -17,3 +17,47 @@ if platform.startswith('win'):
     reverse = ''
     invisible = ''
     strikethrough = ''
+
+
+def red(string):
+    return '{}{}{}'.format(fg.red, string, reset)
+
+
+def green(string):
+    return '{}{}{}'.format(fg.green, string, reset)
+
+
+def blue(string):
+    return '{}{}{}'.format(fg.blue, string, reset)
+
+
+def black(string):
+    return '{}{}{}'.format(fg.black, string, reset)
+
+
+def orange(string):
+    return '{}{}{}'.format(fg.orange, string, reset)
+
+
+def purple(string):
+    return '{}{}{}'.format(fg.purple, string, reset)
+
+
+def cyan(string):
+    return '{}{}{}'.format(fg.cyan, string, reset)
+
+
+def pink(string):
+    return '{}{}{}'.format(fg.pink, string, reset)
+
+
+def yellow(string):
+    return '{}{}{}'.format(fg.yellow, string, reset)
+
+
+def get():
+    return None
+
+
+def set(config):
+    pass

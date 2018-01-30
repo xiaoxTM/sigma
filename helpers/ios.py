@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .. import colors, layers, status
+from .. import colors, layers, ops
 import os.path
 import numpy as np
 import sigma
@@ -166,7 +166,7 @@ def export_weights(filename, session,
         if graph is None:
             graph = session.graph
         f.attrs['sigma_version'] = sigma.__version__.encode('utf-8')
-        f.attrs['data_format'] = status.data_format.encode('utf-8')
+        f.attrs['data_format'] = ops.core.data_format.encode('utf-8')
         if collections is None:
             collections = graph.get_all_collection_keys()
         elif isinstance(collections, str):

@@ -1,5 +1,6 @@
 import tensorflow as tf
-from .. import colors, status
+from .. import colors
+from . import core
 import numpy as np
 import copy
 import collections
@@ -90,7 +91,7 @@ def name_normalize(names):
     for example: tensor shape [batch size, rows, cols, channels], axis = -1
         return axis=3
 """
-def normalize_axes(tensor_shape, axis=status.axis):
+def normalize_axes(tensor_shape, axis=core.axis):
     if not isinstance(tensor_shape, (list, tuple)):
         raise TypeError('tensor shape must be list/tuple, given {}{}{}[{}]'
                         .format(colors.fg.red,

@@ -1,5 +1,6 @@
 from .. import colors
 from ..ops import base, core
+from .core import layer
 
 @layer
 def flatten(inputs,
@@ -23,8 +24,11 @@ def flatten(inputs,
 
 
 @layer
-def reshape(inputs, output_shape, return_shape=False,
-            reuse=False, name=None, scope=None):
+def reshape(inputs, output_shape,
+            return_shape=False,
+            reuse=False,
+            name=None,
+            scope=None):
     input_shape = core.shape(inputs)
     fun, output = base.reshape(output_shape, reuse, name, scope)
     x = fun(inputs)
@@ -37,3 +41,18 @@ def reshape(inputs, output_shape, return_shape=False,
     if return_shape:
         x = [x, output]
     return x
+
+
+@layer
+def input_spec(input_shape,
+               dtype=core.float32,
+               reuse=False,
+               name=None,
+               scope=None):
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'inputs',
+                                          reuse)
+    with ops_scope:
+        x = core.placeholder(dtype, input_shape, name)
+        return x

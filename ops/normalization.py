@@ -7,7 +7,7 @@ def instance_norm(input_shape,
                   scale_initializer='ones',
                   offset_regularizer=None,
                   scale_regularizer=None,
-                  epsilon=0.003,
+                  epsilon=core.epsilon,
                   act=None,
                   trainable=True,
                   collections=None,
@@ -30,7 +30,7 @@ def instance_norm(input_shape,
        offset_initializer is not False:
         offset = mm.malloc('offset',
                            neurons,
-                           tf.float32,
+                           core.float32,
                            offset_initializer,
                            offset_regularizer,
                            trainable,
@@ -43,7 +43,7 @@ def instance_norm(input_shape,
        scale_initializer is not False:
         scale = mm.malloc('scale',
                           neurons,
-                          tf.float32,
+                          core.float32,
                           scale_initializer,
                           scale_regularizer,
                           trainable,
@@ -75,7 +75,7 @@ def batch_norm(input_shape,
                scale_regularizer=None,
                moving_mean_initializer='zeros',
                moving_variance_initializer='ones',
-               epsilon=0.001,
+               epsilon=core.epsilon,
                act=None,
                trainable=True,
                fused=False,
@@ -121,14 +121,14 @@ def batch_norm(input_shape,
         axis = [0 ,1, 2]
     # if not isinstance(axis, (list, tuple)):
     #     axis = [axis]
-    neurons = input_shape[status.axis]
+    neurons = input_shape[core.axis]
 
     offset = None
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
         offset = mm.malloc('offset',
                            neurons,
-                           tf.float32,
+                           core.float32,
                            offset_initializer,
                            offset_regularizer,
                            trainable,
@@ -141,7 +141,7 @@ def batch_norm(input_shape,
        scale_initializer is not False:
         scale = mm.malloc('scale',
                           neurons,
-                          tf.float32,
+                          core.float32,
                           scale_initializer,
                           scale_regularizer,
                           trainable,
@@ -153,7 +153,7 @@ def batch_norm(input_shape,
     moving_mean = None
     moving_mean = mm.malloc('moving-mean',
                             neurons,
-                            tf.float32,
+                            core.float32,
                             moving_mean_initializer,
                             None,
                             trainable,
@@ -165,7 +165,7 @@ def batch_norm(input_shape,
     moving_variance = None
     moving_variance = mm.malloc('moving-variance',
                                 neurons,
-                                tf.float32,
+                                core.float32,
                                 moving_variance_initializer,
                                 None,
                                 trainable,
@@ -182,7 +182,7 @@ def batch_norm(input_shape,
             #                        epsionl=0.001, is_training=True, name=None)
             # x must be 4-d tensor
             # mean / variance used for inference
-            x_shape = x.get_shape().as_list()
+            x_shape = core.shape(x)
             for _ in range(4 - x.get_shape().ndims):
                 x = tf.expand_dims(x, 1)
             # print('x shape:', x.get_shape().as_list())

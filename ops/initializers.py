@@ -1,5 +1,5 @@
-import tensorflow as tf
 import numpy as np
+from . import core
 
 """ Computes the number of input and output units for a weight shape.
     Args:
@@ -38,8 +38,8 @@ def get_fans(shape):
 def he_normal(seed=None, name=None):
     def _he_normal(x, dtype, partition_info=None):
         fan_in, _ = get_fans(x)
-        stddev = tf.sqrt(2 / fan_in)
-        return tf.random_normal(x, 0, stddev, dtype, seed, name)
+        stddev = core.sqrt(2 / fan_in)
+        return core.random_normal(x, 0, stddev, dtype, seed, name)
     return _he_normal
 
 
@@ -52,8 +52,8 @@ def he_uniform(seed=None, name=None):
     def _he_uniform(x, dtype, partition_info=None):
 #        return init.he_uniform(x, dtype)
         fan_in, _ = get_fans(x)
-        limit = tf.sqrt(6 / fan_in)
-        return tf.random_uniform(x, -limit, limit, dtype, seed, name)
+        limit = core.sqrt(6 / fan_in)
+        return core.random_uniform(x, -limit, limit, dtype, seed, name)
     return _he_uniform
 
 
@@ -67,8 +67,8 @@ def he_uniform(seed=None, name=None):
 def glorot_normal(seed=None, name=None):
     def _glorot_normal(x, dtype, partition_info=None):
         fan_in, fan_out = get_fans(x)
-        stddev = tf.sqrt(2 / (fan_in + fan_out))
-        return tf.random_normal(x, 0, stddev, dtype, seed, name)
+        stddev = core.sqrt(2 / (fan_in + fan_out))
+        return core.random_normal(x, 0, stddev, dtype, seed, name)
     return _glorot_normal
 
 
@@ -81,8 +81,8 @@ def glorot_normal(seed=None, name=None):
 def glorot_uniform(seed=None, name=None):
     def _glorot_uniform(x, dtype, partition_info=None):
         fan_in, fan_out = get_fans(x)
-        limit = tf.sqrt(6 / (fan_in + fan_out))
-        return tf.random_uniform(x, -limit, limit, dtype, seed, name)
+        limit = core.sqrt(6 / (fan_in + fan_out))
+        return core.random_uniform(x, -limit, limit, dtype, seed, name)
     return _glorot_uniform
 
 
@@ -94,8 +94,8 @@ def glorot_uniform(seed=None, name=None):
 def lecun_uniform(seed=None, name=None):
     def _lecun_uniform(x, dtype, partition_info=None):
         fan_in, _ = get_fans(x)
-        limit = tf.sqrt( 3 / fan_in)
-        return tf.random_uniform(x, -limit, limit, dtype, seed, name)
+        limit = core.sqrt( 3 / fan_in)
+        return core.random_uniform(x, -limit, limit, dtype, seed, name)
     return _lecun_uniform
 
 
@@ -108,8 +108,8 @@ def lecun_uniform(seed=None, name=None):
 def lecun_normal(seed=None, name=None):
     def _lecun_normal(x, dtype, partition_info=None):
         fan_in, _ = get_fans(x)
-        stddev = tf.sqrt(1 / fan_in)
-        return tf.random_normal(x, 0, stddev, dtype, seed, name)
+        stddev = core.sqrt(1 / fan_in)
+        return core.random_normal(x, 0, stddev, dtype, seed, name)
     return _lecun_normal
 
 
@@ -117,7 +117,7 @@ def lecun_normal(seed=None, name=None):
 """
 def truncated_normal(mean=0.0, stddev=1.0, seed=None, name=None):
     def _truncated_normal(x, dtype, partition_info=None):
-        return tf.truncated_normal(x, mean, stddev, dtype, seed, name)
+        return core.truncated_normal(x, mean, stddev, dtype, seed, name)
     return _truncated_normal
 
 
@@ -125,7 +125,7 @@ def truncated_normal(mean=0.0, stddev=1.0, seed=None, name=None):
 """
 def random_normal(mean=0.0, stddev=1.0, seed=None, name=None):
     def _random_normal(x, dtype, partition_info=None):
-        return tf.random_normal(x, mean, stddev, dtype, seed, name)
+        return core.random_normal(x, mean, stddev, dtype, seed, name)
     return _random_normal
 
 
@@ -133,7 +133,7 @@ def random_normal(mean=0.0, stddev=1.0, seed=None, name=None):
 """
 def random_uniform(minval=0, maxval=None, seed=None, name=None):
     def _random_uniform(x, dtype, partition_info=None):
-        return tf.random_uniform(x, minval, maxval, dtype, seed, name)
+        return core.random_uniform(x, minval, maxval, dtype, seed, name)
     return _random_uniform
 
 #""" random gamma initializer
@@ -150,7 +150,7 @@ def random_uniform(minval=0, maxval=None, seed=None, name=None):
 """
 def constant(value=0, name=None):
     def _constant(x, dtype, partition_info=None):
-        return tf.constant(value, dtype, x, name)
+        return core.constant(value, dtype, x, name)
     return _constant
 
 #
@@ -161,20 +161,21 @@ def constant(value=0, name=None):
 """
 def zeros(name=None):
     def _zeros(x, dtype, partition_info=None):
-        return tf.zeros(x, dtype, name)
+        return core.zeros(x, dtype, name)
     return _zeros
+
 
 def ones(name=None):
     def _ones(x, dtype, partition_info=None):
-        return tf.ones(x, dtype, name)
+        return core.ones(x, dtype, name)
     return _ones
 
 
-def get(initializer):
+def get(initializer, **kwargs):
     if initializer is None:
         return zeros()
     if isinstance(initializer, str):
-        return eval('{}()'.format(initializer))
+        return eval('{}(**kwargs)'.format(initializer))
     elif callable(initializer):
         return initializer
     # if given list / tuple / np.ndarray value

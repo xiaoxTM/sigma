@@ -1,6 +1,5 @@
 from ..ops import normalization as norms
-from ..ops import helper
-import tensorflow as tf
+from ..ops import helper, core
 from .core import layer
 
 @layer
@@ -9,7 +8,7 @@ def instance_norm(inputs,
                   scale_initializer='ones',
                   offset_regularizer=None,
                   scale_regularizer=None,
-                  epsilon=0.003,
+                  epsilon=core.epsilon,
                   act=None,
                   trainable=True,
                   collections=None,
@@ -48,7 +47,7 @@ def batch_norm(inputs,
                scale_regularizer=None,
                moving_mean_initializer='zeros',
                moving_variance_initializer='ones',
-               epsilon=0.001,
+               epsilon=core.epsilon,
                act=None,
                trainable=True,
                fused=True,
@@ -58,21 +57,21 @@ def batch_norm(inputs,
                scope=None):
     input_shape = core.shape(inputs)
     fun = norms.batch_norm(input_shape,
-                          momentum,
-                          offset_initializer,
-                          scale_initializer,
-                          offset_regularizer,
-                          scale_regularizer,
-                          moving_mean_initializer,
-                          moving_variance_initializer,
-                          epsilon,
-                          act,
-                          trainable,
-                          fused,
-                          collections,
-                          reuse,
-                          name,
-                          scope)
+                           momentum,
+                           offset_initializer,
+                           scale_initializer,
+                           offset_regularizer,
+                           scale_regularizer,
+                           moving_mean_initializer,
+                           moving_variance_initializer,
+                           epsilon,
+                           act,
+                           trainable,
+                           fused,
+                           collections,
+                           reuse,
+                           name,
+                           scope)
     x = fun(inputs)
     xshape = core.shape(x)
     if input_shape != xshape:
@@ -84,6 +83,8 @@ def batch_norm(inputs,
 
 
 @layer
-def dropout(inputs, pkeep, noise_shape=None,
-            seed=None, name=None):
+def dropout(inputs, pkeep,
+            noise_shape=None,
+            seed=None,
+            name=None):
     return norms.dropout(pkeep, noise_shape, seed, name)(inputs)

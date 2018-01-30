@@ -1,9 +1,12 @@
-#import tensorflow as tf
 import numpy as np
 from .. import colors
 from . import helper, core
 
-def concat(inputs_shape, axis=-1, reuse=False, name=None, scope=None):
+def concat(inputs_shape,
+           axis=-1,
+           reuse=False,
+           name=None,
+           scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
                         '{}list / tpule{}, given {}{}{}'
@@ -29,7 +32,11 @@ def concat(inputs_shape, axis=-1, reuse=False, name=None, scope=None):
             return core.concat(x, axis, name)
     return _concat, output_shape
 
-def add(inputs_shape, reuse=False, name=None, scope=None):
+
+def add(inputs_shape,
+        reuse=False,
+        name=None,
+        scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
                         '{}list / tpule{}, given {}{}{}'
@@ -52,6 +59,7 @@ def add(inputs_shape, reuse=False, name=None, scope=None):
         with ops_scope:
             return core.add(x, name)
     return _add, output_shape
+
 
 def mul(inputs_shape, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):

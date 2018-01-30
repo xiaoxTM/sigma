@@ -1,6 +1,5 @@
 import tensorflow as tf
 from . import helper, core
-from .. import status
 
 
 def loss(fun):
@@ -126,15 +125,15 @@ def winner_takes_all(axis,
     return _winner_takes_all
 
 
-def get(loss):
+def get(l, **kwargs):
     """ get loss from None | string | callable function
     """
-    if losses is None:
+    if l is None:
         return None
-    elif isinstance(losses, str):
-        return eval('{}(status.axis)'.format(losses))
-    elif callable(losses):
-        return losses
+    elif isinstance(l, str):
+        return eval('{}(**kwargs)'.format(l))
+    elif callable(l):
+        return l
     else:
-        raise ValueError('cannot get losses `{}` with type {}'
-                         .format(losses, type(losses)))
+        raise ValueError('cannot get loss `{}` with type {}'
+                         .format(l, type(l)))
