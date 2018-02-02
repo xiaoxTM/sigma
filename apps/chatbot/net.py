@@ -65,7 +65,7 @@ def bag_of_words(sentence, words):
 
 
 def build(input_shape, nclass):
-    inputs = sigma.placeholder(dtype='float32', shape=input_shape, name='input-data')
+    inputs = layers.base.input_spec(input_shape, dtype='float32', name='input-data')
     with sigma.defaults(act='relu'):
         x = layers.convs.dense(inputs, 8)
         x = layers.convs.dense(x, 8)
@@ -80,43 +80,48 @@ def predict(dataset, sentence, checkpoints):
     sess = ans['session']
     presentation = bag_of_words(sentence, words)
     presentation = presentation.reshape([1, -1])
-    _preds = sigma.predict(ops.helper.shape(preds))(preds)
-    _x = sess.run(_preds, feed_dict={xtensor:presentation})
+    _preds = sigma.predict(sess, x, xtensor, preds)
+    # _x = sess.run(_preds, feed_dict={xtensor:presentation})
     sess.close()
-    return _x, classes, intents
+    return _preds, classes, intents
 
 
 def classify(dataset, sentence, checkpoints):
     thresh = 0.25
-    result, classes, intents = predict(dataset, sentence, checkpoints)
-    result = [[i, r] for i, r in enumerate(result) if r > thresh]
-    result.sort(key=lambda x: x[1], reverse=True)
-    return_list = []
-    for r in result:
-        return_list.append((classes[r[0]], r[1]))
-    return return_list, intents
+    results, classes, intents = predict(dataset, sentence, checkpoints)
+    return_lists = []
+    for result in results:
+        result = [[i, r] for i, r in enumerate(result) if r > thresh]
+        result.sort(key=lambda x: x[1], reverse=True)
+        return_list = []
+        for r in result:
+            return_list.append((classes[r[0]], r[1]))
+        return_lists.append(return_list)
+    return return_lists, intents
 
 
 def response(dataset, sentence, checkpoints, user_id='121'):
-    result, intents = classify(dataset, sentence, checkpoints)
+    results, intents = classify(dataset, sentence, checkpoints)
     context = {}
     print(sentence, '==>')
-    if result:
-        while result:
-            for i in intents['intents']:
-                if i['tag'] == result[0][0]:
-                    if 'context_set' in i:
-                        context[user_id] = i['context_set']
-                    if not 'context_filter' in i or \
-                        (user_id in context and 'context_filter' in i and i['context_filter'] == context[user_id]):
-                        return print('[SIGMA]:', random.choice(i['responses']))
-            result.pop(0)
+    if results:
+        for result in results:
+            while result:
+                for i in intents['intents']:
+                    if i['tag'] == result[0][0]:
+                        if 'context_set' in i:
+                            context[user_id] = i['context_set']
+                        if not 'context_filter' in i or \
+                            (user_id in context and 'context_filter' in i and i['context_filter'] == context[user_id]):
+                            return print('[SIGMA]:', random.choice(i['responses']))
+                result.pop(0)
 
 
 def train(dataset, checkpoints, epochs=50, batch_size=8, shuffle=True):
     x, y, *_ = load(dataset)
+    # layers.core.set_print(False)
     xtensor, preds = build([None, len(x[0])], nclass=len(y[0]))
-    #helpers.export_graph('chatbot.png')
+    # layers.core.export_graph('chatbot.png')
     ytensor = sigma.placeholder(dtype='int32', shape=[None, len(y[0])])
     loss = layers.losses.cce(preds, ytensor, onehot=True)
     tf.summary.scalar('loss', loss)

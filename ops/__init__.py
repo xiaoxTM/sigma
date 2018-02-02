@@ -5,7 +5,6 @@ from . import helper
 from . import base
 from . import losses
 from . import core
-from .base import placeholder
 
 def get():
     return {'data_format' : core.data_format,
@@ -20,3 +19,6 @@ def set(config):
     else:
         core.epsilon = 1e-5
         core.data_format = 'NHWC'
+    core.axis = -1
+    if core.data_format == 'NCHW':
+        core.axis = 1

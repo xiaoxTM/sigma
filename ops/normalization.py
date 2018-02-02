@@ -60,11 +60,85 @@ def instance_norm(input_shape,
                 normalized = scale * normalized
             if offset is not None:
                 normalized = normalized + offset
-            return  normalized
+            return  act(normalized)
     return _instance_norm
 
 
 layer_norm = instance_norm
+
+""" code inspired by (borrowed from):
+        https://github.com/tensorflow/magenta/blob/master
+              /magenta/models/image_stylization/ops.py
+"""
+def conditional_instance_norm(input_shape,
+                              bank_size,
+                              offset_initializer='zeros',
+                              scale_initializer='ones',
+                              offset_regularizer=None,
+                              scale_regularizer=None,
+                              epsilon=core.epsilon,
+                              act=None,
+                              trainable=True,
+                              collections=None,
+                              reuse=False,
+                              name=None,
+                              scope=None):
+    ops_scope, name = helper.assign_scope(name,
+                                          scope,
+                                          'conditional_instance_norm',
+                                          reuse)
+    input_len = len(input_shape)
+    axis = helper.normalize_axes(input_shape)
+    neurons = [bank_size, input_shape[axis]]
+    axes = list(range(input_len))
+    del axes[axis]
+    del axes[0]
+
+    offset = None
+    if not isinstance(offset_initializer, bool) or \
+       offset_initializer is not False:
+        offset = mm.malloc('offset',
+                           neurons,
+                           core.float32,
+                           offset_initializer,
+                           offset_regularizer,
+                           trainable,
+                           collections,
+                           reuse,
+                           name,
+                           scope)
+    scale = None
+    if not isinstance(scale_initializer, bool) or \
+       scale_initializer is not False:
+        scale = mm.malloc('scale',
+                          neurons,
+                          core.float32,
+                          scale_initializer,
+                          scale_regularizer,
+                          trainable,
+                          collections,
+                          reuse,
+                          name,
+                          scope)
+    act = actives.get(act)
+    def _condition_on(labels):
+        select_scale = tf.gather(scale, labels)
+        select_offset = tf.gather(offset, labels)
+        select_scale = tf.expand_dims(tf.expand_dims(select_scale, 1), 1)
+        select_offset = tf.expand_dims(tf.expand_dims(select_offset, 1), 1)
+        return select_scale, select_offset
+    
+    def _conditional_instance_norm(x, labels):
+        with ops_scope:
+            mean, variance = tf.nn.moments(x, axes, keep_dims=True)
+            normalized = (x - mean) / core.sqrt(variance + epsilon)
+            select_scale, select_offset = _condition_on(labels)
+            if select_scale is not None:
+                normalized = select_scale * normalized
+            if select_offset is not None:
+                normalized = normalized + select_offset
+            return  act(normalized)
+    return _conditional_instance_norm
 
 
 def batch_norm(input_shape,

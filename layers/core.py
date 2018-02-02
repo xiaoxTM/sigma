@@ -1,7 +1,7 @@
 import inspect
 import functools
 from contextlib import contextmanager
-from ..ops import helper, core
+from .. import ops, colors
 import os.path
 
 try:
@@ -159,18 +159,18 @@ def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
             if name is None:
                 raise ValueError('name is not given')
             if isinstance(inputs, (list, tuple)):
-                if helper.is_tensor(inputs[0]):
+                if ops.helper.is_tensor(inputs[0]):
                     input_shape = [shape(x) for x in inputs]
-                    inputname = [helper.name_normalize(x.name) for x in inputs]
+                    inputname = [ops.helper.name_normalize(x.name) for x in inputs]
                 else:
                     is_input_layer = True
                     input_shape = inputs
-                    inputname = helper.dispatch_name('input')
+                    inputname = ops.helper.dispatch_name('input')
             else:
-                input_shape = [core.shape(inputs)]
-                inputname = [helper.name_normalize(inputs.name)]
-            output_shape = core.shape(outputs)
-            outputname = helper.name_normalize(outputs.name)
+                input_shape = [ops.core.shape(inputs)]
+                inputname = [ops.helper.name_normalize(inputs.name)]
+            output_shape = ops.core.shape(outputs)
+            outputname = ops.helper.name_normalize(outputs.name)
             if __graph__ is False:
                 if len(inputname) == 1:
                     inputname = inputname[0]
@@ -245,9 +245,9 @@ def layer(fun):
         name, reuse = kwargs.get('name', None), kwargs.get('reuse', False)
         if name is None:
             if reuse:
-                name = helper.dispatch_name(fun.__name__, -1)
+                name = ops.helper.dispatch_name(fun.__name__, -1)
             else:
-                name = helper.dispatch_name(fun.__name__)
+                name = ops.helper.dispatch_name(fun.__name__)
             kwargs['name'] = name
         x = fun(**kwargs)
         outputs = x

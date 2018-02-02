@@ -1,10 +1,10 @@
-from ..ops import merge, core
+from .. import ops
 from .. import colors
-from .core import layer
+from . import core
 
 def _merge(fun, inputs, output, typename, return_shape):
     x = fun(inputs)
-    xshape = core.shape(x)
+    xshape = ops.core.shape(x)
     if output != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {}{}{} vs {}{}{}'
@@ -15,35 +15,35 @@ def _merge(fun, inputs, output, typename, return_shape):
     return x
 
 
-@layer
+@core.layer
 def concat(inputs,
            axis=-1,
            return_shape=False,
            reuse=False,
            name='concat',
            scope=None):
-    inputs_shape = [core.shape(ip) for ip in inputs]
-    fun, output = merge.concat(inputs_shape, axis, reuse, name, scope)
+    inputs_shape = [ops.core.shape(ip) for ip in inputs]
+    fun, output = ops.merge.concat(inputs_shape, axis, reuse, name, scope)
     return _merge(fun, inputs, output, 'concatenate', return_shape)
 
 
-@layer
+@core.layer
 def add(inputs,
         return_shape=False,
         reuse=False,
         name='add',
         scope=None):
-    input_shape = [core.shape(ip) for ip in inputs]
-    fun, output = merge.add(input_shape, reuse, name, scope)
+    input_shape = [ops.core.shape(ip) for ip in inputs]
+    fun, output = ops.merge.add(input_shape, reuse, name, scope)
     return _merge(fun, inputs, output, 'add', return_shape)
 
 
-@layer
+@core.layer
 def mul(inputs,
         return_shape=False,
         reuse=False,
         name='mul',
         scope=None):
-    input_shape = [core.shape(ip) for ip in inputs]
-    fun, output = merge.mul(input_shape, reuse, name, scope)
+    input_shape = [ops.core.shape(ip) for ip in inputs]
+    fun, output = ops.merge.mul(input_shape, reuse, name, scope)
     return _merge(fun, inputs, output, 'mul', return_shape)

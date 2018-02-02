@@ -65,6 +65,17 @@ def is_tensor(x):
     return tf.contrib.framework.is_tensor(x)
 
 
+def depth(x):
+    return core.shape(x)[core.axis]
+
+
+def feature_dims(x):
+    dims = list(range(core.rank(x)))
+    shape.pop(core.axis)
+    shape.pop(0)
+    return shape
+
+
 def name_normalize(names):
     """ normalize variable name
         generally, `names` is a list of :

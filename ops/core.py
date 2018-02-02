@@ -2,6 +2,7 @@ import tensorflow as tf
 
 epsilon = 1e-5
 data_format = 'NHWC'
+axis=None
 
 # floating data type
 float16 = tf.float16
@@ -19,7 +20,7 @@ uint32 = tf.uint32
 int64 = tf.int64
 uint64 = tf.uint64
 
-bool = tf.bool
+boolean = tf.bool
 string = tf.string
 
 # quantized integer
@@ -28,6 +29,25 @@ quint8 = tf.quint8
 qint16 = tf.qint16
 quint16 = tf.quint16
 qint32 = tf.qint32
+
+def wrap(fun, *args, **kwargs):
+    return eval('tf.{}(*args, **kwargs)'.format(fun))
+
+
+def rank(x):
+    return tf.rank(x)
+
+def gather(x, indices, validate=None, name=None, axis=0):
+    return tf.gather(x, indices, validate, name, axis)
+
+
+def dtype(x):
+    return x.dtype.base_dtype.name
+
+
+def cast(x, dtype, name=None):
+    return tf.cast(x, dtype, name)
+
 
 def placeholder(dtype, shape=None, name=None):
     return tf.placeholder(dtype, shape, name)
@@ -41,8 +61,7 @@ def tshape(x, name=None, out_type=int32):
     return tf.shape(x, name, out_type)
 
 
-def reshape(x, output_shape,
-            name=None):
+def reshape(x, output_shape, name=None):
     return tf.reshape(x, output_shape, name)
 
 
@@ -50,14 +69,14 @@ def argmax(x,
            axis=None,
            dtype=int64,
            name=None):
-    return tf.argmax(x, axis, dtype, name)
+    return tf.argmax(x, axis=axis, output_type=dtype, name=name)
 
 
 def argmin(x,
            axis=None,
            dtype=int64,
            name=None):
-    return tf.argmin(x, axis, dtype, name)
+    return tf.argmin(x, axis=axis, output_type=dtype, name=name)
 
 
 def mean(x,
@@ -286,6 +305,10 @@ def embedding(*args, **kwargs):
     return tf.nn.embedding_lookup(*args, **kwargs)
 
 
+def conv1d(*args, **kwargs):
+    return tf.nn.conv1d(*args, **kwargs)
+
+
 def conv2d(*args, **kwargs):
     return tf.nn.conv2d(*args, **kwargs)
 
@@ -300,3 +323,7 @@ def deconv2d(*args, **kwargs):
 
 def sepconv2d(*args, **kwargs):
     return tf.nn.separable_conv2d(*args, **kwargs)
+
+
+def dot(*args, **kwargs):
+    return tf.matmul(*args, **kwargs)

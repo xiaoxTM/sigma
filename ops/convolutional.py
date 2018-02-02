@@ -8,38 +8,6 @@ import numpy as np
 
 import logging
 
-def embedding(table_shape,
-              strategy='mod',
-              dtype=core.float32,
-              initializer='glorot_uniform',
-              regularizer=None,
-              trainable=True,
-              collections=None,
-              summarize=True,
-              reuse=False,
-              name=None,
-              scope=None):
-    """ table shape should be:
-        table-length x embedding-length
-        normally, table-length is the number of class
-                  emebdding-length
-
-        // TODO: test
-    """
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'embedding',
-                                          reuse)
-    table = mm.malloc('embedding', table_shape, dtype,
-                      initializer, regularizer, trainable,
-                      collections, reuse, name, scope)
-    if summarize and not reuse:
-        tf.summary.histogram(table.name, table)
-    def _embedding(ids):
-        with ops_scope:
-            return core.embedding(table, ids, strategy, name)
-    return _embedding
-
 
 """ base convolutional operation
     Example:
@@ -134,7 +102,7 @@ def fully_conv(input_shape, nouts,
     kernel_shape = [input_shape[1], nouts] # get rid of batch_size axis
     output_shape = [input_shape[0], nouts]
     def _full_conv(x, weight):
-        return tf.matmul(x, weight)
+        return core.dot(x, weight)
     return conv(convop=_full_conv,
                 kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
@@ -185,7 +153,7 @@ def conv1d(input_shape, nouts, kshape,
     # collapse dimension into scalar
     stride = stride[1]
     def _conv1d(x, weight):
-        return tf.nn.conv1d(x, weight, stride, padding.upper())
+        return core.conv1d(x, weight, stride, padding.upper())
     return conv(convop=_conv1d,
                 kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
@@ -231,7 +199,7 @@ def conv2d(input_shape, nouts, kshape,
                                            kshape, stride, padding)
     kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     def _conv2d(x, weight):
-        return tf.nn.conv2d(x, weight, stride, padding.upper())
+        return core.conv2d(x, weight, stride, padding.upper())
     return conv(convop=_conv2d,
                 kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
@@ -277,7 +245,7 @@ def conv3d(input_shape, nouts,
                                            kshape, stride, padding)
     kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     def _conv3d(x, weight):
-        return tf.nn.conv3d(x, weight, stride, padding)
+        return core.conv3d(x, weight, stride, padding)
     return conv(convop=_conv3d, kernel_shape=kernel_shape,
                 weight_initializer=weight_initializer,
                 weight_regularizer=weight_regularizer,
@@ -489,8 +457,8 @@ def soft_conv(input_shape,
                             [batch-idx, row-idx, col-idx]]
         """
         shape = core.tshape(offset_grids)
-        batch_range = tf.expand_dims(tf.range(tf.cast(shape[0],
-                                                      dtype=tf.float32)
+        batch_range = tf.expand_dims(tf.range(core.cast(shape[0],
+                                                      dtype=core.float32)
                                               ), axis=-1)
         batch_range = tf.tile(batch_range, [1, nkernels * ndims])
         int_shape = core.shape(offset_grids)
@@ -516,7 +484,7 @@ def soft_conv(input_shape,
             offset_grids = tf.floor(offset_grids)
         elif mode == 'ceil':
             offset_grids = tf.ceil(offset_grids)
-        offset_grids = tf.cast(offset_grids, dtype=core.int32)
+        offset_grids = core.cast(offset_grids, dtype=core.int32)
         unstacks = tf.unstack(offset_grids, axis=-1)
         for dim, bound in enumerate(dim_shape):
             # dim + 1 to skip batch-idx dimension
@@ -947,10 +915,9 @@ def sepconv2d(input_shape, nouts,
     """
     def _sepconv2d(x, depthwise_filter, pointwise_filter):
         return core.sepconv2d(x, depthwise_filter,
-                                      pointwise_filter,
-                                      stride, padding, rate,
-                                      name, ops.data_format)
-
+                              pointwise_filter,
+                              stride, padding, rate,
+                              name, ops.data_format)
     return sepconv(_sepconv2d,
                    depthwise_kernel,
                    pointwise_kernel,

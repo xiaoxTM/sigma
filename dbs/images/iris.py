@@ -1,7 +1,7 @@
 #sepal_length,sepal_width,petal_length,petal_width,species
 import numpy as np
 
-import helpers
+from sigma import helpers
 
 setosa = 0
 versicolor = 1

@@ -1,5 +1,4 @@
-from .. import helpers, colors, dbs
-import ops
+from .. import helpers, colors, dbs, ops
 from timeit import default_timer as timer
 import tensorflow as tf
 import numpy as np
@@ -21,13 +20,15 @@ def intsize(x, cminus=False):
 def predict_op(input_shape,
                predop=None,
                axis=None,
-               dtype=core.int64,
+               dtype=ops.core.int64,
                reuse=False,
                name=None,
                scope=None):
-    ops_scope, name = helper.assign_scope(name, scope, 'prediction', reuse)
+    ops_scope, name = ops.helper.assign_scope(name, scope, 'prediction', reuse)
     if predop is None:
-        predop = ops.core.argmax
+        def _linear(x, axis, name):
+            return x
+        predop = _linear
     elif isinstance(predop, str):
         if predop == 'argmax':
             predop = ops.core.argmax
@@ -42,7 +43,7 @@ def predict_op(input_shape,
     if axis is None:
         axis = 0
     elif axis < 0:
-        axis = helper.normalize_axes(input_shape, axis)
+        axis = ops.helper.normalize_axes(input_shape, axis)
     rank = len(input_shape)
     axis = rank - 1
     # if rank == 1: #[depth]
@@ -55,21 +56,22 @@ def predict_op(input_shape,
     #     axis = 3
     def _predict_op(x):
         with ops_scope:
-            return predop(x, axis, name)
+            return predop(x, axis, name=name)
     return _predict_op
 
 
 def predict(session, x, xtensor, ypred,
-            predop='argmax',
+            predop=None,
+            batch_size=32,
             axis=None,
-            dtype=core.int64,
+            dtype=ops.core.int64,
             nclass=None,
             checkpoints=None,
             savedir=None,
             reuse=False,
             name=None,
             scope=None):
-    predop = predict_op(core.shape(ypred),
+    predop = predict_op(ops.core.shape(ypred),
                         predop,
                         axis,
                         dtype,
@@ -77,22 +79,29 @@ def predict(session, x, xtensor, ypred,
                         name,
                         scope)
     ypred = predop(ypred)
+    if nclass is None:
+        nclass = ops.helper.depth(ypred)
     if checkpoints is not None:
         sess, saver = helpers.load(sess, checkpoints, verbose=True)
-    generator, nsamples, iterations = dbs.make_generator(x, batch_size, False, nclass)
-    progressor = line(range(nsamples), timeit=True, nprompts=20, enum=True)
+    batch_size = min(batch_size, len(x))
+    generator, nsamples, iterations = dbs.images.make_generator(x, None,
+                                                                batch_size,
+                                                                False,
+                                                                nclass)
+    progress = line(range(nsamples), timeit=True, nprompts=20, enum=True)
     preds = []
     for (idx, iteration) in progress():
         samples, step = next(generator)
-        _ypred = sess.run(ypred, feed_dict={xtensor:samples})
+        _ypred = session.run(ypred, feed_dict={xtensor:samples})
         if savedir is None:
             preds.append(_ypred)
         else:
             os.makedirs(savedir, exist_ok=True)
             for i, images in enumerate(zip(samples, _ypred.astype(np.int8))):
-                dbs.dbio.save_image('{}/{}.png'.format(idx, i),
-                                helpers.stack(images, interval=10, value=[0, 0, 0]))
-    return preds
+                dbs.images.save_image('{}/{}.png'.format(idx, i),
+                                      helpers.stack(images, interval=10,
+                                                    value=[0, 0, 0]))
+    return preds[0] if len(preds) == 1 else preds
 
 
 def session(target='',
@@ -132,6 +141,36 @@ def line(iterable,
          nc='x',
          cc='+'):
     """ show line message
+        Attibutes
+        =========
+            iterable : list / tuple / np.ndarray / range
+                       iterable object or function that can yield something
+            brief : bool
+                    if true, show extra information in form of
+                        `[current-iter / total-iter]`
+            nprompts : int
+                       how many prompt (`nc`/`cc`) to mimic the progress
+            epochs : int or None
+                     total iterations
+            multiplier : float
+                         multiplier factor for each step
+                         the greater the multiplier is,
+                         the more progress one prompt represents
+            enum : bool
+                   return iteration index if true
+                   return yield object ONLY else
+            timeit : bool
+                     time each iteration or not
+            show_total_time : bool
+                              show the sum of each iteration time if true
+            accuracy : int
+                       specifying print format precision for time
+            message : string or None
+                      message to be shown at the begining of each line
+            nc : char
+                 character to show as running prompt
+            cc : char
+                 character to show as running and ran prompt for each iteration
     """
     if epochs is None:
         try:
@@ -199,7 +238,8 @@ def line(iterable,
                     message = spec.format(prompt, percentage, ret)
             else:
                 if timeit:
-                    message = spec.format(prompt, idx, epochs, percentage, elapsed, ret)
+                    message = spec.format(prompt, idx, epochs, percentage,
+                                          elapsed, ret)
                 else:
                     message = spec.format(prompt, idx, epochs, percentage, ret)
             print(message, end='')
@@ -295,18 +335,17 @@ def run(x, xtensor, optimizer, loss,
                           while loss that is ignored will be shonw in red)
     """
     ans = session(graph=graph,
-                   config=config,
-                   checkpoints=checkpoints,
-                   logs=logs)
+                  config=config,
+                  checkpoints=checkpoints,
+                  logs=logs)
     sess = ans['session']
     saver = ans.get('saver', None)
     summarize = ans.get('summarize', None)
     writer = ans.get('writer', None)
-    if y is not None:
-        data = [x, y]
-    else:
-        data = x
-    generator, nsamples, iterations = dbs.make_generator(data, batch_size, shuffle, nclass)
+    generator, nsamples, iterations = dbs.images.make_generator(x, y,
+                                                                batch_size,
+                                                                shuffle,
+                                                                nclass)
     progressor = line(range(nsamples), timeit=True, nprompts=20, enum=True)
     trainop = {'optimizer':optimizer, 'loss':loss}
     saverop = _loss_filter(save)
@@ -338,13 +377,17 @@ def run(x, xtensor, optimizer, loss,
                     best_result = _loss
                     progress.send(' -- loss: {}{:.6}{} / {}{:.6}{}'
                                   .format(colors.fg.green, _loss, colors.reset,
-                                          colors.fg.green, best_result, colors.reset))
+                                          colors.fg.green, best_result,
+                                          colors.reset))
                 else:
                     progress.send(' -- loss: {}{:.6}{} / {}{:.6}{}'
                                   .format(colors.fg.red, _loss, colors.reset,
-                                          colors.green, best_result, colors.reset))
+                                          colors.fg.green, best_result,
+                                          colors.reset))
             if need_save and saver is not None:
-                helpers.save(sess, checkpoints, saver, write_meta_graph=False, verbose=False)
+                helpers.save(sess, checkpoints, saver,
+                             write_meta_graph=False,
+                             verbose=False)
         #if valids is not None:
         #    validates(valids, batch_size)
     if writer is not None:

@@ -1,6 +1,6 @@
-from ..ops import pools, core
+from .. import ops
 from .. import colors
-from .core import layer
+from . import core
 
 def _pool(inputs,
           op,
@@ -11,10 +11,10 @@ def _pool(inputs,
           reuse,
           name,
           scope):
-    fun, output = op(core.shape(inputs), pshape,
+    fun, output = op(ops.core.shape(inputs), pshape,
                      stride, padding, reuse, name, scope)
     x = fun(inputs)
-    xshape = core.shape(x)
+    xshape = ops.core.shape(x)
     if output != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
@@ -30,9 +30,9 @@ def _pool_global(inputs,
                  reuse,
                  name,
                  scope):
-    fun, output = op(core.shape(inputs), reuse, name, scope)
+    fun, output = op(ops.core.shape(inputs), reuse, name, scope)
     x = fun(inputs)
-    xshape = core.shape(x)
+    xshape = ops.core.shape(x)
     if output != xshape:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
@@ -42,7 +42,7 @@ def _pool_global(inputs,
     return x
 
 
-@layer
+@core.layer
 def avg_pool2d(inputs,
                pshape=2,
                stride=None,
@@ -62,7 +62,7 @@ def avg_pool2d(inputs,
                  scope)
 
 
-@layer
+@core.layer
 def avg_pool2d_global(inputs,
                       return_shape=False,
                       reuse=False,
@@ -76,7 +76,7 @@ def avg_pool2d_global(inputs,
                         scope)
 
 
-@layer
+@core.layer
 def max_pool2d(inputs,
                pshape=2,
                stride=None,
@@ -96,7 +96,7 @@ def max_pool2d(inputs,
                  scope)
 
 
-@layer
+@core.layer
 def max_pool2d_global(inputs,
                       return_shape=False,
                       reuse=False,

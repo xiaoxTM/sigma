@@ -1,6 +1,6 @@
 from . import status, ops, layers, helpers, engine, dbs, colors
 from .layers import defaults
-from .ops import placeholder
+from .ops.core import placeholder
 from .engine import run, session, predict
 import os
 import os.path

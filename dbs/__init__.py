@@ -1,6 +1,5 @@
-from .generator import *
-from .dbio import *
-from . import mnist
+from . import images
+from . import utils
 
 def get():
     return None

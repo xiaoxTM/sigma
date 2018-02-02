@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os.path
-from .. import helpers
+from sigma import helpers
 
 def load(dirs, to_tensor=True, onehot=False, nclass=None):
     """ load mnist data from directory

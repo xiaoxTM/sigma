@@ -2,8 +2,9 @@ from __future__ import print_function
 import numpy as np
 import os.path
 import logging
-from .dbio import load_filename_from_dir, load_from_list
-from ..helpers.nput import one_hot
+from ..utils import load_filename_from_dir
+from .ios import load_from_list
+from sigma.helpers.nput import one_hot
 
 ######################################################
 def segment_data_augmentator(clip=[0, 255],
@@ -163,7 +164,7 @@ def segment_data_augmentator(clip=[0, 255],
 # functions / classes for segmentation task
 #####################################################
 #####################################################
-"""generator for image data with augmentation
+""" generator for image data with augmentation
 """
 def segment_data_generator(self, nclass, filelist, batch_size,
                            basepath=None,
@@ -234,7 +235,7 @@ def segment_data_generator(self, nclass, filelist, batch_size,
                otherwise generate same batch size as specified by `batch_size`
                ** NOTE ** this is used ONLY in `crop` mode
             preprocess_input : callable function for preprocess input before yielding data
-        """
+    """
     train_samples, train_labels = None, None
     valid_samples, valid_labels = None, None
     test_samples , test_labels  = None, None
@@ -597,30 +598,18 @@ def next_batch(dataset, iteration, batch_size, shuffle=True):
     return x[beg:end], y[beg:end]
 
 
-def make_generator(dataset, batch_size=32, shuffle=True, nclass=None):
-    x, y = None, None
-    if isinstance(dataset, (list, tuple)):
-        if len(dataset) == 1:
-            x = dataset[0]
-        elif len(dataset) == 2:
-            x, y = dataset
-        else:
-            raise ValueError('list/tuple of `dataset` must have '
-                             'length of 1 or 2. given {}'
-                             .format(len(dataset)))
-    elif isinstance(dataset, np.ndarray):
-        x = dataset
-    elif isinstance(dataset, dict):
-        x = dataset['x']
-        y = dataset['y']
-    else:
-        raise TypeError('type {} not supported for `dataset`'
-                       .format(type(dataset)))
+def make_generator(x, y=None, batch_size=32, shuffle=True, nclass=None):
+    """ make generator from dataset
+    """
     if not isinstance(x, np.ndarray):
         x = np.asarray(x)
     if y is not None:
         if not isinstance(y, np.ndarray):
             y = np.asarray(y)
+        if len(x) != len(y):
+            raise ValueError('`x` and `y` must have same length. '
+                             'given {} vs {}'.format(colors.red(len(x)),
+                                                     colors.green(len(y))))
         if nclass is not None:
             y = one_hot(y, nclass)
     length = len(x)
