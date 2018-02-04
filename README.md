@@ -34,6 +34,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] mean_square_error
     - [ ] mean_absolute_error
     - [ ] winner_takes_all
+  - regularizers
     - [x] total_variation_regularize
   - merge
     - [x] concat
@@ -41,7 +42,6 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] mul
   - normalization
     - [x] instance_norm
-    
     - [ ] conditional_instance_norm
     - [x] batch_norm
     - [ ] dropout
@@ -54,7 +54,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
 # Advantages
   - seamless with original tensorflow library
   - with statement to set default value
-    - e.g., with sigma.defaults(parameters=values)
+    - e.g., with sigma.defaults(layers, parameters=values)
   - deformable convolutional layers. with gather element mode.
     see [Deformable Convolutional Networks](https://arxiv.org/abs/1703.06211) for details.
     - naive : just cast float location to int

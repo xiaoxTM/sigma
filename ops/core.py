@@ -2,7 +2,7 @@ import tensorflow as tf
 
 epsilon = 1e-5
 data_format = 'NHWC'
-axis=None
+axis = None
 
 # floating data type
 float16 = tf.float16
