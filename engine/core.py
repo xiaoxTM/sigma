@@ -85,6 +85,7 @@ def predict(session, x, xtensor, ypred,
         sess, saver = helpers.load(sess, checkpoints, verbose=True)
     batch_size = min(batch_size, len(x))
     generator, nsamples, iterations = dbs.images.make_generator(x, None,
+                                                                xtensor,
                                                                 batch_size,
                                                                 False,
                                                                 nclass)
@@ -92,7 +93,7 @@ def predict(session, x, xtensor, ypred,
     preds = []
     for (idx, iteration) in progress():
         samples, step = next(generator)
-        _ypred = session.run(ypred, feed_dict={xtensor:samples})
+        _ypred = session.run(ypred, feed_dict=samples)
         if savedir is None:
             preds.append(_ypred)
         else:
@@ -290,7 +291,8 @@ def run(x, xtensor, optimizer, loss,
         config=None,
         checkpoints=None,
         logs=None,
-        save='all'):
+        save='all',
+        emc=None):
     """ run to train networks
         Attributes
         ==========
@@ -333,6 +335,10 @@ def run(x, xtensor, optimizer, loss,
                    `min` : save only min loss / accuracy iteration
                    (NOTE: loss that is been saved will be shown in green,
                           while loss that is ignored will be shonw in red)
+            emc : dict
+                  email configuration, including:
+                  - epm : epoch per message
+                  - other parameters see @helpers.mail.sendmail
     """
     ans = session(graph=graph,
                   config=config,
@@ -343,6 +349,8 @@ def run(x, xtensor, optimizer, loss,
     summarize = ans.get('summarize', None)
     writer = ans.get('writer', None)
     generator, nsamples, iterations = dbs.images.make_generator(x, y,
+                                                                xtensor,
+                                                                ytensor,
                                                                 batch_size,
                                                                 shuffle,
                                                                 nclass)
@@ -352,22 +360,18 @@ def run(x, xtensor, optimizer, loss,
     if summarize is not None:
         trainop['summarize'] = summarize
     best_result = None
+    epm = -1
+    if emc is not None:
+        emc.get('epm', -1)
+        if 'epm' in emc.keys():
+            emc.pop('epm')
     for epoch in range(epochs):
         print('Epoch: {}'.format(epoch+1))
         progress = progressor()
         for (idx, iteration) in progress:
             samples, step = next(generator)
-            labels = None
-            if isinstance(samples, (list, tuple)):
-                samples, labels = samples
-            if labels is not None:
-                rdict = sess.run(trainop,
-                                 feed_dict={xtensor:samples,
-                                            ytensor:labels
-                                           })
-            else:
-                rdict = sess.run(trainop,
-                                 feed_dict={xtensor:samples})
+            rdict = sess.run(trainop,
+                             feed_dict=samples)
             if writer is not None:
                 writer.add_summary(rdict['summarize'], global_step=epoch)
             _loss = rdict['loss']
@@ -390,6 +394,8 @@ def run(x, xtensor, optimizer, loss,
                              verbose=False)
         #if valids is not None:
         #    validates(valids, batch_size)
+        if epm > 0 and (epoch + 1) % epm == 0:
+            helpers.sendmail(emc)
     if writer is not None:
         writer.close()
     sess.close()

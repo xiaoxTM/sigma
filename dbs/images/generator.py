@@ -167,6 +167,8 @@ def segment_data_augmentator(clip=[0, 255],
 """ generator for image data with augmentation
 """
 def segment_data_generator(self, nclass, filelist, batch_size,
+                           xtensor=None,
+                           ytensor=None,
                            basepath=None,
                            size=(320, 320),
                            void_label=0,
@@ -240,6 +242,10 @@ def segment_data_generator(self, nclass, filelist, batch_size,
     valid_samples, valid_labels = None, None
     test_samples , test_labels  = None, None
     eval_samples , eval_labels  = None, None
+    if xtensor is None:
+        xtensor = 'xtensor'
+    if ytensor is None:
+        ytensor = 'ytensor'
     if isinstance(filelist, (list, tuple)):
         if not len(filelist) in [1, 2, 3, 4]:
             raise ValueError('file list must have 1, 2, 3 or 4 '
@@ -452,15 +458,17 @@ def segment_data_generator(self, nclass, filelist, batch_size,
                     nsample = 0
                     inputs = _preprocess_input(inputs)
                     if phase == 'test': # test phase
-                        yield inputs
+                        yield {xtensor:inputs}
                     else: # train / valid phase
-                        yield inputs, targets
+                        yield {xtensor:inputs, ytensor:targets}
     return _generate, \
            map(_nsamples,
                [train_samples, valid_samples, test_samples, eval_samples])
 
 
 def generator(imagepath, batch_size,
+              xtensor=None,
+              ytensor=None,
               gtpath=None,
               gtext=None,
               size=None,
@@ -541,6 +549,10 @@ def generator(imagepath, batch_size,
     length = len(filelist)
     index = np.arange(length, dtype=np.int32)
     iterations = max(int(length / batch_size), 1)
+    if xtensor is None:
+        xtensor = 'xtensor'
+    if ytensor is None:
+        ytensor = 'ytensor'
     def _generate():
         while True:
             np.random.shuffle(index)
@@ -559,7 +571,7 @@ def generator(imagepath, batch_size,
                 if onehot:
                     if y is not None:
                         y = one_hot(y, nclass)
-                yield [x, y], iteration
+                yield {xtensor:x, ytensor:y}, iteration
     return _generate(), length, iterations
 
 
@@ -598,7 +610,13 @@ def next_batch(dataset, iteration, batch_size, shuffle=True):
     return x[beg:end], y[beg:end]
 
 
-def make_generator(x, y=None, batch_size=32, shuffle=True, nclass=None):
+def make_generator(x,
+                   y=None,
+                   xtensor=None,
+                   ytensor=None,
+                   batch_size=32,
+                   shuffle=True,
+                   nclass=None):
     """ make generator from dataset
     """
     if not isinstance(x, np.ndarray):
@@ -615,6 +633,10 @@ def make_generator(x, y=None, batch_size=32, shuffle=True, nclass=None):
     length = len(x)
     idx = np.arange(length, dtype=np.int32)
     iterations = max(int(length / batch_size), 1)
+    if xtensor is None:
+        xtensor = 'xtensor'
+    if ytensor is None:
+        ytensor = 'ytensor'
     def _generate():
         while True:
             if shuffle:
@@ -625,7 +647,7 @@ def make_generator(x, y=None, batch_size=32, shuffle=True, nclass=None):
                     beg = length - batch_size
                 end = max(min(beg + batch_size, length), beg)
                 if y is not None:
-                    yield [x[idx[beg:end]], y[idx[beg:end]]], iteration
+                    yield {xtensor:x[idx[beg:end]], ytensor:y[idx[beg:end]]}, iteration
                 else:
-                    yield x[idx[beg:end]], iteration
+                    yield {xtensor:x[idx[beg:end]]}, iteration
     return _generate(), length, iterations
