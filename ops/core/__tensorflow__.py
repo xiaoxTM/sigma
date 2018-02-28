@@ -1,3 +1,11 @@
+# Copyright 2017 Renwu GAO All Rights Reserved.
+#
+# ==============================================================================
+
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import division
+
 import tensorflow as tf
 
 epsilon = 1e-5
@@ -140,6 +148,13 @@ def sum(x,
 
 def concat(inputs, axis, name='concat'):
     return tf.concat(inputs, axis, name)
+
+
+def split(x, num_or_size_splits,
+          axis=0,
+          num=None,
+          name='split'):
+    return tf.split(value, num_or_size_splits, axis, num, name)
 
 
 def add(inputs, name=None):

@@ -1,5 +1,18 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import division
+
 from .. import ops
 from . import core
+
+
+""" squash function to re-range value to
+    [0, 1)
+"""
+@core.layer
+def squash(inputs, epsilon=core.epsilon, reuse=False, name=None, scope=None):
+    return ops.actives.squash(epsilon, reuse, name, scope)(inputs)
+
 
 @core.layer
 def crelu(inputs, reuse=False, name=None, scope=None):

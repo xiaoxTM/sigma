@@ -1,9 +1,11 @@
 from .core import [predict, session, line, run, train]
+from .core import __backend__ as backend
 
 
 def get():
-    return None
+    return backend
 
 
 def set(config):
-    pass
+    backend = config.get('backend',
+                         'tensorflow')

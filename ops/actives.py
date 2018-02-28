@@ -1,5 +1,38 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import division
+
 from .. import colors
 from . import helper, core
+
+def squash(epsilon=core.epsilon, reuse=False, name=None, scope=None):
+    """ squash function to range input into [0, 1) as activation
+        used for capsule networks. see :
+        @https://papers.nips.cc/paper/6975-dynamic-routing-between-capsules.pdf
+
+        input (x) should with shape of
+        [batch-size, ncaps, caps_dim] for fully_connected capsule layer
+        or
+        [batch-size, units, ncaps, caps_dim] for conv1d
+        or
+        [batch-size, rows, cols, ncaps, caps_dim] for conv2d
+        capsule layer
+        where `ncaps` denotes the number of capsules
+        and `cap_dim` denotes the dimension of each capsule
+    """
+    ops_scope, name = helper.assign_scope(name, scope, 'squash', reuse)
+    def _squash(x):
+        with ops_scope:
+            squared_norm = core.sum(core.square(x), axis=core.axis, keepdims=True)
+            # if squared_norm contains 0 element
+            # add \epsilon to avoid dividing 0
+            norm = core.cond(core.all(squared_norm),
+                             lambda : core.sqrt(squared_norm),
+                             lambda : core.sqrt(squared_norm + epsilon)
+                            )
+            return (x / norm) * (squared_norm / (1 + squared_norm))
+    return _squash
+
 
 def crelu(reuse=False, name=None, scope=None):
     ops_scope, name = helper.assign_scope(name, scope, 'crelu', reuse)
