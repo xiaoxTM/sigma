@@ -2,15 +2,11 @@
 #
 # ==============================================================================
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 
 epsilon = 1e-5
 data_format = 'NHWC'
-axis = None
+axis = -1
 
 # floating data type
 float16 = tf.float16
@@ -24,9 +20,9 @@ uint8 = tf.uint8
 int16 = tf.int16
 uint16 = tf.uint16
 int32 = tf.int32
-uint32 = tf.uint32
+#uint32 = tf.uint32
 int64 = tf.int64
-uint64 = tf.uint64
+#uint64 = tf.uint64
 
 boolean = tf.bool
 string = tf.string
@@ -38,9 +34,23 @@ qint16 = tf.qint16
 quint16 = tf.quint16
 qint32 = tf.qint32
 
+TensorArray = tf.TensorArray
+
 def wrap(fun, *args, **kwargs):
     return eval('tf.{}(*args, **kwargs)'.format(fun))
 
+
+#= workflow control =====================
+def cond(condition,
+         true_fun,
+         false_fun,
+         strict=False,
+         name=None):
+    return tf.cond(condition,
+                   true_fun,
+                   false_fun,
+                   strict,
+                   name)
 
 def rank(x):
     return tf.rank(x)
@@ -173,6 +183,14 @@ def sqrt(x, name=None):
     return tf.sqrt(x, name)
 
 
+def norm(x,
+         axis=None,
+         keepdims=None,
+         ord='euclidean',
+         name=None):
+    return tf.norm(x, ord, axis, keepdims, name)
+
+
 """ return reciprocal of square root of input element-wise
     that is :
         y = 1 / root(inputs)
@@ -207,6 +225,9 @@ def less(x, y, name=None):
 
 def leq(x, y, name=None):
     return tf.less_equal(x, y, name)
+
+def all(x, axis=None, keepdims=None, name=None):
+    return tf.reduce_all(x, axis, keepdims, name)
 
 
 def clip(x, minv, maxv, name=None):
@@ -340,5 +361,21 @@ def sepconv2d(*args, **kwargs):
     return tf.nn.separable_conv2d(*args, **kwargs)
 
 
+def depthwise_conv2d(x, kernels, strides, padding,
+                     rate=None,
+                     name=None):
+    return tf.nn.depthwise_conv2d(x, kernels, strides,
+                               padding, rate,
+                               name, data_format)
+
+
 def dot(*args, **kwargs):
     return tf.matmul(*args, **kwargs)
+
+
+def tensordot(a, b, axes, name=None):
+    return tf.tensordot(a, b, axes, name)
+
+
+def expand_dims(x, axis=None, name=None):
+    return tf.expand_dims(x, axis, name)

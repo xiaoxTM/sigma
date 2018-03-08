@@ -3,7 +3,7 @@ import numpy as np
 import os.path
 from sigma import helpers
 
-def load(dirs, to_tensor=True, onehot=False, nclass=None):
+def load(dirs=None, to_tensor=True, onehot=False, nclass=None):
     """ load mnist data from directory
         output in tf.tensor form
     """
@@ -22,9 +22,11 @@ def load(dirs, to_tensor=True, onehot=False, nclass=None):
             if onehot:
                 y = helpers.one_hot(y, nclass)
         return x, y
-
-    xtrain, ytrain = _load('train', 60000)
-    xvalid, yvalid = _load('t10k', 10000)
+    if dirs is None:
+        (xtrain, ytrain), (xvalid, yvalid) = tf.keras.datasets.mnist.load_data('/tmp/mnist.npz')
+    else:
+        xtrain, ytrain = _load('train', 60000)
+        xvalid, yvalid = _load('t10k', 10000)
     return [xtrain, ytrain], [xvalid, yvalid]
 
 

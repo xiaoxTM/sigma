@@ -6,6 +6,7 @@ from . import base
 from . import merge
 from . import losses
 from . import core
+from . import capsules
 from .core import defaults, export_graph
 
 
@@ -18,7 +19,7 @@ def get():
 
 def set(config):
     if config is not None:
-        core.__graph__ = config.get('graph', None)
+        core.__graph__ = config.get('graph', False)
         value = config.get('defaults', None)
         if value is not None:
             core.__defaults__ = value

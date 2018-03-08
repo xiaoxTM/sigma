@@ -1,14 +1,9 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from .. import helpers, colors, dbs, ops
+#from ..ops import core as opcore
 from timeit import default_timer as timer
 import tensorflow as tf
 import numpy as np
 import math
-
-__backend__ == 'tensorflow'
 
 def intsize(x, cminus=False):
     if x > 0:
@@ -135,22 +130,30 @@ def session(target='',
 
 
 def line(iterable,
+         epochs,
+         #batch_size,
          brief=False,
          nprompts=10,
-         epochs=None,
-         multiplier=1,
-         enum=False,
          timeit=False,
          show_total_time=False,
          accuracy=5,
          message=None,
          nc='x',
          cc='+'):
-    """ show line message
+    """ show line message in a programmatic interactive mode
+        to interactivate with line, call generator in the following order:
+        (global_idx, elem, epoch, iteration) = (generator)
+        while True:
+            # do some work here
+            (global_idx, elem, epoch, iteration) = generator.send(value)
+            if need_break:
+                break
         Attibutes
         =========
             iterable : list / tuple / np.ndarray / range
                        iterable object or function that can yield something
+                       generally speaking, iterable have length of:
+                       "iterations * epochs"
             brief : bool
                     if true, show extra information in form of
                         `[current-iter / total-iter]`
@@ -158,13 +161,6 @@ def line(iterable,
                        how many prompt (`nc`/`cc`) to mimic the progress
             epochs : int or None
                      total iterations
-            multiplier : float
-                         multiplier factor for each step
-                         the greater the multiplier is,
-                         the more progress one prompt represents
-            enum : bool
-                   return iteration index if true
-                   return yield object ONLY else
             timeit : bool
                      time each iteration or not
             show_total_time : bool
@@ -177,78 +173,110 @@ def line(iterable,
                  character to show as running prompt
             cc : char
                  character to show as running and ran prompt for each iteration
+        Returns
+        ==========
+            tuple of (global_index, iterable_element, epoch, iteration), where:
+            global_index : int
+                            global index for iterable
+            epoch : int
+            iteration : int
+                        iteration inside epoch
     """
     if epochs is None:
-        try:
-            epochs = len(iterable)
-        except TypeError:
-            raise TypeError('getting the length of `iterable` failed')
+        epochs = 1
+    try:
+        iterable_size = len(iterable)
+    except TypeError:
+        raise TypeError('getting the length of `iterable` failed')
+    epochsize = intsize(epochs)
     if message is None:
         message = '@'
     nc = nc.encode('utf8')
     cc = cc.encode('utf8')
-    step = (nprompts / (epochs * multiplier))
+    # number of iterations per each epoch
+    iterations = int(iterable_size / epochs)
+    #epochlen = iterations * batch_size
+    # rotation times per one `+` / `x`
+    scale = nprompts / iterations
+    step = max(1, int(scale))
     _prompt = np.asarray([nc] * nprompts, dtype=np.string_)
-    epochsize = intsize(epochs)
+    itersize = intsize(iterations)
     beg = None
     elapsed = None
     if brief:
         if timeit:
-            spec = '\r{} [{{:{}}}, {{:3}}%] -- {{:.{}}}(s) {{}}' \
-                   .format(message, nprompts, accuracy)
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] -- {{:.{}}}(s) {{}}' \
+                   .format(epochsize, message, epochs, nprompts, accuracy)
         else:
-            spec = '\r{} [{{:{}}}, {{:3}}%] {{}} '.format(message, nprompts)
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] {{}} '.format(epochsize,
+                                                                   message,
+                                                                   epochs,
+                                                                   message,
+                                                                   nprompts)
     else:
         if timeit:
-            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
-                   ' -- {{:.{}}}(s) {{}}'.format(message,
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
+                   ' -- {{:.{}}}(s) {{}}'.format(epochsize,
+                                                 message,
+                                                 epochs,
                                                  nprompts,
-                                                 epochsize,
-                                                 epochsize,
+                                                 itersize,
+                                                 itersize,
                                                  accuracy)
         else:
-            spec = '\r{} [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
-                   .format(message, epochsize, epochsize, nprompts)
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
+                   .format(epochsize, message, epochs, itersize, itersize, nprompts)
     def _line():
         totaltime = 0
         prev = 0
-        for idx, epoch in enumerate(iterable):
+        idx = 0
+        while True:
+            elem = iterable[idx % iterable_size]
             time_beg = timer()
-            if enum:
-                epoch = [idx, epoch]
-            ret = (yield epoch)
-
-            block_beg = idx * step
-            totaltime += (timer() - time_beg)
-            idx += 1
-            elapsed = totaltime / idx
-            if ret is None:
-                ret = ''
-            if block_beg > nprompts:
+            epoch = int(idx / iterations)
+            #print('epoch:', epoch, '- idx:', idx)
+            iteration = (idx % iterations)
+            ret = (yield (idx, elem, epoch, iteration))
+            #if ret is None:
+            #    ret = ''
+            # convert iteration index to nprompts index
+            block_beg = int(iteration * scale)
+            if block_beg >= nprompts:
                 block_beg = nprompts - step
-            block_end = int(min(max(block_beg + step, 1), nprompts))
-            block_beg = int(block_beg)
-            if _prompt[block_beg] == nc or prev != block_beg:
+            block_end = block_beg + step
+            elapsed = (timer() - time_beg)
+            totaltime += elapsed
+            iteration += 1
+
+            percentage = int(iteration * 100 / iterations)
+
+            if _prompt[block_beg] == nc or prev != block_beg or percentage == 100:
                 _prompt[block_beg:block_end] = cc
                 if prev != block_beg:
                     _prompt[prev:block_beg] = cc
             else:
                 _prompt[block_beg:block_end] = nc
             prev = block_beg
-            percentage = int(idx * 100 / epochs)
-            prompt = _prompt[:block_end+1].tostring().decode('utf-8')
+            prompt = _prompt[:block_end].tostring().decode('utf-8')
             if brief:
                 if timeit:
-                    message = spec.format(prompt, percentage, elapsed, ret)
-                else:
-                    message = spec.format(prompt, percentage, ret)
-            else:
-                if timeit:
-                    message = spec.format(prompt, idx, epochs, percentage,
+                    message = spec.format(epoch+1, prompt, percentage,
                                           elapsed, ret)
                 else:
-                    message = spec.format(prompt, idx, epochs, percentage, ret)
-            print(message, end='')
+                    message = spec.format(epoch+1, prompt, percentage, ret)
+            else:
+                if timeit:
+                    message = spec.format(epoch+1, prompt, iteration, iterations,
+                                          percentage, elapsed, ret)
+                else:
+                    message = spec.format(epoch+1, prompt, iteration, iterations,
+                                          percentage, ret)
+            end_flag = ''
+            if percentage == 100:
+                # start new epoch
+                end_flag = '\n'
+            print(message, end=end_flag, flush=True)
+            idx += 1
         if show_total_time and timeit:
             print('\nTotal time elapsed:{}(s)'.format(totaltime))
         else:
@@ -353,13 +381,20 @@ def run(x, xtensor, optimizer, loss,
     saver = ans.get('saver', None)
     summarize = ans.get('summarize', None)
     writer = ans.get('writer', None)
+    # make dataset generator
     generator, nsamples, iterations = dbs.images.make_generator(x, y,
                                                                 xtensor,
                                                                 ytensor,
                                                                 batch_size,
                                                                 shuffle,
                                                                 nclass)
-    progressor = line(range(nsamples), timeit=True, nprompts=20, enum=True)
+    total_iterations = iterations * epochs
+    progressor = line(range(total_iterations),
+                      epochs=epochs,
+                      #batch_size=batch_size,
+                      timeit=True,
+                      nprompts=20)()
+    # tensors to be calculated
     trainop = {'optimizer':optimizer, 'loss':loss}
     saverop = _loss_filter(save)
     if summarize is not None:
@@ -370,37 +405,37 @@ def run(x, xtensor, optimizer, loss,
         emc.get('epm', -1)
         if 'epm' in emc.keys():
             emc.pop('epm')
-    for epoch in range(epochs):
-        print('Epoch: {}'.format(epoch+1))
-        progress = progressor()
-        for (idx, iteration) in progress:
-            samples, step = next(generator)
-            rdict = sess.run(trainop,
-                             feed_dict=samples)
-            if writer is not None:
-                writer.add_summary(rdict['summarize'], global_step=epoch)
-            _loss = rdict['loss']
-            need_save = saverop(_loss, best_result)
-            if (idx+1) < iterations: # if generator not stop iterate
-                if need_save:
-                    best_result = _loss
-                    progress.send(' -- loss: {}{:.6}{} / {}{:.6}{}'
-                                  .format(colors.fg.green, _loss, colors.reset,
-                                          colors.fg.green, best_result,
-                                          colors.reset))
-                else:
-                    progress.send(' -- loss: {}{:.6}{} / {}{:.6}{}'
-                                  .format(colors.fg.red, _loss, colors.reset,
-                                          colors.fg.green, best_result,
-                                          colors.reset))
-            if need_save and saver is not None:
-                helpers.save(sess, checkpoints, saver,
-                             write_meta_graph=False,
-                             verbose=False)
+    (global_idx, _, epoch, _) = next(progressor)
+    while True:
+        if epoch >= epochs: # if generator not stop iterate
+            break
+        samples, step = next(generator)
+        rdict = sess.run(trainop,
+                         feed_dict=samples)
+        if writer is not None:
+            writer.add_summary(rdict['summarize'], global_step=global_idx)
+        _loss = rdict['loss']
+        need_save = saverop(_loss, best_result)
+        if need_save:
+            best_result = _loss
+            (global_idx, _, epoch, _) = progressor.send(
+                ' -- loss: {}{:.6}{} / {}{:.6}{}$'.format(
+                    colors.fg.green, _loss, colors.reset,
+                    colors.fg.green, best_result, colors.reset))
+        else:
+            (global_idx, _, epoch, _) = progressor.send(
+                ' -- loss: {}{:.6}{} / {}{:.6}{}$'.format(
+                    colors.fg.red, _loss, colors.reset,
+                    colors.fg.green, best_result, colors.reset))
+
+        if need_save and saver is not None:
+            helpers.save(sess, checkpoints, saver,
+                         write_meta_graph=False,
+                         verbose=False)
         #if valids is not None:
         #    validates(valids, batch_size)
-        if epm > 0 and (epoch + 1) % epm == 0:
-            helpers.sendmail(emc)
+        #if epm > 0 and (epoch + 1) % epm == 0:
+        #    helpers.sendmail(emc)
     if writer is not None:
         writer.close()
     sess.close()

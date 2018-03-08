@@ -90,6 +90,27 @@ def winner_takes_all(inputs, labels,
                                        reuse,
                                        name,
                                        scope)(inputs, labels)
+@core.layer
+def margin_loss(inputs, labels,
+                axis=None,
+                positive_margin=0.9,
+                negative_margin=0.1,
+                downweighting=0.5,
+                logits=True,
+                onehot=True,
+                reuse=False,
+                name=None,
+                scope=None):
+    return ops.losses.margin_loss(axis,
+                                  logits,
+                                  onehot,
+                                  reuse,
+                                  name,
+                                  scope,
+                                  positive_margin,
+                                  negative_margin,
+                                  downweighting)(inputs, labels)
+
 
 # short alias for each losses
 bce = binary_cross_entropy

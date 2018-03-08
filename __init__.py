@@ -31,7 +31,7 @@ if os.path.isfile(config_path):
 else:
     os.makedirs(os.path.join(os.environ['HOME'], '.sigma'), exist_ok=True)
     config = {}
-    for key, package in __packages__:
+    for key, package in __packages__.items():
         config[key] = package.get()
     logging.debug(config)
     with open(config_path, 'w') as f:

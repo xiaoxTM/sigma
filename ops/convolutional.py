@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 from .. import colors
 from . import mm
@@ -11,7 +7,6 @@ from . import core
 import numpy as np
 
 import logging
-
 
 """ base convolutional operation
     Example:
@@ -107,21 +102,21 @@ def fully_conv(input_shape, nouts,
     output_shape = [input_shape[0], nouts]
     def _full_conv(x, weight):
         return core.dot(x, weight)
-    return conv(convop=_full_conv,
-                kernel_shape=kernel_shape,
-                weight_initializer=weight_initializer,
-                weight_regularizer=weight_regularizer,
-                bias_initializer=bias_initializer,
-                bias_regularizer=bias_regularizer,
-                act=act,
-                trainable=trainable,
-                dtype=dtype,
-                bias_axis=-1,
-                collections=collections,
-                summarize=summarize,
-                reuse=reuse,
-                name=name,
-                scope=scope), output_shape
+    return conv(_full_conv,
+                kernel_shape,
+                weight_initializer,
+                weight_regularizer,
+                bias_initializer,
+                bias_regularizer,
+                act,
+                trainable,
+                dtype,
+                -1,
+                collections,
+                summarize,
+                reuse,
+                name,
+                scope), output_shape
 
 
 """ 1-D convolutional operation
@@ -158,21 +153,21 @@ def conv1d(input_shape, nouts, kshape,
     stride = stride[1]
     def _conv1d(x, weight):
         return core.conv1d(x, weight, stride, padding.upper())
-    return conv(convop=_conv1d,
-                kernel_shape=kernel_shape,
-                weight_initializer=weight_initializer,
-                weight_regularizer=weight_regularizer,
-                bias_initializer=bias_initializer,
-                bias_regularizer=bias_regularizer,
-                act=act,
-                trainable=trainable,
-                dtype=dtype,
-                bias_axis=-1,
-                collections=collections,
-                summarize=summarize,
-                reuse=reuse,
-                name=name,
-                scope=scope), output_shape
+    return conv(_conv1d,
+                kernel_shape,
+                weight_initializer,
+                weight_regularizer,
+                bias_initializer,
+                bias_regularizer,
+                ct,
+                trainable,
+                dtype,
+                -1,
+                collections,
+                summarize,
+                reuse,
+                name,
+                scope), output_shape
 
 
 """ 2-D convolutional operation
@@ -201,24 +196,24 @@ def conv2d(input_shape, nouts, kshape,
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
+    kernel_shape = [*kshape[1:-1], input_shape[core.axis], nouts]
     def _conv2d(x, weight):
         return core.conv2d(x, weight, stride, padding.upper())
-    return conv(convop=_conv2d,
-                kernel_shape=kernel_shape,
-                weight_initializer=weight_initializer,
-                weight_regularizer=weight_regularizer,
-                bias_initializer=bias_initializer,
-                bias_regularizer=bias_regularizer,
-                act=act,
-                trainable=trainable,
-                dtype=dtype,
-                bias_axis=-1,
-                collections=collections,
-                summarize=summarize,
-                reuse=reuse,
-                name=name,
-                scope=scope), output_shape
+    return conv(_conv2d,
+                kernel_shape,
+                weight_initializer,
+                weight_regularizer,
+                bias_initializer,
+                bias_regularizer,
+                act,
+                trainable,
+                dtype,
+                -1,
+                collections,
+                summarize,
+                reuse,
+                name,
+                scope), output_shape
 
 
 """ 3-D convolutional operation
@@ -250,15 +245,21 @@ def conv3d(input_shape, nouts,
     kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
     def _conv3d(x, weight):
         return core.conv3d(x, weight, stride, padding)
-    return conv(convop=_conv3d, kernel_shape=kernel_shape,
-                weight_initializer=weight_initializer,
-                weight_regularizer=weight_regularizer,
-                bias_initializer=bias_initializer,
-                bias_regularizer=bias_regularizer,
-                act=act, trainable=trainable, dtype=dtype,
-                bias_axis=-1, collections=collections,
-                summarize=summarize, reuse=reuse,
-                name=name, scope=scope), output_shape
+    return conv(_conv3d,
+                kernel_shape,
+                weight_initializer,
+                weight_regularizer,
+                bias_initializer,
+                bias_regularizer,
+                act,
+                trainable,
+                dtype,
+                -1,
+                collections,
+                summarize,
+                reuse,
+                name,
+                scope), output_shape
 
 
 """ 2-D transpose convolutional operation
@@ -315,15 +316,21 @@ def deconv2d(input_shape, output_shape, nout,
     def _deconv2d(x, weight):
         return core.deconv2d(x, weight, out_shape, stride,
                              padding.upper(), name=name)
-    return conv(convop=_deconv2d, kernel_shape=kernel_shape,
-                weight_initializer=weight_initializer,
-                weight_regularizer=weight_regularizer,
-                bias_initializer=bias_initializer,
-                bias_regularizer=bias_regularizer,
-                act=act, trainable=trainable, dtype=dtype,
-                bias_axis=-2, collections=collections,
-                summarize=summarize, reuse=reuse,
-                name=name, scope=scope), out_shape
+    return conv(_deconv2d,
+                kernel_shape,
+                weight_initializer,
+                weight_regularizer,
+                bias_initializer,
+                bias_regularizer,
+                act,
+                trainable,
+                dtype,
+                -2,
+                collections,
+                summarize,
+                reuse,
+                name,
+                scope), out_shape
 
 
 def soft_conv(input_shape,

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from .. import ops
 from . import core
 
@@ -10,7 +6,7 @@ from . import core
     [0, 1)
 """
 @core.layer
-def squash(inputs, epsilon=core.epsilon, reuse=False, name=None, scope=None):
+def squash(inputs, epsilon=ops.core.epsilon, reuse=False, name=None, scope=None):
     return ops.actives.squash(epsilon, reuse, name, scope)(inputs)
 
 

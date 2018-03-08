@@ -22,8 +22,10 @@ except ImportError:
 
 _CONTEXT_DEFAULTS_ = {}
 
-
-__graph__ = None
+# None  : print no network information
+# False : print network information to terminal
+# True  : print network information to graph
+__graph__ = False
 
 
 __defaults__ = {'padding' : 'valid',

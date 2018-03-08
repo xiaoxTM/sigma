@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from .. import colors
 from . import helper, core
 
@@ -26,7 +22,7 @@ def squash(epsilon=core.epsilon, reuse=False, name=None, scope=None):
             squared_norm = core.sum(core.square(x), axis=core.axis, keepdims=True)
             # if squared_norm contains 0 element
             # add \epsilon to avoid dividing 0
-            norm = core.cond(core.all(squared_norm),
+            norm = core.cond(core.all(core.abs(squared_norm) < 1e-8),
                              lambda : core.sqrt(squared_norm),
                              lambda : core.sqrt(squared_norm + epsilon)
                             )

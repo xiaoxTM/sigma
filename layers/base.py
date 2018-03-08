@@ -80,6 +80,11 @@ def input_spec(inputs,
                reuse=False,
                name=None,
                scope=None):
+    """ inputs is a list / tuple in logic
+        due to core.layer spec, the first
+        parameter must be `inputs`.
+        therefore use `inputs` instead of `input_shape`
+    """
     ops_scope, name = ops.helper.assign_scope(name,
                                               scope,
                                               'inputs',

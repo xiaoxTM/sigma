@@ -12,12 +12,13 @@ def loss(fun):
               onehot=True,
               reuse=False,
               name=None,
-              scope=None):
+              scope=None,
+              *args):
         ops_scope, name = helper.assign_scope(name,
                                               scope,
                                               fun.__name__,
                                               reuse)
-        return fun(axis, logits, onehot, reuse, name, ops_scope)
+        return fun(axis, logits, onehot, reuse, name, ops_scope, *args)
     return _loss
 
 
@@ -127,6 +128,36 @@ def winner_takes_all(axis,
             loss_matrix = core.reshape(loss_tensor, (shape[0], -1))
             return core.mean(loss_matrix, axis=axis)
     return _winner_takes_all
+
+@loss
+def margin_loss(axis,
+                logits=True,
+                onehot=True,
+                reuse=False,
+                name=None,
+                scope=None,
+                positive_margin=0.9,
+                negative_margin=0.1,
+                downweighting=0.5):
+    def _margin_loss(x, labels):
+        with scope:
+            # the length (norm) of the activity vector of each
+            # capsule in digit_caps layer indicates presence
+            # of an instance of each class
+            #   [batch-size, rows, cols, nclass, capdim]
+            # =>[batch-size, rows, cols, nclass]
+            x = core.norm(x, core.axis)
+            if not onehot:
+                depth = core.shape(x)[axis]
+                labels = core.one_hot(labels, depth)
+            ploss = core.cast(core.less(x, positive_margin), core.float32)
+            ploss = ploss * core.pow(positive_margin-x, 2)
+            ploss = core.cast(labels, core.float32) * ploss
+            nloss = core.cast(core.greater(x, negative_margin), core.float32)
+            nloss = nloss * core.pow(negative_margin-x, 2)
+            nloss = core.cast(1-labels, core.float32) * nloss
+            return core.mean(ploss + downweighting * nloss, axis=axis)
+    return _margin_loss
 
 
 def get(l, **kwargs):

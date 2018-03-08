@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .. import colors, layers, ops
+from .. import colors, ops
 import os.path
 import numpy as np
 import sigma
@@ -228,5 +228,5 @@ def export_model(filename, session,
     pkl.close()
 
 
-def export_graph(filename, ext=None):
-    layers.export_graph(filename, ext)
+#def export_graph(filename, ext=None):
+#    layers.export_graph(filename, ext)
