@@ -7,19 +7,15 @@ from sigma import dbs, ops, engine
 
 import tensorflow as tf
 
-def build(input_shape, loss, reuse=False, scope=None, **kwargs):
-    with sigma.defaults(reuse=reuse, scope=scope):
-        inputs = layers.base.input_spec(input_shape, dtype='float32', name='input-data')
-        conv1 = layers.convs.conv2d(inputs, 256, 9, padding='valid', act='relu')
-        conv1_expanded = layers.base.expand_dims(conv1, -2)
-        primary_caps, outshape = layers.capsules.conv2d(conv1_expanded, 32, 8, 9, 3,
-                                                        stride=2,
-                                                        return_shape=True)
-        # outshape : [batch-size, rows, cols, outcaps, outcapdim]
-        #         => [batch-size, -1, outcapdim]
-        primary_reshaped = layers.base.reshape(primary_caps, [outshape[0], -1, outshape[-1]])
-        digit_caps = layers.capsules.fully_connected(primary_reshaped, 10, 16, 3)
-        return inputs, layers.losses.get(loss, digit_caps, **kwargs)
+
+def build_func(x):
+    x = layers.convs.conv2d(x, 256, 9, padding='valid', act='relu')
+    x = layers.base.expand_dims(x, -2)
+    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 3,
+                                         stride=2,
+                                         return_shape=True)
+    x = layers.base.reshape(x, [outshape[0], -1, outshape[-1]])
+    return layers.capsules.fully_connected(x, 10, 16, 3)
 
 
 def train(xtrain, ytrain, checkpoints,
@@ -31,8 +27,9 @@ def train(xtrain, ytrain, checkpoints,
 #    sigma.engine.set_print(True)
     input_shape[0] = batch_size
     ytensor = sigma.placeholder(dtype=ops.core.int32, shape=[batch_size, nclass])
-    xtensor, loss = build(input_shape, 'margin_loss', labels=ytensor, onehot=True)
-#    loss = layers.losses.margin_loss(preds, ytensor, onehot=True)
+    xtensor, loss = sigma.build(input_shape, build_func, 'margin_loss',
+                                labels=ytensor,
+                                onehot=True)
 #    sigma.engine.export_graph('cache/network-architecture.png')
     optimizer = tf.train.AdamOptimizer(0.05).minimize(loss)
 

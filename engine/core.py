@@ -1,8 +1,9 @@
-from .. import helpers, colors, dbs, ops
+from .. import helpers, colors, dbs, ops, layers
 from timeit import default_timer as timer
 import tensorflow as tf
 import numpy as np
 import math
+import sigma
 
 def intsize(x, cminus=False):
     if x > 0:
@@ -471,3 +472,39 @@ def train(x, xtensor, optimizer, loss,
     #metrics = ops.metrics.get(metrics)
     run(x, xtensor, optimizer, loss, y, ytensor, nclass, metrics, epochs,
         batch_size, shuffle, valids, graph, config, checkpoints, logs, save)
+
+
+def build(input_shape, build_func, loss,
+          dtype='float32',
+          name=None,
+          reuse=False,
+          scope=None, **kwargs):
+    """ build network architecture
+        Attributes
+        ==========
+        input_shape : list / tuple
+                      input shape for network entrance
+        build_func : callable
+                     callable function receives only one
+                     parameter. should have signature of:
+                     `def build_func(x) --> tensor:`
+        loss : string or callable
+               loss to be maximized or mimimized
+        dtype : string
+                data type of input layer
+        name : string
+               name of input layer
+        reuse : bool
+        scope : string
+        **kwargs : parameters passed to loss function (layer)
+        
+        Returns
+        ==========
+        inputs : tensor
+                 input tensor to be feed by samples
+        loss : loss
+    """
+    with sigma.defaults(reuse=reuse, scope=scope):
+        inputs = layers.base.input_spec(input_shape, dtype=dtype, name=name)
+        x = build_func(inputs)
+        return inputs, layers.losses.get(loss, x, **kwargs)
