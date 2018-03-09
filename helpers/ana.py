@@ -1,4 +1,3 @@
-from __future__ import print_function
 import scipy.misc as sm
 import multiprocessing as mp
 import numpy as np

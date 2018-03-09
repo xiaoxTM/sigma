@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 from . import mm, helper, actives, core
 from .. import status
@@ -18,10 +14,10 @@ def instance_norm(input_shape,
                   reuse=False,
                   name=None,
                   scope=None):
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'instance_norm',
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'instance_norm',
+                                             reuse)
     input_len = len(input_shape)
     axis = helper.normalize_axes(input_shape)
     neurons = input_shape[axis]
@@ -33,6 +29,7 @@ def instance_norm(input_shape,
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
         offset = mm.malloc('offset',
+                           name,
                            neurons,
                            core.float32,
                            offset_initializer,
@@ -40,12 +37,12 @@ def instance_norm(input_shape,
                            trainable,
                            collections,
                            reuse,
-                           name,
                            scope)
     scale = None
     if not isinstance(scale_initializer, bool) or \
        scale_initializer is not False:
         scale = mm.malloc('scale',
+                          name,
                           neurons,
                           core.float32,
                           scale_initializer,
@@ -53,7 +50,6 @@ def instance_norm(input_shape,
                           trainable,
                           collections,
                           reuse,
-                          name,
                           scope)
     act = actives.get(act)
     def _instance_norm(x):
@@ -87,10 +83,10 @@ def conditional_instance_norm(input_shape,
                               reuse=False,
                               name=None,
                               scope=None):
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'conditional_instance_norm',
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'conditional_instance_norm',
+                                             reuse)
     input_len = len(input_shape)
     axis = helper.normalize_axes(input_shape)
     neurons = [bank_size, input_shape[axis]]
@@ -102,6 +98,7 @@ def conditional_instance_norm(input_shape,
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
         offset = mm.malloc('offset',
+                           name,
                            neurons,
                            core.float32,
                            offset_initializer,
@@ -109,12 +106,12 @@ def conditional_instance_norm(input_shape,
                            trainable,
                            collections,
                            reuse,
-                           name,
                            scope)
     scale = None
     if not isinstance(scale_initializer, bool) or \
        scale_initializer is not False:
         scale = mm.malloc('scale',
+                          name,
                           neurons,
                           core.float32,
                           scale_initializer,
@@ -122,7 +119,6 @@ def conditional_instance_norm(input_shape,
                           trainable,
                           collections,
                           reuse,
-                          name,
                           scope)
     act = actives.get(act)
     def _condition_on(labels):
@@ -190,10 +186,10 @@ def batch_norm(input_shape,
                 use fused_batch_normal if true
     """
 
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'batch_norm',
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'batch_norm',
+                                             reuse)
     axis = list(range(len(input_shape)-1))
     if fused:
         axis = [0 ,1, 2]
@@ -205,6 +201,7 @@ def batch_norm(input_shape,
     if not isinstance(offset_initializer, bool) or \
        offset_initializer is not False:
         offset = mm.malloc('offset',
+                           name,
                            neurons,
                            core.float32,
                            offset_initializer,
@@ -212,12 +209,12 @@ def batch_norm(input_shape,
                            trainable,
                            collections,
                            reuse,
-                           name,
                            scope)
     scale = None
     if not isinstance(scale_initializer, bool) or \
        scale_initializer is not False:
         scale = mm.malloc('scale',
+                          name,
                           neurons,
                           core.float32,
                           scale_initializer,
@@ -225,11 +222,11 @@ def batch_norm(input_shape,
                           trainable,
                           collections,
                           reuse,
-                          name,
                           scope)
 
     moving_mean = None
     moving_mean = mm.malloc('moving-mean',
+                            name,
                             neurons,
                             core.float32,
                             moving_mean_initializer,
@@ -237,11 +234,11 @@ def batch_norm(input_shape,
                             trainable,
                             collections,
                             reuse,
-                            name,
                             scope)
 
     moving_variance = None
     moving_variance = mm.malloc('moving-variance',
+                                name,
                                 neurons,
                                 core.float32,
                                 moving_variance_initializer,
@@ -249,11 +246,8 @@ def batch_norm(input_shape,
                                 trainable,
                                 collections,
                                 reuse,
-                                name,
                                 scope)
     act = actives.get(act)
-    # print('input shape:', input_shape)
-    # print('axis:', axis)
     def _train(x):
         if fused:
             # tf.nn.fused_batch_norm(x, scale, offset, mean=None, variance=None,
@@ -263,7 +257,6 @@ def batch_norm(input_shape,
             x_shape = core.shape(x)
             for _ in range(4 - x.get_shape().ndims):
                 x = tf.expand_dims(x, 1)
-            # print('x shape:', x.get_shape().as_list())
             x, mean, variance = tf.nn.fused_batch_norm(x, scale,
                                                        offset, epsilon=epsilon)
             x = core.reshape(x, x_shape)
@@ -276,8 +269,6 @@ def batch_norm(input_shape,
             mean = tf.squeeze(mean)
             variance = tf.squeeze(variance)
         if momentum is not None:
-            # print('mm:', moving_mean.get_shape().as_list())
-            # print('mn', mean.get_shape().as_list())
             moving_mean.assign(moving_mean * momentum + mean * (1 - momentum))
             moving_variance.assign(
                        moving_variance * momentum + variance * (1 - momentum))
@@ -304,7 +295,6 @@ def batch_norm(input_shape,
                         lambda: _train(x),
                         lambda: _infer(x))
             # if update moving_mean and moving_variance
-            # print('x shape:', x.get_shape().as_list())
             return x
     return _batch_norm
 
@@ -312,14 +302,19 @@ def batch_norm(input_shape,
 def dropout(pkeep,
             noise_shape=None,
             seed=None,
+            aslayer=False,
             reuse=False,
             name=None,
             scope=None):
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'dropout',
-                                          reuse)
-    def _dropout(x):
-        with ops_scope:
+    if aslayer:
+        ops_scope, _, name = helper.assign_scope(name,
+                                                 scope,
+                                                 'dropout',
+                                                 reuse)
+        def _dropout(x):
+            with ops_scope:
+                return tf.nn.dropout(x, pkeep, noise_shape, seed, name)
+    else:
+        def _dropout(x):
             return tf.nn.dropout(x, pkeep, noise_shape, seed, name)
     return _dropout

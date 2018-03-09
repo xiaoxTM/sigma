@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 from . import helper
 
@@ -19,7 +15,7 @@ def base_pool2d(input_shape, fun, pshape, stride,
         ltype = ltype[1]
     else:
         ltype = ltype[0]
-    ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, ltype, reuse)
     def _base_pool2d(x):
         with ops_scope:
             return fun(x, pshape, stride, padding.upper(),
@@ -35,7 +31,7 @@ def base_pool2d_global(input_shape, fun, reuse, name, scope):
         ltype = ltype[1]
     else:
         ltype = ltype[0]
-    ops_scope, name = helper.assign_scope(name, scope, ltype, reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, ltype, reuse)
     axes = [idx for idx, _ in enumerate(input_shape)]
     del axes[core.axis]
     del axes[0]
@@ -114,7 +110,7 @@ def resize(input_shape,
     if mode not in ['bilinear', 'bicubic', 'area', 'nearest_neighbor']:
         raise ValueError('mode must be one of '
                          '[bilinear, bicubic, area, nearest_neighbor]')
-    ops_scope, name = helper.assign_scope(name, scope, model, reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, model, reuse)
     def _resize(x):
         with ops_scope:
             return eval('tf.image.resize_{}(x, output_shape, align_corners, name)'

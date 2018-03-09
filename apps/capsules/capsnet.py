@@ -3,15 +3,15 @@ import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 import sigma
 from sigma import layers
-from sigma import dbs, ops
+from sigma import dbs, ops, engine
 
 import tensorflow as tf
 
-def build(input_shape, reuse=False, scope=None):
+def build(input_shape, loss, reuse=False, scope=None, **kwargs):
     with sigma.defaults(reuse=reuse, scope=scope):
         inputs = layers.base.input_spec(input_shape, dtype='float32', name='input-data')
         conv1 = layers.convs.conv2d(inputs, 256, 9, padding='valid', act='relu')
-        conv1_expanded = ops.core.expand_dims(conv1, -2)
+        conv1_expanded = layers.base.expand_dims(conv1, -2)
         primary_caps, outshape = layers.capsules.conv2d(conv1_expanded, 32, 8, 9, 3,
                                                         stride=2,
                                                         return_shape=True)
@@ -19,20 +19,21 @@ def build(input_shape, reuse=False, scope=None):
         #         => [batch-size, -1, outcapdim]
         primary_reshaped = layers.base.reshape(primary_caps, [outshape[0], -1, outshape[-1]])
         digit_caps = layers.capsules.fully_connected(primary_reshaped, 10, 16, 3)
-        return inputs, digit_caps
+        return inputs, layers.losses.get(loss, digit_caps, **kwargs)
 
 
 def train(xtrain, ytrain, checkpoints,
           nclass=10,
-          epochs=2,
+          epochs=1,
           batch_size=100,
           shuffle=True):
     input_shape = list(xtrain.shape)
-    print('train dataset shape:', input_shape)
+#    sigma.engine.set_print(True)
     input_shape[0] = batch_size
-    xtensor, preds = build(input_shape)
     ytensor = sigma.placeholder(dtype=ops.core.int32, shape=[batch_size, nclass])
-    loss = layers.losses.margin_loss(preds, ytensor, onehot=True)
+    xtensor, loss = build(input_shape, 'margin_loss', labels=ytensor, onehot=True)
+#    loss = layers.losses.margin_loss(preds, ytensor, onehot=True)
+#    sigma.engine.export_graph('cache/network-architecture.png')
     optimizer = tf.train.AdamOptimizer(0.05).minimize(loss)
 
     config = tf.ConfigProto()

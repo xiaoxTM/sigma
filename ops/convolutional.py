@@ -8,6 +8,16 @@ import numpy as np
 
 import logging
 
+""" There are two main scopes for sigma to organize tensorflow graph
+    - vairable scope : in the form of
+    [scope/]layername/variables/{trainable | non-trainable}/variablename
+    - operation scope: in the form of [scope/]layername/layertype
+    NOTE that separating variable scope from operation scope is to avoid
+    tensorflow automatically dispatch different scope-name to operation
+    scope even variable-scope and operation-scope are assigned to the
+    same string manually.
+"""
+
 """ base convolutional operation
     Example:
     1. x = convs.conv1d(scope, name, ninput)(input)
@@ -36,12 +46,14 @@ def conv(convop, kernel_shape,
     #      is setup to deal with de-convolutional op
     #      whose output is kernel_shape[-2]
     #      instead of kernel_shape[-1]
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          convop.__name__[1:],
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             # remove `_` from _convop
+                                             convop.__name__[1:],
+                                             reuse)
     act = actives.get(act)
     weight = mm.malloc('weight',
+                       name,
                        kernel_shape,
                        dtype,
                        weight_initializer,
@@ -49,12 +61,12 @@ def conv(convop, kernel_shape,
                        trainable,
                        collections,
                        reuse,
-                       name,
                        scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
+                         name,
                          (kernel_shape[bias_axis],),
                          dtype,
                          bias_initializer,
@@ -62,7 +74,6 @@ def conv(convop, kernel_shape,
                          trainable,
                          collections,
                          reuse,
-                         name,
                          scope)
         if summarize and not reuse:
             tf.summary.histogram(bias.name, bias)
@@ -354,10 +365,10 @@ def soft_conv(input_shape,
               reuse=False,
               name=None,
               scope=None):
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'soft_conv',
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'soft_conv',
+                                             reuse)
     act = actives.get(act)
     input_len = len(input_shape)
     axis = helper.normalize_axes(input_shape)
@@ -377,6 +388,7 @@ def soft_conv(input_shape,
     ndims = np.prod([int(sh / st) for sh, st in zip(dim_shape, dim_stride)])
     # offsets_shape = [-1] + dim_shape + [nkernels, dimlen]
     weight = mm.malloc('weight',
+                       name,
                        [nkernels]+kshape[dimlen:],
                        dtype,
                        weight_initializer,
@@ -384,12 +396,12 @@ def soft_conv(input_shape,
                        trainable,
                        collections,
                        reuse,
-                       name,
                        scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
+                         name,
                          (kshape[-1],),
                          dtype,
                          bias_initializer,
@@ -397,7 +409,6 @@ def soft_conv(input_shape,
                          trainable,
                          collections,
                          reuse,
-                         name,
                          scope)
         if summarize and not reuse:
             tf.summary.histogram(bias.name, bias)
@@ -427,7 +438,6 @@ def soft_conv(input_shape,
         'name':'{}/offsets'.format(name),
         'scope':scope
     }
-    # print('offset conv parameters:', kwargs)
     #with _scope:
     grids = [np.arange(0, s, t, dtype=np.float32)
               for s,t in zip(dim_shape, dim_stride)]
@@ -821,12 +831,13 @@ def sepconv(sepconvop,
     #      is setup to deal with de-convolutional op
     #      whose output is kernel_shape[-2]
     #      instead of kernel_shape[-1]
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          sepconvop.__name__[1:],
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             sepconvop.__name__[1:],
+                                             reuse)
     act = actives.get(act)
     depthwise = mm.malloc('depthwise-weight',
+                          name,
                           depthwise_kernel,
                           dtype,
                           weight_initializer,
@@ -834,7 +845,6 @@ def sepconv(sepconvop,
                           trainable,
                           collections,
                           reuse,
-                          name,
                           scope)
     pointwise = mm.malloc('pointwise-weight',
                           pointwise_kernel,
@@ -850,6 +860,7 @@ def sepconv(sepconvop,
         tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
+                         name,
                          (pointwise_kernel[core.axis],),
                          dtype,
                          bias_initializer,
@@ -857,7 +868,6 @@ def sepconv(sepconvop,
                          trainable,
                          collections,
                          reuse,
-                         name,
                          scope)
         if summarize and not reuse:
             tf.summary.histogram(bias.name, bias)

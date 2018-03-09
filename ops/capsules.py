@@ -138,12 +138,13 @@ def conv(convop, weight_shape, logits_shape, iterations,
     """ coefficient_shape : [1, 1, 1, incaps, outcaps, 1]
                              for conv2d operation
     """
-    ops_scope, name = helper.assign_scope(name,
+    ops_scope, _, name = helper.assign_scope(name,
                                           scope,
                                           'caps_'+convop.__name__[1:],
                                           reuse)
     act = actives.get(act)
     weight = mm.malloc('weight',
+                       name,
                        weight_shape,
                        dtype,
                        weight_initializer,
@@ -151,11 +152,11 @@ def conv(convop, weight_shape, logits_shape, iterations,
                        trainable,
                        collections,
                        reuse,
-                       name,
                        scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
     logits = mm.malloc('logits',
+                       name,
                        logits_shape,
                        dtype,
                        logits_initializer,
@@ -163,7 +164,6 @@ def conv(convop, weight_shape, logits_shape, iterations,
                        False,
                        collections,
                        reuse,
-                       name,
                        scope)
     if summarize and not reuse:
         tf.summary.histogram(logits.name, logits)
@@ -172,8 +172,6 @@ def conv(convop, weight_shape, logits_shape, iterations,
             #  [batch-size, nrows, ncols, incaps, incapdim] x [incapdim, outcaps, outcapdim]
             #=>[batch-size, ncols, nrows, incaps, outcaps, outcapdim]
             x = convop(x)
-            #print('first operand:', core.shape(x))
-            #print('second operand:', core.shape(weight))
             x = core.tensordot(x, weight, axes=[[-1], [0]])
             x = _agreement_routing(x, logits, iterations, leaky)
             return x
@@ -283,8 +281,6 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     #=>[batch-size, rows, cols, incpas * incapdim]
     input_nshape[core.axis] *= input_nshape[-2]
     input_nshape.pop(-2)
-    #print('input_shape:', input_shape)
-    #print('input_nshape:', input_nshape)
     # output shape may be not right
     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
                                            kshape, stride, padding)
@@ -293,6 +289,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     # [krow, kcol, incaps * incapdim, 1]
     kernel_shape = kshape[1:-1] +[input_shape[-2] * input_shape[core.axis], 1]
     kernel = mm.malloc('kernel',
+                       name,
                        kernel_shape,
                        dtype,
                        weight_initializer,
@@ -300,7 +297,6 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                        trainable,
                        collections,
                        reuse,
-                       name,
                        scope)
     if summarize and not reuse:
         tf.summary.histogram(kernel.name, kernel)
@@ -316,9 +312,6 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         x = core.depthwise_conv2d(x, kernel, stride, padding.upper())
         xshape = input_shape[:]
         xshape[1:3] = core.shape(x)[1:3]
-        #print('input shape:', input_shape)
-        #print('current shape:', core.shape(x))
-        #print('target xshape:', xshape)
         #   [batch-size, nrows, ncols, incaps * incapdim]
         # =>[batch-size, nrows, ncols, incaps, incapdim]
         return core.reshape(x, xshape)

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from .. import colors
 from .. import ops
 from . import core
@@ -60,10 +56,32 @@ def reshape(inputs, output_shape,
             reuse=False,
             name=None,
             scope=None):
-    input_shape = ops.core.shape(inputs)
     fun, output = ops.base.reshape(output_shape, reuse, name, scope)
     x = fun(inputs)
+    xshape = ops.core.shape(x)
     if output[1:] != output_shape[1:]:
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. '
+                         '{}{}{} vs {}{}{}'
+                         .format(colors.fg.red, output, colors.reset,
+                                 colors.fg.green, xshape, colors.reset))
+    if return_shape:
+        x = [x, output]
+    return x
+
+
+@core.layer
+def expand_dims(inputs,
+                axis,
+                return_shape=False,
+                reuse=False,
+                name=None,
+                scope=None):
+    input_shape = ops.core.shape(inputs)
+    fun, output = ops.base.expand_dims(input_shape, axis, reuse, name, scope)
+    x = fun(inputs)
+    xshape = ops.core.shape(x)
+    if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. '
                          '{}{}{} vs {}{}{}'
@@ -85,10 +103,8 @@ def input_spec(inputs,
         parameter must be `inputs`.
         therefore use `inputs` instead of `input_shape`
     """
-    ops_scope, name = ops.helper.assign_scope(name,
-                                              scope,
-                                              'inputs',
-                                              reuse)
-    with ops_scope:
-        x = ops.core.placeholder(dtype, inputs, name)
-        return x
+    ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
+                                                               scope,
+                                                               'inputs',
+                                                               reuse)
+    return ops.core.placeholder(dtype, inputs, name)

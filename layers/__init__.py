@@ -7,7 +7,7 @@ from . import merge
 from . import losses
 from . import core
 from . import capsules
-from .core import defaults, export_graph
+from .core import defaults
 
 
 def get():

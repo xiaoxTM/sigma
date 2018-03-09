@@ -6,13 +6,17 @@ from . import core
     [0, 1)
 """
 @core.layer
-def squash(inputs, epsilon=ops.core.epsilon, reuse=False, name=None, scope=None):
-    return ops.actives.squash(epsilon, reuse, name, scope)(inputs)
+def squash(inputs,
+           epsilon=ops.core.epsilon,
+           reuse=False,
+           name=None,
+           scope=None):
+    return ops.actives.squash(epsilon, True, reuse, name, scope)(inputs)
 
 
 @core.layer
 def crelu(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.crelu(reuse, name, scope)(inputs)
+    return ops.actives.crelu(True, reuse, name, scope)(inputs)
 
 
 """ relu activates
@@ -21,7 +25,7 @@ def crelu(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def relu(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.relu(reuse, name, scope)(inputs)
+    return ops.actives.relu(True, reuse, name, scope)(inputs)
 
 
 """ relu6 activates
@@ -30,7 +34,7 @@ def relu(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def relu6(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.relu6(reuse, name, scope)(inputs)
+    return ops.actives.relu6(True, reuse, name, scope)(inputs)
 
 
 """ elu activates
@@ -39,7 +43,7 @@ def relu6(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def elu(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.elu(reuse, name, scope)(inputs)
+    return ops.actives.elu(True, reuse, name, scope)(inputs)
 
 
 """ elu activates
@@ -53,7 +57,7 @@ def selu(inputs,
          reuse=False,
          name=None,
          scope=None):
-    return ops.actives.selu(alpha, scale, reuse, name, scope)(inputs)
+    return ops.actives.selu(alpha, scale, True, reuse, name, scope)(inputs)
 
 
 """ leaky_relu activates
@@ -62,7 +66,7 @@ def selu(inputs,
 """
 @core.layer
 def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
-    return ops.actives.leaky_relu(alpha, reuse, name, scope)(inputs)
+    return ops.actives.leaky_relu(alpha, True, reuse, name, scope)(inputs)
 
 
 """ softmax activates
@@ -71,7 +75,7 @@ def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
 """
 @core.layer
 def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
-    return ops.actives.softmax(dim, reuse, name, scope)(inputs)
+    return ops.actives.softmax(dim, True, reuse, name, scope)(inputs)
 
 
 """ softplus activates
@@ -80,7 +84,7 @@ def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
 """
 @core.layer
 def softplus(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.softplus(reuse, name, scope)(inputs)
+    return ops.actives.softplus(True, reuse, name, scope)(inputs)
 
 
 """ softsign activates
@@ -89,7 +93,7 @@ def softplus(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def softsign(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.softsign(reuse, name, scope)(inputs)
+    return ops.actives.softsign(True, reuse, name, scope)(inputs)
 
 
 """ sigmoid activates
@@ -98,7 +102,7 @@ def softsign(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def sigmoid(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.sigmoid(reuse, name, scope)(inputs)
+    return ops.actives.sigmoid(True, reuse, name, scope)(inputs)
 
 
 """ hyperbolic tangent activates
@@ -107,7 +111,7 @@ def sigmoid(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def tanh(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.tanh(reuse, name, scope)(inputs)
+    return ops.actives.tanh(True, reuse, name, scope)(inputs)
 
 
 """ linear activates
@@ -116,4 +120,4 @@ def tanh(inputs, reuse=False, name=None, scope=None):
 """
 @core.layer
 def linear(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.linear(reuse, name, scope)(inputs)
+    return ops.actives.linear(True, reuse, name, scope)(inputs)

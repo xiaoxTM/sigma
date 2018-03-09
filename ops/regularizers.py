@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 import numpy as np
 from . import core
@@ -40,10 +36,10 @@ def total_variation_regularizer(shape, reuse=False, name=None, scope=None):
     del axes[core.axis]
     del axes[0]
     indices = [np.arange(s) for s in shape]
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'total_variation_regularizer',
-                                          reuse)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'total_variation_regularizer',
+                                             reuse)
     def _differ(x, axis):
         previous = np.copy(indices)
         latter = np.copy(indices)

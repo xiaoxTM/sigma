@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from .. import ops
 from . import core
 
@@ -118,3 +114,13 @@ cce = categorical_cross_entropy
 mse = mean_square_error
 mae = mean_absolute_error
 wta = winner_takes_all
+
+
+def get(act, *args, **kwargs):
+    if isinstance(act, str):
+        return eval('{}(*args, **kwargs)'.format(act))
+    elif callable(act):
+        return act
+    else:
+        raise ValueError('cannot get activates `{}` with type {}'
+                         .format(initializer, type(initializer)))

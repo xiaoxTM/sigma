@@ -1,5 +1,4 @@
 from .. import helpers, colors, dbs, ops
-#from ..ops import core as opcore
 from timeit import default_timer as timer
 import tensorflow as tf
 import numpy as np
@@ -140,7 +139,8 @@ def line(iterable,
          message=None,
          nc='x',
          cc='+'):
-    """ show line message in a programmatic interactive mode
+    """ Python Generator Tips [next|send / yield]
+        show line message in a programmatic interactive mode
         to interactivate with line, call generator in the following order:
         (global_idx, elem, epoch, iteration) = (generator)
         while True:
@@ -148,6 +148,18 @@ def line(iterable,
             (global_idx, elem, epoch, iteration) = generator.send(value)
             if need_break:
                 break
+        That is, to interactivate next / send with yield in generator, do
+        it in the following loop:
+                next(generator) \
+                                 V
+                    -------------|
+                    |            |
+                    |            V
+                  send         yield
+                    ^            |
+                    |            |
+                    |____________|
+                   
         Attibutes
         =========
             iterable : list / tuple / np.ndarray / range
@@ -234,7 +246,6 @@ def line(iterable,
             elem = iterable[idx % iterable_size]
             time_beg = timer()
             epoch = int(idx / iterations)
-            #print('epoch:', epoch, '- idx:', idx)
             iteration = (idx % iterations)
             ret = (yield (idx, elem, epoch, iteration))
             #if ret is None:

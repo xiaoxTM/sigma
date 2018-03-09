@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import inspect
 import functools
 from contextlib import contextmanager
@@ -23,7 +19,7 @@ except ImportError:
 _CONTEXT_DEFAULTS_ = {}
 
 # None  : print no network information
-# False : print network information to terminal
+# False : print network information to terminal [default]
 # True  : print network information to graph
 __graph__ = False
 
@@ -136,10 +132,10 @@ def defaults(*args, **kwargs):
             _CONTEXT_DEFAULTS_.pop(k)
 
 
-def export_graph(filename, ext):
+def export_graph(filename, ext=None):
     global __graph__
     if pydot is None:
-        raise ImportError('Import pydot failed. make sure pydot is installed')
+        raise ImportError('Importing pydot failed. make sure pydot is installed')
     if not isinstance(__graph__, pydot.Dot):
         raise TypeError('graph model is not built. graph: {}'.format(__graph__))
     if ext is None:
@@ -170,22 +166,23 @@ def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
                     inputname = [ops.helper.name_normalize(x.name) for x in inputs]
                 else:
                     is_input_layer = True
-                    input_shape = inputs
-                    inputname = ops.helper.dispatch_name('input')
+                    input_shape = [inputs]
+                    inputname = [name]
             else:
                 input_shape = [ops.core.shape(inputs)]
                 inputname = [ops.helper.name_normalize(inputs.name)]
             output_shape = ops.core.shape(outputs)
             outputname = ops.helper.name_normalize(outputs.name)
             if __graph__ is False:
-                if len(inputname) == 1:
-                    inputname = inputname[0]
-                    input_shape = input_shape[0]
-                print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
-                      .format(inputname,
-                              colors.fg.green, input_shape, colors.reset,
-                              colors.fg.blue, name, typename, colors.reset,
-                              outputname, colors.fg.red, output_shape, colors.reset))
+                if not is_input_layer:
+                    if len(inputname) == 1:
+                        inputname = inputname[0]
+                        input_shape = input_shape[0]
+                    print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
+                          .format(inputname,
+                                  colors.fg.green, input_shape, colors.reset,
+                                  colors.fg.blue, name, typename, colors.reset,
+                                  outputname, colors.fg.red, output_shape, colors.reset))
             elif __graph__ is True or isinstance(__graph__, pydot.Dot):
                 if pydot is None:
                     raise ImportError('Import pydot failed. make sure pydot is installed')

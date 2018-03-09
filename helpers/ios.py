@@ -180,9 +180,7 @@ def export_weights(filename, session,
             names = []
             for param in params:
                 if not exported_weights.get(param.name, False):
-                    # print('param', param)
                     val = session.run(param)
-                    # print('val:', val)
                     pset = weight_group.create_dataset(str(param.name),
                                                        val.shape,
                                                        dtype=val.dtype)

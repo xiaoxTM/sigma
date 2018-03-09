@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from .. import ops
 from . import core
 
@@ -127,5 +123,13 @@ def batch_norm(inputs,
 def dropout(inputs, pkeep,
             noise_shape=None,
             seed=None,
-            name=None):
-    return ops.norms.dropout(pkeep, noise_shape, seed, name)(inputs)
+            reuse=False,
+            name=None,
+            scope=None):
+    return ops.norms.dropout(pkeep,
+                             noise_shape,
+                             seed,
+                             True, #interpret as layer
+                             reuse,
+                             name,
+                             scope)(inputs)

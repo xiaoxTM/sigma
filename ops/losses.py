@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 from . import helper, core
 
@@ -14,10 +10,10 @@ def loss(fun):
               name=None,
               scope=None,
               *args):
-        ops_scope, name = helper.assign_scope(name,
-                                              scope,
-                                              fun.__name__,
-                                              reuse)
+        ops_scope, _, name = helper.assign_scope(name,
+                                                 scope,
+                                                 fun.__name__,
+                                                 reuse)
         return fun(axis, logits, onehot, reuse, name, ops_scope, *args)
     return _loss
 
@@ -150,12 +146,16 @@ def margin_loss(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
-            ploss = core.cast(core.less(x, positive_margin), core.float32)
-            ploss = ploss * core.pow(positive_margin-x, 2)
+            pmask = core.cast(core.less(x, positive_margin), core.float32)
+            ploss = pmask * core.pow(positive_margin-x, 2)
             ploss = core.cast(labels, core.float32) * ploss
-            nloss = core.cast(core.greater(x, negative_margin), core.float32)
-            nloss = nloss * core.pow(negative_margin-x, 2)
+            nmask = core.cast(core.greater(x, negative_margin), core.float32)
+            nloss = nmask * core.pow(negative_margin-x, 2)
             nloss = core.cast(1-labels, core.float32) * nloss
+#            ploss = core.square(core.maximum(0, positive_margin - x))
+#            ploss = labels * ploss
+#            nloss = core.square(core.maximum(0, x - negative_margin))
+#            nloss = (1 - labels) * nloss
             return core.mean(ploss + downweighting * nloss, axis=axis)
     return _margin_loss
 

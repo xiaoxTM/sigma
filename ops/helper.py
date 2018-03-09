@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import tensorflow as tf
 from .. import colors
 from . import core
@@ -56,13 +52,13 @@ def assign_scope(name, scope, ltype, reuse=False):
             name = dispatch_name(ltype, -1)
         else:
             name = dispatch_name(ltype)
-    name = '{}/{}'.format(name, ltype)
+    name_with_ltype = '{}/{}'.format(name, ltype)
     if scope is None:
-        ops_scope = tf.name_scope('{}'.format(name))
+        ops_scope = tf.name_scope('{}'.format(name_with_ltype))
     else:
         ops_scope = tf.name_scope('{}/{}'
-                                  .format(scope, name))
-    return ops_scope, name
+                                  .format(scope, name_with_ltype))
+    return ops_scope, name_with_ltype, name
 
 
 def is_tensor(x):

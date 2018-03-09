@@ -15,7 +15,6 @@ import logging
 import os
 import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
-# print(sys.path)
 import sigma
 from sigma import layers, status, colors
 import numpy as np

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import numpy as np
 from . import helper, core, mm
 
@@ -23,13 +19,17 @@ def embedding(table_shape,
 
         // TODO: test
     """
-    ops_scope, name = helper.assign_scope(name,
-                                          scope,
-                                          'embedding',
-                                          reuse)
-    embeddings = mm.malloc('embedding', table_shape, dtype,
+    # assign scope returns
+    # - ops_scope       : [scope/]layername/layertype
+    # - name_with_ltype : layername/layertype
+    # - name            : original name | layername
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'embedding',
+                                             reuse)
+    embeddings = mm.malloc('embedding', name, table_shape, dtype,
                            initializer, regularizer, trainable,
-                           collections, reuse, name, scope)
+                           collections, reuse, scope)
     if summarize and not reuse:
         tf.summary.histogram(embeddings.name, table)
     def _embedding(ids):
@@ -44,7 +44,7 @@ def flatten(input_shape,
             reuse=False,
             name=None,
             scope=None):
-    ops_scope, name = helper.assign_scope(name, scope, 'flatten', reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, 'flatten', reuse)
     output_shape = [-1, np.prod(input_shape[1:])]
     def _flatten(x):
         with ops_scope:
@@ -56,8 +56,25 @@ def reshape(output_shape,
             reuse=False,
             name=None,
             scope=None):
-    ops_scope, name = helper.assign_scope(name, scope, 'reshape', reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, 'reshape', reuse)
     def _reshape(x):
         with ops_scope:
             return core.reshape(x, output_shape, name)
     return _reshape, output_shape
+
+
+def expand_dims(input_shape,
+                axis,
+                reuse=False,
+                name=None,
+                scope=None):
+    ops_scope, _, _ = helper.assign_scope(name,
+                                          scope,
+                                          'expand_dims',
+                                          reuse)
+    output_shape = input_shape[:]
+    output_shape.insert(axis if axis >= 0 else axis + 1, 1)
+    def _expand_dims(x):
+        with ops_scope:
+            return core.expand_dims(x, axis)
+    return _expand_dims, output_shape

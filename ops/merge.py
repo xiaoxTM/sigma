@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import numpy as np
 from .. import colors
 from . import helper, core
@@ -30,7 +26,7 @@ def concat(inputs_shape,
                                      colors.reset, colors.fg.red, output_shape,
                                      ip, colors.reset))
         output_shape[axis] += ip[axis]
-    ops_scope, name = helper.assign_scope(name, scope, 'concat', reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, 'concat', reuse)
     def _concat(x):
         with ops_scope:
             return core.concat(x, axis, name)
@@ -58,7 +54,7 @@ def add(inputs_shape,
                              .format(colors.fg.red, idx+1, colors.reset,
                                      colors.fg.red,
                                      output_shape, ip, colors.reset))
-    ops_scope, name = helper.assign_scope(name, scope, 'add', reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, 'add', reuse)
     def _add(x):
         with ops_scope:
             return core.add(x, name)
@@ -83,7 +79,7 @@ def mul(inputs_shape, reuse=False, name=None, scope=None):
                              .format(colors.fg.red, idx+1, colors.reset,
                                      colors.fg.red,
                                      output_shape, ip, colors.reset))
-    ops_scope, name = helper.assign_scope(name, scope, 'mul', reuse)
+    ops_scope, _, name = helper.assign_scope(name, scope, 'mul', reuse)
     def _mul(x):
         with ops_scope:
             return core.multiply(inputs, name)
