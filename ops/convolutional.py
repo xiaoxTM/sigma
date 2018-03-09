@@ -458,16 +458,15 @@ def soft_conv(input_shape,
     #    [rows, cols, krowsm * kcols, 2]
     #  =>[rows * cols * krows * kcols, 2]
     grids = grids.reshape((-1, dimlen))
-    with ops_scope:
-        if input_len == 3: # 1d
-            convop = conv1d(**kwargs)[0]
-        elif input_len == 4: # 2d
-            convop = conv2d(**kwargs)[0]
-        elif input_len == 5:
-            convop = conv3d(**kwargs)[0]
-        else:
-            raise ValueError('input shape length must'
-                             ' have 3/4/5. given {}'.format(input_len))
+    if input_len == 3: # 1d
+        convop = conv1d(**kwargs)[0]
+    elif input_len == 4: # 2d
+        convop = conv2d(**kwargs)[0]
+    elif input_len == 5:
+        convop = conv3d(**kwargs)[0]
+    else:
+        raise ValueError('input shape length must'
+                         ' have 3/4/5. given {}'.format(input_len))
 
     def _append_batch_grids(offset_grids):
         """ offset_grids : [batch-size,

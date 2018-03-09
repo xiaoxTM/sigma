@@ -54,16 +54,16 @@ def model_regular(x, winit, nclass=10):
                         kshape=3, weight_initializer=winit):
 
         x = layers.convs.conv2d(x, 32)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.convs.conv2d(x, 64, stride=2)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.convs.conv2d(x, 128)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.convs.conv2d(x, 128, stride=2)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.pools.avg_pool2d_global(x)
         x = layers.convs.dense(x, 10, act=None)
@@ -74,16 +74,16 @@ def model_soft(x, winit, mode, nclass=10):
     with sigma.defaults(stride=1, padding='same', act='relu',
                         kshape=3, weight_initializer=winit):
         x = layers.convs.soft_conv2d(x, 32)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.convs.soft_conv2d(x, 64, stride=2)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.convs.soft_conv2d(x, 128)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.convs.soft_conv2d(x, 128, stride=2)
-        x = layers.norm.batch_norm(x, act=None)
+        x = layers.norms.batch_norm(x, act=None)
 
         x = layers.pools.avg_pool2d_global(x)
         x = layers.convs.dense(x, 10, act=None)
@@ -112,7 +112,8 @@ if __name__ == '__main__':
         x = tf.placeholder(tf.float32, [batch_size, 28, 28, 1], name='samples')
         y = tf.placeholder(tf.float32, [batch_size, 10], name='labels')
         out = eval('model_{}(x, winit, mode)'.format(model))
-
+        print('output:', out)
+        print('y:', y)
         loss = layers.losses.cce(out, y)
         acc = accuracy(out, y)
 

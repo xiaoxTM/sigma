@@ -1,5 +1,6 @@
 import tensorflow as tf
 from . import helper
+from . import core
 
 def base_pool2d(input_shape, fun, pshape, stride,
                 padding, reuse, name, scope):

@@ -249,7 +249,7 @@ def soft_conv2d(inputs, nouts,
                 reuse=False,
                 name=None,
                 scope=None):
-    input_shape = ops.ore.shape(inputs)
+    input_shape = ops.core.shape(inputs)
     fun, output = ops.convs.soft_conv2d(input_shape,
                                         nouts,
                                         kshape,

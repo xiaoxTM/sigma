@@ -86,6 +86,7 @@ def winner_takes_all(inputs, labels,
                                        reuse,
                                        name,
                                        scope)(inputs, labels)
+
 @core.layer
 def margin_loss(inputs, labels,
                 axis=None,
@@ -97,6 +98,11 @@ def margin_loss(inputs, labels,
                 reuse=False,
                 name=None,
                 scope=None):
+    """ margin loss for capsule networks
+        NOTE margin_loss cannot be used for normal CNN
+        because margin loss treat inputs as
+        `vector in vector out` tensor 
+    """
     return ops.losses.margin_loss(axis,
                                   logits,
                                   onehot,

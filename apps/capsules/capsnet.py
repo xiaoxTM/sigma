@@ -27,7 +27,9 @@ def train(xtrain, ytrain, checkpoints,
 #    sigma.engine.set_print(True)
     input_shape[0] = batch_size
     ytensor = sigma.placeholder(dtype=ops.core.int32, shape=[batch_size, nclass])
-    xtensor, loss = sigma.build(input_shape, build_func, 'margin_loss',
+    xtensor, loss = sigma.build(input_shape,
+                                build_func,
+                                'margin_loss',
                                 labels=ytensor,
                                 onehot=True)
 #    sigma.engine.export_graph('cache/network-architecture.png')
