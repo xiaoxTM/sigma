@@ -125,6 +125,7 @@ def winner_takes_all(axis,
             return core.mean(loss_matrix, axis=axis)
     return _winner_takes_all
 
+
 @loss
 def margin_loss(axis,
                 logits=True,
@@ -146,8 +147,6 @@ def margin_loss(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
-            print('margin loss input:', x)
-            print('margin loss labels:', labels)
             pmask = core.cast(core.less(x, positive_margin), core.float32)
             ploss = pmask * core.pow(positive_margin-x, 2)
             ploss = core.sum(core.cast(labels, core.float32) * ploss,

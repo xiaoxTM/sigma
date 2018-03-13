@@ -36,7 +36,10 @@ def _leaky_routing(logits):
     return core.split(leaky_routs, [1, nouts], axis=core.axis)[1]
 
 
-def _agreement_routing(prediction_vectors, logits, iterations,
+def _agreement_routing(prediction_vectors,
+                       logits_shape,
+                       iterations,
+                       bias,
                        leaky=False):
     """ calculate v_j by dynamic routing
         Attributes
@@ -79,8 +82,6 @@ def _agreement_routing(prediction_vectors, logits, iterations,
     shape = core.shape(prediction_vectors)
     shape.pop(-3)
 
-    act = actives.squash()
-
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
         """
@@ -93,6 +94,8 @@ def _agreement_routing(prediction_vectors, logits, iterations,
         preactivate = coefficients * prediction_vectors
         #print('preactivate:', core.shape(preactivate))
         preactivate = core.sum(preactivate, axis=-3, keepdims=True)
+        if bias:
+            preactivate += bias
         #tf.summary.histogram('preactivate-{}'.format(i), preactivate)
         #print('summed preactivate:', core.shape(preactivate))
         activation = act(preactivate)
@@ -103,30 +106,104 @@ def _agreement_routing(prediction_vectors, logits, iterations,
         distance = core.sum(prediction_vectors * activation,
                             axis=core.axis,
                             keepdims=True)
+        #print('distance:', core.shape(distance))
         #tf.summary.histogram('distance-{}'.format(i), distance)
         logits += distance
+        #print('logits:', core.shape(logits))
         #tf.summary.histogram('logits-{}'.format(i), logits)
         return (i+1, logits, activations)
 
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
                                    clear_after_read=False)
+
+    # clear logits
+    logits = tf.fill(logits_shape, 0.0)
+    act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
+
     _, logits, activations = tf.while_loop(
-        lambda i, logits, activations: i < iterations,
+        lambda idx, logits, activations: idx < iterations,
         _update,
-        loop_vars=[idx, logits, activations])
+        loop_vars=[idx, logits, activations],
+        swap_memory=True)
     #   [batch-size, nrows, ncols, 1, outcaps, outcapdim]
     # =>[batch-size, nrows, ncols, outcaps, outcapdim]
     return core.reshape(activations.read(iterations-1), shape)
 
 
-def conv(convop, weight_shape, logits_shape, iterations,
+def _agreement_routing_by_loop(prediction_vectors,
+                               logits_shape,
+                               iterations,
+                               bias,
+                               leaky=False):
+    # take conv2d as an example to show the change of tensor shape
+    # inputs:
+    #     prediction_vectors : [batch-size, nrows, ncols, ncaps, capsdims]
+    #                          aka. u^{hat}_{j|i}
+    #     logits             : [batch-size, nrows, ncols, ncaps, 1]
+    #                          aka. b_{i,j}
+    #     bias               : [ncaps, capsdims]
+    shape = core.shape(prediction_vectors)
+    print('prediction_vectors shape:', shape)
+    shape.pop(-3)
+    logits = tf.fill(logits_shape, 0.0)
+    act = actives.squash()
+    idx = core.constant(0, dtype=core.int32)
+
+    capsule_axis = helper.normalize_axes(core.shape(logits), -2)
+    print('iterations:', iterations)
+    for i in range(iterations):
+#        print('logits shape:', core.shape(logits))
+#        if leaky:
+#            coefficients = _leaky_routing(logits)
+#        else:
+        # coefficients:
+        #    [batch-size, nrows, ncols, ncaps, 1]
+        coefficients = core.softmax(logits, axis=capsule_axis)
+        print('coefficient:', core.shape(coefficients))
+        if i == 0:
+            tf.summary.histogram('coefficients', coefficients)
+        # preactivate :
+        #    [batch-size, nrows, ncols, ncaps, capsdims]
+        preactivate = coefficients * prediction_vectors
+        if i == 0:
+            tf.summary.histogram('preactivate', preactivate)
+        print('preactivate:', core.shape(preactivate))
+        # preactivate :
+        #    [batch-size, nrows, ncols, ncaps, capsdims]
+        preactivate = core.sum(preactivate, axis=-3, keepdims=True)
+        print('summed preactivate:', core.shape(preactivate))
+        if i == 0:
+            tf.summary.histogram('preactivate_sum', preactivate)
+        if bias:
+            print('bias:', core.shape(bias))
+            preactivate += bias
+        if i == 0:
+            tf.summary.histogram('preactivate_bias', preactivate)
+        activation = act(preactivate)
+        if i == 0:
+            tf.summary.histogram('activation', activation)
+        distance = core.sum(prediction_vectors * activation,
+                            axis=core.axis,
+                            keepdims=True)
+        print('distance:', core.shape(distance))
+        if i == 0:
+            tf.summary.histogram('distance', distance)
+        logits += distance
+        print('logits:', core.shape(logits))
+        if i == 0:
+            tf.summary.histogram('logits', logits)
+    print('output shape:', shape)
+    return core.reshape(activation, shape)
+
+
+def conv(convop, weight_shape, bias_shape, logits_shape, iterations,
          leaky=False,
          weight_initializer='glorot_uniform',
          weight_regularizer=None,
-         logits_initializer='zeros',
-         logits_regularizer=None,
+         bias_initializer='zeros',
+         bias_regularizer=None,
          act=None,
          trainable=True,
          dtype=core.float32,
@@ -140,7 +217,7 @@ def conv(convop, weight_shape, logits_shape, iterations,
     """
     ops_scope, _, name = helper.assign_scope(name,
                                           scope,
-                                          'caps_'+convop.__name__[1:],
+                                          'caps'+convop.__name__,
                                           reuse)
     act = actives.get(act)
     weight = mm.malloc('weight',
@@ -155,25 +232,33 @@ def conv(convop, weight_shape, logits_shape, iterations,
                        scope)
     if summarize and not reuse:
         tf.summary.histogram(weight.name, weight)
-    logits = mm.malloc('logits',
-                       name,
-                       logits_shape,
-                       dtype,
-                       logits_initializer,
-                       logits_regularizer,
-                       False,
-                       collections,
-                       reuse,
-                       scope)
-    if summarize and not reuse:
-        tf.summary.histogram(logits.name, logits)
+    if not isinstance(bias_initializer, bool) or bias_initializer is True:
+        bias = mm.malloc('bias',
+                         name,
+                          bias_shape,
+                          dtype,
+                          bias_initializer,
+                          bias_regularizer,
+                          trainable,
+                          collections,
+                          reuse,
+                          scope)
+        if summarize and not reuse:
+            tf.summary.histogram(bias.name, bias)
+    else:
+        bias = False
     def _conv(x):
         with ops_scope:
             #  [batch-size, nrows, ncols, incaps, incapdim] x [incapdim, outcaps, outcapdim]
-            #=>[batch-size, ncols, nrows, incaps, outcaps, outcapdim]
+            #=>[batch-size, nrows, ncols, incaps, outcaps, outcapdim]
+            # equal depthwise convolutional for conv2d
             x = convop(x)
+            tf.summary.histogram('depthwise conv', x)
+            print('depthwise convolved shape:', core.shape(x))
             x = core.tensordot(x, weight, axes=[[-1], [0]])
-            x = _agreement_routing(x, logits, iterations, leaky)
+            tf.summary.histogram('predict-vector', x)
+            with tf.name_scope('agreement_routing'):
+                x = _agreement_routing_by_loop(x, logits_shape, iterations, bias, leaky)
             return x
     return _conv
 
@@ -183,8 +268,8 @@ def fully_connected(input_shape, nouts, caps_dims,
                     leaky=False,
                     weight_initializer='glorot_uniform',
                     weight_regularizer=None,
-                    logits_initializer='zeros', # no bias
-                    logits_regularizer=None,
+                    bias_initializer='zeros',
+                    bias_regularizer=None,
                     act=None,
                     trainable=True,
                     dtype=core.float32,
@@ -213,17 +298,19 @@ def fully_connected(input_shape, nouts, caps_dims,
     incaps, incapdim = input_shape[-2:]
     logits_shape = [input_shape[0], incaps, nouts, 1]
     weight_shape = [incapdim, nouts, caps_dims]
+    bias_shape = [nouts, caps_dims]
     def _fully_connected(x):
         return x
     return conv(_fully_connected,
                 weight_shape,
+                bias_shape,
                 logits_shape,
                 iterations,
                 leaky,
                 weight_initializer,
                 weight_regularizer,
-                logits_initializer,
-                logits_regularizer,
+                bias_initializer,
+                bias_regularizer,
                 act,
                 trainable,
                 dtype,
@@ -241,8 +328,8 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
            padding='valid',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
-           logits_initializer='zeros',
-           logits_regularizer=None,
+           bias_initializer='zeros',
+           bias_regularizer=None,
            act=None,
            trainable=True,
            dtype=core.float32,
@@ -306,6 +393,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     #  coefficient_shape = [batch-size, rows, cols, incaps, nouts, 1]
     logits_shape = output_shape[:3] + [incaps, nouts, 1]
     weight_shape = [incapdim, nouts, caps_dims]
+    bias_shape = [nouts, caps_dims]
 
     def _conv2d(x):
         x = core.reshape(x, input_nshape)
@@ -317,13 +405,14 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         return core.reshape(x, xshape)
     return conv(_conv2d,
                 weight_shape,
+                bias_shape,
                 logits_shape,
                 iterations,
                 leaky,
                 weight_initializer,
                 weight_regularizer,
-                logits_initializer,
-                logits_regularizer,
+                bias_initializer,
+                bias_regularizer,
                 act,
                 trainable,
                 dtype,

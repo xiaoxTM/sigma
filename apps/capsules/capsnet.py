@@ -20,7 +20,7 @@ def build_func(x):
 
 def train(xtrain, ytrain, checkpoints,
           nclass=10,
-          epochs=1,
+          epochs=3,
           batch_size=100,
           shuffle=True):
     input_shape = list(xtrain.shape)
@@ -32,16 +32,37 @@ def train(xtrain, ytrain, checkpoints,
                                 'margin_loss',
                                 labels=ytensor,
                                 onehot=True)
+    tf.summary.scalar('loss', loss)
+#    graph = tf.get_default_graph()
+#    collections = ['summaries', 'variables', 'trainable_variables']
+#    print(collections)
+#    for collection in collections:
+#        print(collection)
+#        gparams = tf.get_collection(collection)
+#        if len(gparams) == 0:
+#            print('ERROR: {} has no parameters to optimize. \
+#                  make sure you set `scope` to layers with trainable parameters'.format(collection))
+#        print('parameters for {} training'.format(collection))
+#        for gp in gparams:
+#            print('    ', gp.name, gp.get_shape().as_list())
+
 #    sigma.engine.export_graph('cache/network-architecture.png')
-    optimizer = tf.train.AdamOptimizer(0.05).minimize(loss)
+
+    #----- log optimizer gradients -----
+    optimizer = tf.train.AdamOptimizer(0.05)
+    grads_and_vars = optimizer.compute_gradients(loss)
+    for (grad, var) in grads_and_vars:
+        if grad is not None:
+            tf.summary.histogram(grad.name, grad)
+    optimizer = optimizer.apply_gradients(grads_and_vars)
+    #----------
+    #optimizer = tf.train.AdamOptimizer(0.05).minimize(loss)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
     config.gpu_options.visible_device_list = '0'
     config.intra_op_parallelism_threads = 1
-
-    tf.summary.scalar('loss', loss)
 
     sigma.run(xtrain, xtensor,
               optimizer,

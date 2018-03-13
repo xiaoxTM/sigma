@@ -113,7 +113,8 @@ def session(target='',
             logs=None,
             verbose=True):
     sess = tf.Session(target, graph, config)
-    sess.run(tf.global_variables_initializer())
+    sess.run([tf.global_variables_initializer(),
+              tf.local_variables_initializer()])
     if initializers is not None:
         sess.run(initializers)
     ans = {'session': sess}
@@ -134,6 +135,7 @@ def line(iterable,
          #batch_size,
          brief=False,
          nprompts=10,
+         feedbacks=False,
          timeit=False,
          show_total_time=False,
          accuracy=5,
@@ -167,13 +169,16 @@ def line(iterable,
                        iterable object or function that can yield something
                        generally speaking, iterable have length of:
                        "iterations * epochs"
+            epochs : int or None
+                     total iterations
             brief : bool
                     if true, show extra information in form of
                         `[current-iter / total-iter]`
             nprompts : int
                        how many prompt (`nc`/`cc`) to mimic the progress
-            epochs : int or None
-                     total iterations
+            feedbacks : boolean
+                        if true, yield data and waiting for feedbacks from caller
+                        else only yield data
             timeit : bool
                      time each iteration or not
             show_total_time : bool
@@ -248,9 +253,11 @@ def line(iterable,
             time_beg = timer()
             epoch = int(idx / iterations)
             iteration = (idx % iterations)
-            ret = (yield (idx, elem, epoch, iteration))
-            #if ret is None:
-            #    ret = ''
+            if feedbacks:
+                ret = (yield (idx, elem, epoch, iteration))
+            else:
+                yield (idx, elem, epoch, iteration)
+                ret = ''
             # convert iteration index to nprompts index
             block_beg = int(iteration * scale)
             if block_beg >= nprompts:
@@ -403,7 +410,7 @@ def run(x, xtensor, optimizer, loss,
     total_iterations = iterations * epochs
     progressor = line(range(total_iterations),
                       epochs=epochs,
-                      #batch_size=batch_size,
+                      feedbacks=True, # use `send` to get next data instead of `next`
                       timeit=True,
                       nprompts=20)()
     # tensors to be calculated

@@ -45,7 +45,7 @@ __layers__ = {'actives': ['crelu',
                           'sigmoid',
                           'tanh',
                           'linear'],
-              'base': ['flatten', 'reshape'],
+              'base': ['flatten', 'reshape', 'expand_dims'],
               'convs': ['fully_conv',
                         'dense',
                         'conv1d',
@@ -153,7 +153,7 @@ def export_graph(filename, ext=None):
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
 """
-def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
+def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     global __graph__
     if __graph__ is not None:
         if not reuse:
@@ -163,16 +163,18 @@ def _print_layer(inputs, outputs, typename, reuse, name, **kwargs):
             if isinstance(inputs, (list, tuple)):
                 if ops.helper.is_tensor(inputs[0]):
                     input_shape = [shape(x) for x in inputs]
-                    inputname = [ops.helper.name_normalize(x.name) for x in inputs]
+                    inputname = [ops.helper.name_normalize(x.name, scope) for x in inputs]
                 else:
                     is_input_layer = True
                     input_shape = [inputs]
                     inputname = [name]
             else:
                 input_shape = [ops.core.shape(inputs)]
-                inputname = [ops.helper.name_normalize(inputs.name)]
+                #print('inputs name:', inputs.name)
+                inputname = [ops.helper.name_normalize(inputs.name, scope)]
+                #print('inputs name after norm:', inputname)
             output_shape = ops.core.shape(outputs)
-            outputname = ops.helper.name_normalize(outputs.name)
+            outputname = ops.helper.name_normalize(outputs.name, scope)
             if __graph__ is False:
                 if not is_input_layer:
                     if len(inputname) == 1:
@@ -259,6 +261,7 @@ def layer(fun):
         inputs = kwargs.pop('inputs')
         kwargs.pop('reuse')
         kwargs.pop('name')
-        _print_layer(inputs, outputs, fun.__name__, reuse, name, **kwargs)
+        scope = kwargs.pop('scope')
+        _print_layer(inputs, outputs, fun.__name__, reuse, name, scope, **kwargs)
         return x
     return _wrap

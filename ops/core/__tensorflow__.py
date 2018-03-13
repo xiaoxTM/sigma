@@ -52,8 +52,22 @@ def cond(condition,
                    strict,
                    name)
 
+
+def assign(x, y,
+           validate_shape=None,
+           use_locking=None,
+           name=None):
+    return tf.assign(x, y, validate_shape, use_locking, name)
+
+
+def assign_add(x, y, use_locking=None, name=None):
+    return tf.assign_add(x, y, use_locking, name)
+
+
+
 def rank(x):
     return tf.rank(x)
+
 
 def gather(x, indices, validate=None, name=None, axis=0):
     return tf.gather(x, indices, validate, name, axis)
@@ -269,6 +283,10 @@ def constant(value,
              name='const',
              verify_shape=False):
     return tf.constant(value, dtype, shape, name, verify_shape)
+
+
+def fill(shape, values, name=None):
+    return tf.fill(shape, values, name)
 
 
 #===========================================================

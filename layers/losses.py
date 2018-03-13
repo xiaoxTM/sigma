@@ -87,6 +87,7 @@ def winner_takes_all(inputs, labels,
                                        name,
                                        scope)(inputs, labels)
 
+
 @core.layer
 def margin_loss(inputs, labels,
                 axis=None,

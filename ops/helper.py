@@ -76,19 +76,16 @@ def feature_dims(x):
     return shape
 
 
-def name_normalize(names):
-    """ normalize variable name
+def name_normalize(names, scope=None):
+    """ normalize variable name (or say, remove variable index)
         generally, `names` is a list of :
-            [scope/]/{layer-name/layer-type}/variable-name:index
+            [scope/]/{layer-name/layer-type}/[{sub-spaces/}*]variable-name:index
     """
     def _normalize(name):
-        splits = name.rsplit('/', 2)
-        if len(splits) == 1:
-            return splits[0].split(':')[0]
-        elif len(splits) == 2:
-            return name.split(':')[0]
+        if scope is None:
+            return name.split('/', 1)[0]
         else:
-            return splits[0]
+            return name.splie('/', 2)[1]
     if isinstance(names, str):
         return _normalize(names)
     elif isinstance(names, (tuple, list, np.ndarray)):
