@@ -3,7 +3,7 @@ from . import core, convs
 
 
 @core.layer
-def fully_connected(inputs, nouts, caps_dims,
+def dot(inputs, nouts, caps_dims,
                     iterations=2,
                     leaky=False,
                     weight_initializer='glorot_uniform',
@@ -19,32 +19,40 @@ def fully_connected(inputs, nouts, caps_dims,
                     reuse=False,
                     name=None,
                     scope=None):
+    """ dot operation inside a capsule. That is:
+        ----     ---------
+        |c1|     |w11|w12|     --------------------------
+        |--|     ---------     |c1*w11 + c2*w12 + c3*w13|
+        |c2| dot |w12|w22| ==> --------------------------
+        |--|     ---------     |c1*w21 + c2*w22 + c3*w23|
+        |c3|     |w13|w23|     --------------------------
+        ----     ---------
+    """
     input_shape = ops.core.shape(inputs)
-    fun, output = ops.capsules.fully_connected(input_shape,
-                                               nouts,
-                                               caps_dims,
-                                               iterations,
-                                               leaky,
-                                               weight_initializer,
-                                               weight_regularizer,
-                                               bias_initializer,
-                                               bias_regularizer,
-                                               act,
-                                               trainable,
-                                               dtype,
-                                               collections,
-                                               summarize,
-                                               reuse,
-                                               name,
-                                               scope)
+    fun, output = ops.capsules.dot(input_shape,
+                                         nouts,
+                                         caps_dims,
+                                         iterations,
+                                         leaky,
+                                         weight_initializer,
+                                         weight_regularizer,
+                                         bias_initializer,
+                                         bias_regularizer,
+                                         act,
+                                         trainable,
+                                         dtype,
+                                         collections,
+                                         summarize,
+                                         reuse,
+                                         name,
+                                         scope)
     return convs._layers(fun, inputs, output, return_shape,
-                         'caps_fully_connected', reuse, name)
+                         'caps_dot', reuse, name)
 
-dense = fully_connected
 
 @core.layer
 def conv2d(inputs, nouts, caps_dims, kshape,
-           iterations=2,
+           iterations=3,
            leaky=False,
            stride=1,
            padding='valid',

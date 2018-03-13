@@ -3,10 +3,7 @@
 # ==============================================================================
 
 import tensorflow as tf
-
-epsilon = 1e-5
-data_format = 'NHWC'
-axis = -1
+from .commons import *
 
 # floating data type
 float16 = tf.float16
@@ -64,7 +61,6 @@ def assign_add(x, y, use_locking=None, name=None):
     return tf.assign_add(x, y, use_locking, name)
 
 
-
 def rank(x):
     return tf.rank(x)
 
@@ -93,8 +89,29 @@ def tshape(x, name=None, out_type=int32):
     return tf.shape(x, name, out_type)
 
 
-def reshape(x, output_shape, name=None):
+def reshape(x, output_shape, smart=True, name=None):
+    if smart:
+        stats = shape_statistics(output_shape)
+        nones = stats['nones']
+        if len(nones) == 1:
+            if len(stats['-1']) == 0:
+                output_shape[stats['nones'][0]] = -1
+            else:
+                raise ValueError('`output_shape` can not contains '
+                                 'both `None` and `-1`. {}'
+                                 .format(output_shape))
+        elif len(nones) > 1:
+            raise ValueError('`output_shape` can not contains multiple '
+                             '`None`. {}'.format(output_shape))
+        else:
+            if len(stats['-1']) > 1:
+                raise ValueError('`output_shape` can not contains multiple '
+                               '`-1`. {}'.format(output_shape))
     return tf.reshape(x, output_shape, name)
+
+
+def tile(x, multiples, name=None):
+    return tf.tile(x, multiples, name)
 
 
 def argmax(x,

@@ -75,7 +75,6 @@ def feature_dims(x):
     shape.pop(0)
     return shape
 
-
 def name_normalize(names, scope=None):
     """ normalize variable name (or say, remove variable index)
         generally, `names` is a list of :

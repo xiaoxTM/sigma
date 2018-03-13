@@ -11,7 +11,12 @@ import tensorflow as tf
 def build_func(x):
     x = layers.convs.conv2d(x, 256, 9, padding='valid', act='relu')
     x = layers.base.expand_dims(x, -2)
-    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 3,
+    # no routing between conv1 and primary caps
+    # routing means:
+    #     `reaching a agreement for all capsules in lower layer`
+    # since the lower contains ONLY one capsule
+    # we disable routing by setting iterations to 1
+    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
                                          stride=2,
                                          return_shape=True)
     x = layers.base.reshape(x, [outshape[0], -1, outshape[-1]])
