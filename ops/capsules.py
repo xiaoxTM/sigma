@@ -2,10 +2,6 @@ from .. import colors
 from . import core, actives, helper, mm
 import tensorflow as tf
 
-""" code borrowed from:
-    https://github.com/Sarasra/models/blob/master/research/capsules/models/layers/layers.py
-"""
-
 def _leaky_routing(logits):
     """ leaky routing
         This enables active capsules to be routed to the added
@@ -84,7 +80,6 @@ def _agreement_routing(prediction_vectors,
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
                                    clear_after_read=False)
-    # clear logits
     logits = tf.fill(logits_shape, 0.0)
     act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
@@ -93,32 +88,21 @@ def _agreement_routing(prediction_vectors,
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
         """
-        #print('logits shape:', core.shape(logits))
         if leaky:
             coefficients = _leaky_routing(logits)
         else:
             coefficients = core.softmax(logits, axis=capsule_axis)
-        #tf.summary.histogram('coefficients-{}'.format(i), coefficients)
         preactivate = coefficients * prediction_vectors
-        #print('preactivate:', core.shape(preactivate))
         preactivate = core.sum(preactivate, axis=-3, keepdims=True)
         if bias:
             preactivate += bias
-        #tf.summary.histogram('preactivate-{}'.format(i), preactivate)
-        #print('summed preactivate:', core.shape(preactivate))
         activation = act(preactivate)
-        #tf.summary.histogram('activation-{}'.format(i), activation)
-        #print('activation:', core.shape(activation))
         activations = activations.write(i, activation)
         # sum up along outcapdim dimension
         distance = core.sum(prediction_vectors * activation,
                             axis=core.axis,
                             keepdims=True)
-        #print('distance:', core.shape(distance))
-        #tf.summary.histogram('distance-{}'.format(i), distance)
         logits += distance
-        #print('logits:', core.shape(logits))
-        #tf.summary.histogram('logits-{}'.format(i), logits)
         return (i+1, logits, activations)
 
     _, logits, activations = tf.while_loop(
@@ -131,84 +115,8 @@ def _agreement_routing(prediction_vectors,
     return core.reshape(activations.read(iterations-1), shape)
 
 
-def _agreement_routing_by_loop(prediction_vectors,
-                               logits_shape,
-                               iterations,
-                               bias,
-                               leaky=False):
-    # take conv2d as an example to show the change of tensor shape
-    # prediction_vectors shape:
-    # for fully-connected:
-    #     [batch-size, incaps, outcaps, outcapsdims]
-    # for 1d:
-    #     [batch-size, neurons, incaps, outcaps, outcapsdims]
-    # for 2d:
-    #     [batch-size, nrows, ncols, incaps, outcaps, outcapsdims]
-    # inputs: (takes conv2d for example)
-    #     prediction_vectors : [batch-size, nrows, ncols, incaps, outcaps, outcapsdims]
-    #                          aka. u^{hat}_{j|i}
-    #     logits             : [batch-size, nrows, ncols, incaps, outcaps, 1]
-    #                          aka. b_{i,j}
-    #     bias               : [outcaps, outcapsdims]
-    shape = core.shape(prediction_vectors)
-    print('prediction_vectors shape:', shape)
-    shape.pop(-3)
-    logits = tf.fill(logits_shape, 0.0)
-    act = actives.squash()
-    idx = core.constant(0, dtype=core.int32)
-
-    capsule_axis = helper.normalize_axes(core.shape(logits), -3)
-    print('logits shape:', logits_shape, '- capsule axis:', capsule_axis)
-    print('iterations:', iterations)
-    for i in range(iterations):
-#        print('logits shape:', core.shape(logits))
-#        if leaky:
-#            coefficients = _leaky_routing(logits)
-#        else:
-        # coefficients:
-        #    [batch-size, nrows, ncols, ncaps, 1]
-        coefficients = core.softmax(logits, axis=capsule_axis)
-        print('coefficient:', core.shape(coefficients))
-        if i == 0:
-            tf.summary.histogram('coefficients', coefficients)
-        # preactivate :
-        #    [batch-size, nrows, ncols, ncaps, capsdims]
-        preactivate = coefficients * prediction_vectors
-        if i == 0:
-            tf.summary.histogram('preactivate', preactivate)
-        print('preactivate:', core.shape(preactivate))
-        # preactivate :
-        #    [batch-size, nrows, ncols, incaps, outcaps, capsdims]
-        preactivate = core.sum(preactivate, axis=-3, keepdims=True)
-        print('summed preactivate:', core.shape(preactivate))
-        if i == 0:
-            tf.summary.histogram('preactivate_sum', preactivate)
-        if bias:
-            print('bias:', core.shape(bias))
-            preactivate += bias
-        if i == 0:
-            tf.summary.histogram('preactivate_bias', preactivate)
-        activation = act(preactivate)
-        if i == 0:
-            tf.summary.histogram('activation', activation)
-        distance = core.sum(prediction_vectors * activation,
-                            axis=core.axis,
-                            keepdims=True)
-        print('distance:', core.shape(distance))
-        if i == 0:
-            tf.summary.histogram('distance', distance)
-        logits += distance
-        print('logits:', core.shape(logits))
-        if i == 0:
-            tf.summary.histogram('logits', logits)
-    print('output shape:', shape)
-    return core.reshape(activation, shape)
-
-
-def conv(convop, weight_shape, bias_shape, logits_shape, iterations,
+def conv(convop, bias_shape, logits_shape, iterations,
          leaky=False,
-         weight_initializer='glorot_uniform',
-         weight_regularizer=None,
          bias_initializer='zeros',
          bias_regularizer=None,
          act=None,
@@ -227,18 +135,6 @@ def conv(convop, weight_shape, bias_shape, logits_shape, iterations,
                                           'caps'+convop.__name__,
                                           reuse)
     act = actives.get(act)
-#    weight = mm.malloc('weight',
-#                       name,
-#                       weight_shape,
-#                       dtype,
-#                       weight_initializer,
-#                       weight_regularizer,
-#                       trainable,
-#                       collections,
-#                       reuse,
-#                       scope)
-#    if summarize and not reuse:
-#        tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          name,
@@ -267,9 +163,6 @@ def conv(convop, weight_shape, bias_shape, logits_shape, iterations,
             #     [batch-size, neurons, incaps, outcaps, caps_dims]
             # for 2d:
             #     [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
-            tf.summary.histogram('capsulewise conv', x)
-            #x = core.sum(x * weight, axis=-3)
-            tf.summary.histogram('predict-vector', x)
             with tf.name_scope('agreement_routing'):
                 x = _agreement_routing(x, logits_shape, iterations, bias, leaky)
             return x
@@ -338,13 +231,10 @@ def dot(input_shape, nouts, caps_dims,
         # then reshape to [batch-size, incaps, nouts, caps_dims]
         return core.reshape(core.sum(x * weight, 2), [-1, incaps, nouts, caps_dims])
     return conv(_dot,
-                weight_shape,
                 bias_shape,
                 logits_shape,
                 iterations,
                 leaky,
-                weight_initializer,
-                weight_regularizer,
                 bias_initializer,
                 bias_regularizer,
                 act,
@@ -362,6 +252,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
            leaky=False,
            stride=1,
            padding='valid',
+           fastmode=False,
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
            bias_initializer='zeros',
@@ -408,9 +299,32 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
                                            kshape, stride, padding)
     output_shape = output_shape[:-1] + [nouts, caps_dims]
+    incaps, incapdim = input_shape[-2:]
+    logits_shape = output_shape[:3] + [incaps, nouts, 1]
+    bias_shape = [nouts, caps_dims]
     # kernel shape:
     # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-    kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
+    if fastmode:
+        # if run in fast mode, apply depthwise_conv2d
+        kernel_shape = kshape[1:-1] + [input_shape[-2] * input_shape[core.axis], 1]
+        weight_shape = [incaps, incapdim, nouts * caps_dims]
+        weight = mm.malloc('weight',
+                           name,
+                           weight_shape,
+                           dtype,
+                           weight_initializer,
+                           weight_regularizer,
+                           trainable,
+                           collections,
+                           reuse,
+                           scope)
+        if summarize and not reuse:
+            tf.summary.histogram(weight.name, weight)
+    else:
+        # else run in slow mode, apply capsulewise_conv2d
+        # that is, for each `capsule version of feature map`
+        # apply conv2d
+        kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
     #print('kernel shape in conv2d:', kernel_shape)
     kernels = mm.malloc('kernel',
                         name,
@@ -424,11 +338,6 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                         scope)
     if summarize and not reuse:
         tf.summary.histogram(kernels.name, kernels)
-
-    incaps, incapdim = input_shape[-2:]
-    logits_shape = output_shape[:3] + [incaps, nouts, 1]
-    weight_shape = [incaps, nouts, 1]
-    bias_shape = [nouts, caps_dims]
 
     def _body(idx, x, array):
         # kernels shape : [krow, kcol, incaps, incapdims, outcaps * outcapdims]
@@ -444,7 +353,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         array = array.write(idx, conv2d_output)
         return [idx + 1, x, array]
 
-    def _conv2d(x):
+    def _capsulewise_conv2d(x):
         """ capsule wise convolution in 2d
             that is, convolve along `incaps` dimension
         """
@@ -477,14 +386,42 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         array = tf.transpose(array, (1, 2, 3, 0, 4, 5))
         return array
 
+    def _depthwise_conv2d(x):
+        # x shape :
+        #    [batch-size, rows, cols, incaps, incapdims]
+        # to shape
+        #    [batch-size, rows, cols, incaps * incapdims]
+        x = core.reshape(x, input_nshape)
+        # x shape :
+        #    [batch-size, rows, cols, incaps * incapdims]
+        x = core.depthwise_conv2d(x, kernels, stride, padding)
+        xshape = input_shape[:]
+        xshape[1:3] = core.shape(x)[1:3]
+        # x shape :
+        #    [batch-size, nrows, ncols, incaps, incapdims]
+        x = core.reshape(x, xshape)
+        # x to shape :
+        #    [batch-size, nrows, ncols, incaps, incapdims, nouts * caps_dims]
+        x = core.tile(core.expand_dims(x, -1),
+                      [1, 1, 1, 1, 1, nouts * caps_dims])
+        # [batch-size, nrows, ncols, incaps, incapdims, nouts * caps_dims]
+        # then sum along with incapdims to get
+        # [batch-size, nrows, ncols, incaps, nouts * caps_dims]
+        # then reshape to
+        # [batch-size, nrows, ncols, incaps, nouts, caps_dims]
+        return core.reshape(core.sum(x * weight, 4),
+                            xshape[:3] + [incaps, nouts, caps_dims])
+
+    if fastmode:
+        _conv2d = _depthwise_conv2d
+    else:
+        _conv2d = _capsulewise_conv2d
+
     return conv(_conv2d,
-                weight_shape,
                 bias_shape,
                 logits_shape,
                 iterations,
                 leaky,
-                weight_initializer,
-                weight_regularizer,
                 bias_initializer,
                 bias_regularizer,
                 act,

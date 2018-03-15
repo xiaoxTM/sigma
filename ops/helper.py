@@ -81,6 +81,7 @@ def name_normalize(names, scope=None):
             [scope/]/{layer-name/layer-type}/[{sub-spaces/}*]variable-name:index
     """
     def _normalize(name):
+        name = name.rsplit(':', 1)[0]
         if scope is None:
             return name.split('/', 1)[0]
         else:

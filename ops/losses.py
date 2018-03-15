@@ -133,17 +133,22 @@ def margin_loss(axis,
                 reuse=False,
                 name=None,
                 scope=None,
+                mode='capsule',
                 positive_margin=0.9,
                 negative_margin=0.1,
                 downweighting=0.5):
+    if mode not in ['capsule', 'svm']:
+        raise ValueError('margin loss support `capsule` and `svm` mode only.'
+                         'given mode {}'.format(mode))
     def _margin_loss(x, labels):
         with scope:
-            # the length (norm) of the activity vector of each
-            # capsule in digit_caps layer indicates presence
-            # of an instance of each class
-            #   [batch-size, rows, cols, nclass, capdim]
-            # =>[batch-size, rows, cols, nclass]
-            x = core.norm(x, core.axis)
+            if mode == 'capsule':
+                # the length (norm) of the activity vector of each
+                # capsule in digit_caps layer indicates presence
+                # of an instance of each class
+                #   [batch-size, rows, cols, nclass, capdim]
+                # =>[batch-size, rows, cols, nclass]
+                x = core.norm(x, core.axis)
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
@@ -155,10 +160,6 @@ def margin_loss(axis,
             nloss = nmask * core.pow(negative_margin-x, 2)
             nloss = core.sum(core.cast(1-labels, core.float32) * nloss,
                              axis=core.axis)
-#            ploss = core.square(core.maximum(0, positive_margin - x))
-#            ploss = labels * ploss
-#            nloss = core.square(core.maximum(0, x - negative_margin))
-#            nloss = (1 - labels) * nloss
             return core.mean(ploss + downweighting * nloss)
     return _margin_loss
 
@@ -166,6 +167,7 @@ def margin_loss(axis,
 def get(l, **kwargs):
     """ get loss from None | string | callable function
     """
+    print('kwargs:', **kwargs)
     if l is None:
         return None
     elif isinstance(l, str):

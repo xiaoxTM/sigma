@@ -46,14 +46,6 @@ def predict_op(input_shape,
         axis = ops.helper.normalize_axes(input_shape, axis)
     rank = len(input_shape)
     axis = rank - 1
-    # if rank == 1: #[depth]
-    #     axis = 0
-    # elif rank == 2: #[batch-size, depth]
-    #     axis = 1
-    # elif rank == 3: #[batch-size, units, depth]
-    #     axis = 2
-    # elif rank == 4: #[batch-size, rows, cols, depth]
-    #     axis = 3
     def _predict_op(x):
         with ops_scope:
             return predop(x, axis, name=name)
@@ -213,7 +205,6 @@ def line(iterable,
     cc = cc.encode('utf8')
     # number of iterations per each epoch
     iterations = int(iterable_size / epochs)
-    #epochlen = iterations * batch_size
     # rotation times per one `+` / `x`
     scale = nprompts / iterations
     step = max(1, int(scale))
@@ -474,37 +465,42 @@ def train(x, xtensor, optimizer, loss,
           checkpoints=None,
           logs=None,
           save='all'):
-    optimizer = ops.optimizers.get(optimizer)
+    optimization_op = ops.optimizers.get(optimizer)
     loss = ops.losses.get(loss)
-    #metrics = ops.metrics.get(metrics)
-    run(x, xtensor, optimizer, loss, y, ytensor, nclass, metrics, epochs,
+    run(x, xtensor, optimization_op, loss, y, ytensor, nclass, metrics, epochs,
         batch_size, shuffle, valids, graph, config, checkpoints, logs, save)
 
 
-def build(input_shape, build_func, loss,
+def build(input_shape, build_fun, loss,
           dtype='float32',
+          funopts=None,
           name=None,
           reuse=False,
-          scope=None, **kwargs):
+          scope=None,
+          lossopts=None):
     """ build network architecture
         Attributes
         ==========
         input_shape : list / tuple
                       input shape for network entrance
-        build_func : callable
-                     callable function receives only one
-                     parameter. should have signature of:
-                     `def build_func(x) --> tensor:`
+        build_fun : callable
+                    callable function receives only one
+                    parameter. should have signature of:
+                    `def build_fun(x) --> tensor:`
         loss : string or callable
                loss to be maximized or mimimized
         dtype : string
                 data type of input layer
+        funopts : None or {}
+                  parameters to build_fun function
+                  if None, funopts will be ignored
         name : string
                name of input layer
         reuse : bool
         scope : string
-        **kwargs : parameters passed to loss function (layer)
-        
+        lossopts : None or dict
+                   parameters passed to loss function (layer)
+                   if None, lossopts will be ignored
         Returns
         ==========
         inputs : tensor
@@ -513,5 +509,17 @@ def build(input_shape, build_func, loss,
     """
     with sigma.defaults(reuse=reuse, scope=scope):
         inputs = layers.base.input_spec(input_shape, dtype=dtype, name=name)
-        x = build_func(inputs)
-        return inputs, layers.losses.get(loss, x, **kwargs)
+        if funopts is None:
+            x = build_fun(inputs)
+        elif isinstance(funopts, dict):
+            x = build_fun(inputs, funopts)
+        else:
+            raise TypeError('`funopts` for build_fun can only be None or dict'
+                            '. given {}({})'.format(type(funopts), funopts))
+        if lossopts is None:
+            return inputs, layers.losses.get(loss, x)
+        elif isinstance(lossopts, dict):
+            return inputs, layers.losses.get(loss, x, **lossopts)
+        else:
+            raise TypeError('`lossopts` for loss function can only be None or dict'
+                            '. given {}({})'.format(type(lossopts), lossopts))

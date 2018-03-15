@@ -54,6 +54,16 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] avg_pool2d_global
     - [x] max_pool2d
     - [ ] max_pool2d_global
+    
+# useful functions
+  - [ ] session
+    - build tf.Session object with all setup done (e.g., checkpoints, logs)
+  - [x] build
+    - build workflow given build_fun to build networks
+  - [ ] train
+  - [x] run
+    - run train progress
+  - [ ] predict
 
 # Advantages
   - seamless with original tensorflow library
@@ -85,26 +95,39 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
   - major version indicator
     - increases after great changes
   - minor version indicator
-      - increases after adding new features
+    - increases after adding new features
+  - update indicator
+    - increases after each reported bugs fixing
   - state version indicator
-    - 0 : developing state
-    - 1 : testing state
-    - 2 : stable state
+    - 0 : releasable (mainly clean code up)
+    - odd : developing state
+    - even (except for 0) : testing state
+  - pid version indicator
+    - used for multi-person parallelly developments
+      (that is, used for distinguishing developers)
 
 # Developing progress
 
 ```
-                                               branch x.x.x.1 / checkout     /-------\
-                                             |<---------------------------> | x.x.x.1 | => test
-                branch x.x.x.0    /-------\--|        merge x.x.x.1          \-------/
-              |----------------> | x.x.x.0 | => devel
-              |                   \-------/--|
-              |                              | branch x.x.x.2    /-------\
-              |                              -----------------> | x.x.x.2 | => stable
-              |                                                  \-------/
-              |                                                      |
-              |                                                      v
-   /------\ --|                                                  /-------\
-  | master |--------------------------------------------------> |  master |
-   \------/                     merge x.x.x.2                    \-------/
+                              devel
+                                ^
+                                |
+     devel     developer-0  /-------\           /-------\
+      ^^      /----------->|x.x.y.o.0|<------->|x.x.y.e.0| => test -------|
+      ||     /              \-------/           \-------/                 |
+   /-------\/  developer-1  /-------\           /-------\                 |
+  | x.x.y.o |------------->|x.x.y.o.1|<------->|x.x.y.e.1| => test ------>|
+   \-------/\               \-------/           \-------/                 |
+       ^     \ developer-2  /-------\           /-------\                 |
+       |      \----------->|x.x.y.o.2|<------->|x.x.y.e.2| => test ------>|
+       |                    \-------/           \-------/                 |
+       |                                                                  v
+       |bug reports                                                   /-------\           /-------\
+       |                                         integration test <= | x.x.y.e |<------->|x.x.y+1.0| => stable
+       |                                                              \-------/           \-------/
+       |                                                                                      |
+       |                                                                                      v
+   /------\                                                                               /-------\
+  | master |---------------------------------------------------------------------------->|  master |
+   \------/                                merge x.x.y.0                                  \-------/
 ```

@@ -1,9 +1,9 @@
 # Copyright 2017 Renwu GAO All Rights Reserved.
 #
 # ==============================================================================
-
+import inspect
 import tensorflow as tf
-from .commons import *
+from . import commons
 
 # floating data type
 float16 = tf.float16
@@ -32,6 +32,21 @@ quint16 = tf.quint16
 qint32 = tf.qint32
 
 TensorArray = tf.TensorArray
+
+def padnorm(fun):
+    def _padnorm(*args, **kwargs):
+        signature = inspect.signature(fun)
+        items = list(signature.parameters.items())
+        # merge args into kwargs
+        for idx, arg in enumerate(args):
+            kwargs[items[idx][0]] = arg
+        padding = kwargs.get('padding', None)
+        if padding is not None:
+            # ignore padding parameter if not exists
+            kwargs['padding'] = padding.upper()
+        return fun(**kwargs)
+    return _padnorm
+
 
 def wrap(fun, *args, **kwargs):
     return eval('tf.{}(*args, **kwargs)'.format(fun))
@@ -91,7 +106,7 @@ def tshape(x, name=None, out_type=int32):
 
 def reshape(x, output_shape, smart=True, name=None):
     if smart:
-        stats = shape_statistics(output_shape)
+        stats = commons.shape_statistics(output_shape)
         nones = stats['nones']
         if len(nones) == 1:
             if len(stats['-1']) == 0:
@@ -359,49 +374,155 @@ def tanh(x, name=None):
     return tf.nn.tanh(x, name)
 
 
-def random_normal(*args, **kwargs):
-    return tf.random_normal(*args, **kwargs)
-
-
-def random_uniform(*args, **kwargs):
-    return tf.random_uniform(*args, **kwargs)
-
-
-def truncated_normal(*args, **kwargs):
-    return tf.truncated_normal(*args, **kwargs)
+def random_normal(shape,
+                  mean=0.0,
+                  stddev=1.0,
+                  dtype=tf.float32,
+                  seed=None,
+                  name=None):
+    return tf.random_normal(shape,
+                            mean,
+                            stddev,
+                            dtype,
+                            seed,
+                            name)
+def random_uniform(shape,
+                   minval=0,
+                   maxval=None,
+                   dtype=tf.float32,
+                   seed=None,
+                   name=None):
+    return tf.random_uniform(shape,
+                             minval,
+                             maxval,
+                             dtype,
+                             seed,
+                             name)
+def truncated_normal(shape,
+                     mean=0.0,
+                     stddev=1.0,
+                     dtype=tf.float32,
+                     seed=None,
+                     name=None):
+    return tf.truncated_normal(shape,
+                               mean,
+                               stddev,
+                               dtype,
+                               seed,
+                               name)
 
 
 # convolutional operations
-def embedding(*args, **kwargs):
-    return tf.nn.embedding_lookup(*args, **kwargs)
-
-
-def conv1d(*args, **kwargs):
-    return tf.nn.conv1d(*args, **kwargs)
-
-
-def conv2d(*args, **kwargs):
-    return tf.nn.conv2d(*args, **kwargs)
-
-
-def conv3d(*args, **kwargs):
-    return tf.nn.conv3d(*args, **kwargs)
-
-
-def deconv2d(*args, **kwargs):
-    return tf.nn.conv2d_transpose(*args, **kwargs)
-
-
-def sepconv2d(*args, **kwargs):
-    return tf.nn.separable_conv2d(*args, **kwargs)
-
-
+def embedding(params,
+              ids,
+              partition_strategy='mod',
+              validate_indices=True,
+              max_norm=None,
+              name=None):
+    return tf.nn.embedding_lookup(params,
+                                  ids,
+                                  partition_strategy,
+                                  name,
+                                  validate_indices,
+                                  max_norm)
+@padnorm
+def conv1d(x, filters, stride, padding,
+           use_cudnn_on_gpu=None,
+           data_format=commons.data_format,
+           name=None):
+    return tf.nn.conv1d(x,
+                        filters,
+                        stride,
+                        padding,
+                        use_cudnn_on_gpu,
+                        data_format,
+                        name)
+@padnorm
+def conv2d(x, filters, strides, padding,
+           use_cudnn_on_gpu=None,
+           data_format=commons.data_format,
+           dilations=[1,1,1,1],
+           name=None):
+    if tf.__version__ >= '1.5':
+        return tf.nn.conv2d(x,
+                            filters,
+                            strides,
+                            padding,
+                            use_cudnn_on_gpu,
+                            data_format,
+                            dilations,
+                            name)
+    else:
+        return tf.nn.conv2d(x,
+                            filters,
+                            strides,
+                            padding,
+                            use_cudnn_on_gpu,
+                            data_format,
+                            name)
+@padnorm
+def conv3d(x, filters, strides, padding,
+           use_cudnn_on_gpu=None,
+           data_format=commons.data_format,
+           dilations=[1,1,1,1],
+           name=None):
+    if tf.__version__ >= '1.5':
+        return tf.nn.conv3d(x,
+                            filters,
+                            strides,
+                            padding,
+                            use_cudnn_on_gpu,
+                            data_format,
+                            dilations,
+                            name)
+    else:
+        return tf.nn.conv3d(x,
+                    filters,
+                    strides,
+                    padding,
+                    use_cudnn_on_gpu,
+                    data_format,
+                    name)
+@padnorm
+def deconv2d(x,
+             filters,
+             output_shape,
+             strides,
+             padding='SAME',
+             data_format=commons.data_format,
+             name=None):
+    return tf.nn.conv2d_transpose(x,
+                                  filters,
+                                  output_shape,
+                                  strides,
+                                  padding,
+                                  data_format,
+                                  name)
+@padnorm
+def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
+              rate=None,
+              data_format=commons.data_format,
+              name=None):
+    return tf.nn.separable_conv2d(x,
+                                  depthwise_filter,
+                                  pointwise_filter,
+                                  strides,
+                                  padding,
+                                  rate,
+                                  name,
+                                  data_format)
+@padnorm
 def depthwise_conv2d(x, kernels, strides, padding,
                      rate=None,
+                     data_format=commons.data_format,
                      name=None):
-    return tf.nn.depthwise_conv2d(x, kernels, strides,
-                               padding, rate,
-                               name, data_format)
+    return tf.nn.depthwise_conv2d(x,
+                                  kernels,
+                                  strides,
+                                  padding,
+                                  rate,
+                                  name,
+                                  data_format)
 
 
 def dot(*args, **kwargs):

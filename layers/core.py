@@ -170,9 +170,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     inputname = [name]
             else:
                 input_shape = [ops.core.shape(inputs)]
-                #print('inputs name:', inputs.name)
                 inputname = [ops.helper.name_normalize(inputs.name, scope)]
-                #print('inputs name after norm:', inputname)
             output_shape = ops.core.shape(outputs)
             outputname = ops.helper.name_normalize(outputs.name, scope)
             if __graph__ is False:
@@ -221,7 +219,6 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
 def layer(fun):
     @functools.wraps(fun)
     def _wrap(*args, **kwargs):
-        # parameters = inspect.getfullargspec(fun)[0]
         signature = inspect.signature(fun)
         items = list(signature.parameters.items())
         # merge args into kwargs

@@ -18,50 +18,38 @@ def build_func(x):
     # we disable routing by setting iterations to 1
     x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
                                          stride=2,
+                                         fastmode=True,
                                          return_shape=True)
     x = layers.base.reshape(x, [outshape[0], -1, outshape[-1]])
-    return layers.capsules.fully_connected(x, 10, 16, 3)
+    return layers.capsules.dot(x, 10, 16, 3)
 
 
 def train(xtrain, ytrain, checkpoints,
           nclass=10,
-          epochs=3,
-          batch_size=100,
+          epochs=30,
+          batch_size=64,
           shuffle=True):
     input_shape = list(xtrain.shape)
-#    sigma.engine.set_print(True)
+    #sigma.engine.set_print(True)
     input_shape[0] = batch_size
     ytensor = sigma.placeholder(dtype=ops.core.int32, shape=[batch_size, nclass])
     xtensor, loss = sigma.build(input_shape,
                                 build_func,
                                 'margin_loss',
-                                labels=ytensor,
-                                onehot=True)
+                                lossopts={'labels':ytensor, 'onehot':True})
     tf.summary.scalar('loss', loss)
-#    graph = tf.get_default_graph()
-#    collections = ['summaries', 'variables', 'trainable_variables']
-#    print(collections)
-#    for collection in collections:
-#        print(collection)
-#        gparams = tf.get_collection(collection)
-#        if len(gparams) == 0:
-#            print('ERROR: {} has no parameters to optimize. \
-#                  make sure you set `scope` to layers with trainable parameters'.format(collection))
-#        print('parameters for {} training'.format(collection))
-#        for gp in gparams:
-#            print('    ', gp.name, gp.get_shape().as_list())
-
-#    sigma.engine.export_graph('cache/network-architecture.png')
+    #sigma.engine.export_graph('cache/network-architecture.png')
 
     #----- log optimizer gradients -----
-    optimizer = tf.train.AdamOptimizer(0.05)
-    grads_and_vars = optimizer.compute_gradients(loss)
-    for (grad, var) in grads_and_vars:
-        if grad is not None:
-            tf.summary.histogram(grad.name, grad)
-    optimizer = optimizer.apply_gradients(grads_and_vars)
+    #optimizer = tf.train.AdamOptimizer(0.05)
+    #grads_and_vars = optimizer.compute_gradients(loss)
+    #for (grad, var) in grads_and_vars:
+    #    if grad is not None:
+    #        tf.summary.histogram(grad.name, grad)
+    #optimizer = optimizer.apply_gradients(grads_and_vars)
     #----------
-    #optimizer = tf.train.AdamOptimizer(0.05).minimize(loss)
+
+    optimizer = tf.train.AdamOptimizer(0.05).minimize(loss)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True

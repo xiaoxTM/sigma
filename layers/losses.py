@@ -91,6 +91,7 @@ def winner_takes_all(inputs, labels,
 @core.layer
 def margin_loss(inputs, labels,
                 axis=None,
+                mode='capsule',
                 positive_margin=0.9,
                 negative_margin=0.1,
                 downweighting=0.5,
@@ -110,6 +111,7 @@ def margin_loss(inputs, labels,
                                   reuse,
                                   name,
                                   scope,
+                                  mode,
                                   positive_margin,
                                   negative_margin,
                                   downweighting)(inputs, labels)
@@ -123,11 +125,11 @@ mae = mean_absolute_error
 wta = winner_takes_all
 
 
-def get(act, *args, **kwargs):
-    if isinstance(act, str):
-        return eval('{}(*args, **kwargs)'.format(act))
-    elif callable(act):
-        return act
+def get(l, inputs, labels, **kwargs):
+    if isinstance(l, str):
+        return eval('{}(inputs, labels, **kwargs)'.format(l))
+    elif callable(l):
+        return l
     else:
         raise ValueError('cannot get activates `{}` with type {}'
-                         .format(initializer, type(initializer)))
+                         .format(l, type(l)))
