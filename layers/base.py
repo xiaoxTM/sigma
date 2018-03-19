@@ -41,10 +41,9 @@ def flatten(inputs,
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. '
-                         '{}{}{} vs {}{}{}'
-                         .format(colors.fg.red, output, colors.reset,
-                                 colors.fg.green, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.red(output),
+                                 colors.green(xshape)))
     if return_shape:
         x = [x, output]
     return x
@@ -61,10 +60,9 @@ def reshape(inputs, output_shape,
     xshape = ops.core.shape(x)
     if output[1:] != output_shape[1:]:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. '
-                         '{}{}{} vs {}{}{}'
-                         .format(colors.fg.red, output, colors.reset,
-                                 colors.fg.green, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.red(output),
+                                 colors.green(xshape)))
     if return_shape:
         x = [x, output]
     return x
@@ -83,10 +81,9 @@ def expand_dims(inputs,
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. '
-                         '{}{}{} vs {}{}{}'
-                         .format(colors.fg.red, output, colors.reset,
-                                 colors.fg.green, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.red(output),
+                                 colors.green(xshape)))
     if return_shape:
         x = [x, output]
     return x
@@ -106,10 +103,9 @@ def maskout(inputs,
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. '
-                         '{}{}{} vs {}{}{}'
-                         .format(colors.fg.red, output, colors.reset,
-                                 colors.fg.green, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.red(output),
+                                 colors.green(xshape)))
     if return_shape:
         x = [x, output]
     return x

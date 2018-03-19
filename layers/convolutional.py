@@ -6,9 +6,9 @@ def _layers(fun, inputs, output, return_shape, typename, reuse, name):
     x = fun(inputs)
     if output != ops.core.shape(x):
         raise ValueError('the predicted output shape and the real'
-                         ' output shape not match. {}{}{} vs {}{}{}'
-                         .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, core.shape(x), colors.reset))
+                         ' output shape not match. {} vs {}'
+                         .format(colors.green(output),
+                                 colors.red(core.shape(x))))
     if return_shape:
         x = [x, output]
     return x
@@ -276,9 +276,9 @@ def soft_conv2d(inputs, nouts,
     xshape = ops.core.shape(x)
     if output != xshape:
         raise ValueError('the predicted output shape and the real'
-                         ' output shape not match. {}{}{} vs {}{}{}'
-                         .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, xshape, colors.reset))
+                         ' output shape not match. {} vs {}'
+                         .format(colors.green(output),
+                                 colors.red(xshape)))
     if return_offsets:
         x = [x, offsets]
     if return_shape:

@@ -101,10 +101,8 @@ def name_normalize(names, scope=None):
 """
 def normalize_axes(tensor_shape, axis=core.axis):
     if not isinstance(tensor_shape, (list, tuple)):
-        raise TypeError('tensor shape must be list/tuple, given {}{}{}[{}]'
-                        .format(colors.fg.red,
-                                type(tensor_shape),
-                                colors.reset,
+        raise TypeError('tensor shape must be list/tuple, given {}[{}]'
+                        .format(colors.red(type(tensor_shape)),
                                 tensor_shape))
     input_len = len(tensor_shape)
     if isinstance(axis, int):
@@ -112,10 +110,8 @@ def normalize_axes(tensor_shape, axis=core.axis):
     elif isinstance(axis, (list, tuple)):
         axis = map(lambda x:(x + input_len) % input_len, axis)
     else:
-        raise TypeError('axis must be int or list/tuple, given {}{}{}[{}]'
-                        .format(colors.fg.red,
-                                type(axis),
-                                colors.reset,
+        raise TypeError('axis must be int or list/tuple, given {}[{}]'
+                        .format(colors.red(type(axis)),
                                 axis))
     return axis
 
@@ -126,25 +122,25 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
                     [(list, tuple)]*3)
     if not np.all(typecheck):
         raise TypeError('type of input, kshape, stride not all '
-                        'list / tuple, given{}{}{}, {}{}{}, {}{}{}'
-                        .format(colors.fg.red, type(input_shape), colors.reset,
-                                colors.fg.red, type(kshape), colors.reset,
-                                colors.fg.red, type(stride), colors.reset))
+                        'list / tuple, given {}, {}, {}'
+                        .format(colors.red(type(input_shape)),
+                                colors.red(type(kshape)),
+                                colors.red(type(stride))))
 
     if len(input_shape) != len(kshape) or \
        len(input_shape) != len(stride):
         raise ValueError('shape of input, kshape, stride not match,'
-                         ' given {}{}{}, {}{}{}, {}{}{}'
-                         .format(colors.fg.red, len(input_shape), colors.reset,
-                                 colors.fg.red, len(kshape), colors.reset,
-                                 colors.fg.red, len(stride), colors.reset))
+                         ' given {}, {}, {}'
+                         .format(colors.red(len(input_shape)),
+                                 colors.red(len(kshape)),
+                                 colors.red(len(stride))))
 
     padding = padding.upper()
     if padding not in ['VALID', 'SAME']:
-        raise ValueError('padding be either {}VALID{} or {}SAME{}, given {}{}{}'
+        raise ValueError('padding be either {}VALID{} or {}SAME{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.fg.green ,colors.reset,
-                                 colors.fg.red, padding, colors.reset))
+                                 colors.red(padding)))
     out_shape = copy.deepcopy(input_shape)
     index = range(len(input_shape))
     if padding == 'SAME':
@@ -173,13 +169,13 @@ def norm_input_1d(shape):
             shape = [1, shape[0], 1]
         elif len(shape) != 3:
             raise ValueError('require input shape {}[batch-size,'
-                             ' cols, channels]{}, given {}{}{}'
+                             ' cols, channels]{}, given {}'
                              .format(colors.fg.green, colors.reset,
-                                     colors.fg.red, shape, colors.reset))
+                                     colors.red(shape)))
     else:
-        raise TypeError('shape require {}int/list/tuple{} type, given {}`{}`{}'
+        raise TypeError('shape require {}int/list/tuple{} type, given `{}`'
                         .format(colors.fg.green, colors.reset,
-                                colors.fg.red, type(shape), colors.reset))
+                                colors.red(type(shape))))
     return shape
 
 
@@ -193,13 +189,13 @@ def norm_input_2d(shape):
             shape = [1, shape[0], shape[1], 1]
         elif len(shape) != 4:
             raise ValueError('require input shape {}[batch-size, '
-                             'rows, cols, channels]{}, given {}{}{}'
+                             'rows, cols, channels]{}, given {}'
                              .format(colors.fg.green, colors.reset,
-                                     colors.fg.red, shape, colors.reset))
+                                     colors.red(shape)))
     else:
-        raise TypeError('shape requires {}int/list/tuple{} type, given {}`{}`{}'
+        raise TypeError('shape requires {}int/list/tuple{} type, given `{}`'
                         .format(colors.fg.green, colors.reset,
-                                colors.fg.red, type(shape), colors.reset))
+                                colors.red(type(shape))))
     return shape
 
 
@@ -213,10 +209,10 @@ def norm_input_3d(shape):
             shape = [1, shape[0], shape[1], shape[2], 1]
         elif len(shape) != 5:
             raise ValueError('require input shape {}[batch-size, '
-                             'depths, rows, cols, channels]{}, given {}{}{}'
+                             'depths, rows, cols, channels]{}, given {}'
                              .format(colors.fg.green, colors.reset,
-                                     colors.fg.red, input_shape, colors.reset))
+                                     colors.red(input_shape)))
     else:
-        raise TypeError('shape requires {}int/list/tuple{} type, given {}`{}`{}'
+        raise TypeError('shape requires {}int/list/tuple{} type, given `{}`'
                         .format(colors.fg.green, colors.reset,
-                                colors.fg.red, type(kshape), colors.reset))
+                                colors.red(type(kshape))))

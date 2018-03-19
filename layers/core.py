@@ -210,11 +210,11 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     if len(inputname) == 1:
                         inputname = inputname[0]
                         input_shape = input_shape[0]
-                    print('{}{}{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}{}{}'
+                    print('{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}'
                           .format(inputname,
-                                  colors.fg.green, input_shape, colors.reset,
+                                  colors.green(input_shape),
                                   colors.fg.blue, name, typename, colors.reset,
-                                  outputname, colors.fg.red, output_shape, colors.reset))
+                                  outputname, colors.red(output_shape)))
             elif __graph__ is True or isinstance(__graph__, pydot.Dot):
                 if pydot is None:
                     raise ImportError('Import pydot failed. make sure pydot is installed')

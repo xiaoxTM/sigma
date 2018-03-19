@@ -145,10 +145,10 @@ def line(iterable,
                    .format(epochsize, message, epochs, nprompts, accuracy)
         else:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] {{}} '.format(epochsize,
-                                                                   message,
-                                                                   epochs,
-                                                                   message,
-                                                                   nprompts)
+                                                                      message,
+                                                                      epochs,
+                                                                      message,
+                                                                      nprompts)
     else:
         if timeit:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \

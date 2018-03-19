@@ -7,9 +7,9 @@ def _merge(fun, inputs, output, typename, return_shape):
     xshape = ops.core.shape(x)
     if output != xshape:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {}{}{} vs {}{}{}'
-                         .format(colors.fg.green, output, colors.reset,
-                                 colors.fg.red, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.green(output),
+                                 colors.red(xshape)))
     if return_shape:
         x = [x, output]
     return x

@@ -31,9 +31,9 @@ def instance_norm(inputs,
     xshape = ops.core.shape(x)
     if input_shape != xshape:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {}{}{} vs {}{}{}'
-                         .format(colors.fg.green, input_shape, colors.reset,
-                                 colors.fg.red, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.green(input_shape),
+                                 colors.red(xshape)))
     return x
 
 
@@ -69,9 +69,9 @@ def conditional_instance_norm(inputs,
     xshape = ops.core.shape(x)
     if input_shape != xshape:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {}{}{} vs {}{}{}'
-                         .format(colors.fg.green, input_shape, colors.reset,
-                                 colors.fg.red, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.green(input_shape),
+                                 colors.red(xshape)))
     return x
 
 
@@ -113,9 +113,9 @@ def batch_norm(inputs,
     xshape = ops.core.shape(x)
     if input_shape != xshape:
         raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {}{}{} vs {}{}{}'
-                         .format(colors.fg.green, input_shape, colors.reset,
-                                 colors.fg.red, xshape, colors.reset))
+                         'real output shape not match. {} vs {}'
+                         .format(colors.green(input_shape),
+                                 colors.red(xshape)))
     return x
 
 

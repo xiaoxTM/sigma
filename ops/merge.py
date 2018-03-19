@@ -12,22 +12,22 @@ def concat(inputs_shape,
     """
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
-                        '{}list / tpule{}, given {}{}{}'
-                        .format(colors.fg.green, colors.reset, colors.fg.red,
-                                type(inputs_shape), colors.reset))
+                        '{}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(inputs_shape))))
     elif len(inputs_shape) < 2:
-        raise ValueError('concat requires at least {}two{} inputs, given {}{}{}'
-                         .format(colors.fg.green, colors.reset, colors.fg.red,
-                                 len(inputs_shape), colors.reset))
+        raise ValueError('concat requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(inputs_shape))))
     output_shape = inputs_shape[0]
     for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(np.delete(output_shape, axis) == np.delete(ip, axis)):
-            raise ValueError('shape of {}{}{}-input differs from first'
-                             ' one besides {}{}{}-axis. {}{} vs {}{}'
-                             .format(colors.fg.red, idx+1, colors.reset,
-                                     colors.fg.green, axis,
-                                     colors.reset, colors.fg.red, output_shape,
-                                     ip, colors.reset))
+            raise ValueError('shape of {}-input differs from first'
+                             ' one besides {}-axis. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.green(axis),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
         output_shape[axis] += ip[axis]
     ops_scope, _, name = helper.assign_scope(name, scope, 'concat', reuse)
     def _concat(x):
@@ -46,21 +46,21 @@ def add(inputs_shape,
     """
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
-                        '{}list / tpule{}, given {}{}{}'
-                        .format(colors.fg.green, colors.reset, colors.fg.red,
-                                type(inputs_shape), colors.reset))
+                        '{}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(inputs_shape))))
     elif len(inputs_shape) < 2:
-        raise ValueError('concat requires at least {}two{} inputs, given {}{}{}'
-                         .format(colors.fg.green, colors.reset, colors.fg.red,
-                                 len(inputs_shape), colors.reset))
+        raise ValueError('concat requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(inputs_shape))))
     output_shape = inputs_shape[0]
     for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(output_shape == ip):
-            raise ValueError('shape of {}{}{}-input differ '
-                             'from first one. {}{} vs {}{}'
-                             .format(colors.fg.red, idx+1, colors.reset,
-                                     colors.fg.red,
-                                     output_shape, ip, colors.reset))
+            raise ValueError('shape of {}-input differ '
+                             'from first one. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
     if weights is None:
         weights = [1] * len(inputs_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'add', reuse)
@@ -74,21 +74,21 @@ def add(inputs_shape,
 def mul(inputs_shape, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs '
-                        'as {}list / tpule{}, given {}{}{}'
-                        .format(colors.fg.green, colors.reset, colors.fg.red,
-                                type(inputs), colors.reset))
+                        'as {}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(inputs))))
     elif len(inputs_shape) < 2:
-        raise ValueError('concat requires at least {}two{} inputs, given {}{}{}'
-                         .format(colors.fg.green, colors.reset, colors.fg.red,
-                                 len(inputs_shape), colors.reset))
+        raise ValueError('concat requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(inputs_shape))))
     output_shape = inputs_shape[0]
     for idx, ip in enumerate(inputs_shape[1:]):
         if not np.all(output_shape == ip):
-            raise ValueError('shape of {}{}{}-input differ from '
-                             'first one. {}{} vs {}{}'
-                             .format(colors.fg.red, idx+1, colors.reset,
-                                     colors.fg.red,
-                                     output_shape, ip, colors.reset))
+            raise ValueError('shape of {}-input differ from '
+                             'first one. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
     ops_scope, _, name = helper.assign_scope(name, scope, 'mul', reuse)
     def _mul(x):
         with ops_scope:

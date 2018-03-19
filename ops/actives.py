@@ -296,8 +296,8 @@ def get(act, **kwargs):
         if act not in ['relu', 'crelu', 'relu6', 'elu', 'selu',
                        'leaky_relu', 'softmax', 'sigmoid',
                        'softplus', 'softsign', 'tanh', 'linear']:
-            raise ValueError('activation function {}`{}`{} not support.'
-                            .format(colors.fg.red, act, colors.reset))
+            raise ValueError('activation function `{}` not support.'
+                            .format(colors.red(act)))
         return eval('{}(**kwargs)'.format(act))
     elif callable(act):
         return act

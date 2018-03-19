@@ -19,40 +19,59 @@ if platform.startswith('win'):
     strikethrough = ''
 
 
-def red(string):
-    return '{}{}{}'.format(fg.red, string, reset)
+def color(fun):
+    def _color(value, fmt=None):
+        """ fmt should be python .format specification
+        """
+        if fmt is None:
+            fmt = '{}'
+        return fun(fmt.format(value), None)
+    return _color
 
 
-def green(string):
-    return '{}{}{}'.format(fg.green, string, reset)
+@color
+def red(value, fmt=None):
+    return '{}{}{}'.format(fg.red, value, reset)
 
 
-def blue(string):
-    return '{}{}{}'.format(fg.blue, string, reset)
+@color
+def green(value, fmt=None):
+    return '{}{}{}'.format(fg.green, value, reset)
 
 
-def black(string):
-    return '{}{}{}'.format(fg.black, string, reset)
+@color
+def blue(value, fmt=None):
+    return '{}{}{}'.format(fg.blue, value, reset)
 
 
-def orange(string):
-    return '{}{}{}'.format(fg.orange, string, reset)
+@color
+def black(value, fmt=None):
+    return '{}{}{}'.format(fg.black, value, reset)
 
 
-def purple(string):
-    return '{}{}{}'.format(fg.purple, string, reset)
+@color
+def orange(value, fmt=None):
+    return '{}{}{}'.format(fg.orange, value, reset)
 
 
-def cyan(string):
-    return '{}{}{}'.format(fg.cyan, string, reset)
+@color
+def purple(value, fmt=None):
+    return '{}{}{}'.format(fg.purple, value, reset)
 
 
-def pink(string):
-    return '{}{}{}'.format(fg.pink, string, reset)
+@color
+def cyan(value, fmt=None):
+    return '{}{}{}'.format(fg.cyan, value, reset)
 
 
-def yellow(string):
-    return '{}{}{}'.format(fg.yellow, string, reset)
+@color
+def pink(value, fmt=None):
+    return '{}{}{}'.format(fg.pink, value, reset)
+
+
+@color
+def yellow(value, fmt=None):
+    return '{}{}{}'.format(fg.yellow, value, reset)
 
 
 def get():

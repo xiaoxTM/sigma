@@ -227,9 +227,9 @@ def dot(input_shape, nouts, caps_dims,
     """
     if len(input_shape) != 3:
         raise ValueError('capsule fully_connected require input shape {}[batch-size,'
-                         ' incaps, incapdim]{}, given {}{}{}'
+                         ' incaps, incapdim]{}, given {}'
                          .format(colors.fg.green, colors.reset,
-                                 colors.fg.red, input_shape, colors.reset))
+                                 colors.red(input_shape)))
     output_shape = [input_shape[0], nouts, caps_dims]
     incaps, incapdim = input_shape[-2:]
     logits_shape = [input_shape[0], incaps, nouts, 1]
@@ -314,9 +314,9 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     """
     if len(input_shape) != 5:
         raise ValueError('capsule conv2d require input shape {}[batch-size, '
-                         'rows, cols, incaps, incapdim]{}, given {}{}{}'
-                         .format(colors.fg.green, colors.reset, colors.fg.red,
-                                 input_shape, colors.reset))
+                         'rows, cols, incaps, incapdim]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
 
@@ -336,7 +336,8 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
     if fastmode:
         # if run in fast mode, apply depthwise_conv2d
-        kernel_shape = kshape[1:-1] + [input_shape[-2] * input_shape[core.axis], 1]
+        kernel_shape = kshape[1:-1] + \
+                       [input_shape[-2] * input_shape[core.axis], 1]
         weight_shape = [incaps, incapdim, nouts * caps_dims]
         weight = mm.malloc('weight',
                            name,

@@ -217,6 +217,7 @@ def run(x, xtensor, optimizer, loss,
                   - epm : epoch per message
                   - other parameters see @helpers.mail.sendmail
     """
+    # //TODO: remove validating time from final iteration of train time
     ans = session(graph=graph,
                   config=config,
                   checkpoints=checkpoints,
@@ -278,30 +279,31 @@ def run(x, xtensor, optimizer, loss,
         if writer is not None:
             writer.add_summary(rdict['summarize'], global_step=global_idx)
         _loss = rdict['loss']
+
         # begin of evaluation
         if (iteration + 1) == iterations and \
           valid_gen is not None:
             acc = validate(sess, valid_gen, metric, valid_iters)
-            acc = ' -- {:.6}$'.format(colors.blue(acc))
+            acc = ' -- acc: {}$'.format(colors.blue(acc, '{:.6}'))
         # end of evaluation
 
         if saverop(_loss, best_result):
             # if current loss is better than best result
             # save it to best_result
             best_result = _loss
-            loss_string = colors.green(_loss)
+            loss_string = colors.green(_loss, '{:6}')
             if saver is not None:
                 helpers.save(sess, checkpoints, saver,
                              write_meta_graph=False,
                              verbose=False)
         else:
-            loss_string = colors.red(_loss)
+            loss_string = colors.red(_loss, '{:6}')
 
-        best_result_string = colors.green(best_result)
+        best_result_string = colors.green(best_result, '{:6}')
         (global_idx, _, epoch, iteration) = progressor.send(
-            ' -- loss: {:.6} / {:.6}{}'.format(loss_string,
-                                               best_result_string,
-                                               acc))
+            ' -- loss: {} / {}{}'.format(loss_string,
+                                         best_result_string,
+                                         acc))
         if epm > 0 and (epoch + 1) % epm == 0:
             helpers.sendmail(emc)
     if writer is not None:

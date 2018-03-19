@@ -106,9 +106,9 @@ def fully_conv(input_shape, nouts,
                scope=None):
     if len(input_shape) != 2:
         raise ValueError('fully_conv require input shape {}[batch-size,'
-                         'channels]{}, given {}{}{}'
+                         'channels]{}, given {}'
                          .format(colors.fg.green, colors.reset,
-                                 colors.fg.red, input_shape, colors.reset))
+                                 colors.red(input_shape)))
     kernel_shape = [input_shape[1], nouts] # get rid of batch_size axis
     output_shape = [input_shape[0], nouts]
     def _full_conv(x, weight):
@@ -149,9 +149,9 @@ def conv1d(input_shape, nouts, kshape,
            scope=None):
     if len(input_shape) != 3:
         raise ValueError('conv1d require input shape '
-                         '{}[batch-size, cols, channels]{}, given {}{}{}'
+                         '{}[batch-size, cols, channels]{}, given {}'
                          .format(colors.fg.green, colors.reset,
-                                 colors.fg.red, input_shape, colors.reset))
+                                 colors.red(input_shape)))
     kshape = helper.norm_input_1d(kshape)
     stride = helper.norm_input_id(stride)
     # helper.get_output_shape requires all inputs (except padding)
@@ -200,9 +200,9 @@ def conv2d(input_shape, nouts, kshape,
            scope=None):
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
-                         'cols, channels]{}, given {}{}{}'
-                         .format(colors.fg.green, colors.reset, colors.fg.red,
-                                input_shape, colors.reset))
+                         'cols, channels]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
@@ -690,9 +690,9 @@ def soft_conv2d(input_shape, nouts,
                 scope=None):
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
-                         'cols, channels]{}, given {}{}{}'
-                        .format(colors.fg.green, colors.reset, colors.fg.red,
-                                input_shape, colors.reset))
+                         'cols, channels]{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(input_shape)))
 
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
@@ -902,9 +902,9 @@ def sepconv2d(input_shape, nouts,
               scope=None):
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
-                         'cols, channels]{}, given {}{}{}'
-                         .format(colors.fg.green, colors.reset, colors.fg.red,
-                                 input_shape, colors.reset))
+                         'cols, channels]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
 
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)

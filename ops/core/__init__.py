@@ -3,7 +3,7 @@ from .commons import *
 
 __backend__ = 'tensorflow'
 
-print('Using {}{}{} backend'.format(colors.fg.red, __backend__, colors.reset))
+print('Using {} backend'.format(colors.red(__backend__)))
 if __backend__ == 'tensorflow':
     from .__tensorflow__ import *
 elif __backend__ == 'theano':

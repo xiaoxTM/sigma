@@ -3,7 +3,7 @@ import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 import sigma
 from sigma import layers
-from sigma import dbs, ops, engine
+from sigma import dbs, ops, engine, colors
 
 # import matplotlib.pyplot as plt
 
@@ -50,14 +50,14 @@ def train(xtrain, ytrain,
           fastmode=False,
           shuffle=True):
     input_shape = list(xtrain.shape)
-    sigma.engine.set_print(True)
+    # sigma.engine.set_print(True)
     input_shape[0] = batch_size
     [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
                                                      build_func,
                                                      [batch_size, nclass],
                                                      fastmode=fastmode)
     # tf.summary.scalar('loss', loss)
-    sigma.engine.export_graph('cache/network-architecture.png')
+    # sigma.engine.export_graph('cache/network-architecture.png')
 
     #----- log optimizer gradients -----
     #optimizer = tf.train.AdamOptimizer(0.05)
@@ -68,34 +68,34 @@ def train(xtrain, ytrain,
     #optimizer = optimizer.apply_gradients(grads_and_vars)
     #----------
 
-    # optimizer = tf.train.AdamOptimizer(0.05)
-    #
-    # config = tf.ConfigProto()
-    # config.gpu_options.allow_growth = True
-    # config.gpu_options.per_process_gpu_memory_fraction = 0.8
-    # config.gpu_options.visible_device_list = '0'
-    # config.intra_op_parallelism_threads = 1
-    #
-    # logs = 'cache/logs/capsulewise'
-    # if fastmode:
-    #     logs = 'cache/logs/depthwise'
-    #
-    # sigma.train(xtrain,
-    #             xtensor,
-    #             optimizer,
-    #             loss,
-    #             ytrain,
-    #             ytensor,
-    #             nclass=10,
-    #             epochs=epochs,
-    #             batch_size=batch_size,
-    #             shuffle=shuffle,
-    #             valids=[xvalid, yvalid],
-    #             metric=metric,
-    #             config=config,
-    #             checkpoints=checkpoints,
-    #             logs=logs,
-    #             savemode='min')
+    optimizer = tf.train.AdamOptimizer(0.05)
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.8
+    config.gpu_options.visible_device_list = '0'
+    config.intra_op_parallelism_threads = 1
+
+    logs = 'cache/logs/capsulewise'
+    if fastmode:
+        logs = 'cache/logs/depthwise'
+
+    sigma.train(xtrain,
+                xtensor,
+                optimizer,
+                loss,
+                ytrain,
+                ytensor,
+                nclass=10,
+                epochs=epochs,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                valids=[xvalid, yvalid],
+                metric=metric,
+                config=config,
+                checkpoints=checkpoints,
+                logs=logs,
+                savemode='min')
 
 
 parser = argparse.ArgumentParser()
@@ -108,7 +108,7 @@ parser.add_argument('--fastmode', type=bool, default=True)
 
 if __name__=='__main__':
     args = parser.parse_args()
-    print('checkpoints', args.checkpoints)
+    print('checkpoints: {}'.format(colors.blue(args.checkpoints)))
     print('epochs:', args.epochs)
     print('batch size:', args.batch_size)
     print('shuffle:', args.shuffle)
