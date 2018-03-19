@@ -217,7 +217,7 @@ def run(x, xtensor, optimizer, loss,
                   - epm : epoch per message
                   - other parameters see @helpers.mail.sendmail
     """
-    # //TODO: remove validating time from final iteration of train time
+    # //FIXME: remove validating time from final iteration of train time
     ans = session(graph=graph,
                   config=config,
                   checkpoints=checkpoints,

@@ -186,6 +186,9 @@ def export_graph(filename, ext=None):
                       colors.fg.red, output, colors.reset))
 """
 def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
+    """ print each layer
+    """
+    # //FUTURE: print details of each layer. e.g., parameters of each layer. For graph ONLY
     global __graph__
     if __graph__ is not None:
         if not reuse:

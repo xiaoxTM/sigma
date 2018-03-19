@@ -35,9 +35,9 @@ def build_func(inputs, labels,
     x = layers.convs.dense(x, 1024, act='relu')
     x = layers.convs.dense(x, 784, act='relu')
     reconstruction = layers.base.reshape(x, [-1, 28, 28, 1])
-    recon_loss = layers.losses.get('mse', reconstruction, inputs)
+    recon_loss = layers.losses.mse(reconstruction, inputs)
     loss = layers.merge.add([class_loss, recon_loss], [1, 0.005])
-    metric = layers.metrics.get('accuracy', classification, labels)
+    metric = layers.metrics.accuracy(classification, labels)
     return [loss, metric]
 
 
