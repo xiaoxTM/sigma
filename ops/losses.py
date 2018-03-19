@@ -4,7 +4,7 @@ from . import helper, core
 
 def loss(fun):
     def _loss(axis,
-              logits=True,
+              from_logits=True,
               onehot=True,
               reuse=False,
               name=None,
@@ -14,13 +14,13 @@ def loss(fun):
                                                  scope,
                                                  fun.__name__,
                                                  reuse)
-        return fun(axis, logits, onehot, reuse, name, ops_scope, *args)
+        return fun(axis, from_logits, onehot, reuse, name, ops_scope, *args)
     return _loss
 
 
 @loss
 def binary_cross_entropy(axis,
-                         logits=True,
+                         from_logits=True,
                          onehot=True,
                          reuse=False,
                          name=None,
@@ -30,7 +30,7 @@ def binary_cross_entropy(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
-            if not logits:
+            if not from_logits:
                 # source code borrowed from:
                 #     @keras.backend.tensorflow_backend.py
                 x = core.clip(x, statis.epsilon, 1- statis.epsilon)
@@ -45,7 +45,7 @@ def binary_cross_entropy(axis,
 
 @loss
 def categorical_cross_entropy(axis,
-                              logits=True,
+                              from_logits=True,
                               onehot=True,
                               reuse=False,
                               name=None,
@@ -55,7 +55,7 @@ def categorical_cross_entropy(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
-            if logits:
+            if from_logits:
                 return core.mean(
                     tf.nn.softmax_cross_entropy_with_logits(labels=labels,
                                                             logits=x,
@@ -75,7 +75,7 @@ def categorical_cross_entropy(axis,
 
 @loss
 def mean_square_error(axis,
-                      logits=True,
+                      from_logits=True,
                       onehot=True,
                       reuse=False,
                       name=None,
@@ -91,7 +91,7 @@ def mean_square_error(axis,
 
 @loss
 def mean_absolute_error(axis,
-                        logits=True,
+                        from_logits=True,
                         onehot=True,
                         reuse=False,
                         name=None,
@@ -107,7 +107,7 @@ def mean_absolute_error(axis,
 
 @loss
 def winner_takes_all(axis,
-                     logits=True,
+                     from_logits=True,
                      onehot=True,
                      reuse=False,
                      name=None,
@@ -115,9 +115,9 @@ def winner_takes_all(axis,
     def _winner_takes_all(x, labels):
         with scope:
             shape = core.shape(x)
-            pred = core.argmax(logits, axis=axis)
-            if onehot:
-                pred = core.one_hot(pred, shape[axis])
+            pred = core.argmax(x, axis=axis)
+            if not onehot:
+                labels = core.one_hot(labels, shape[axis])
             loss_tensor = tf.where(pred==labels,
                                    core.zeros_like(labels),
                                    core.ones_like(labels))
@@ -128,27 +128,16 @@ def winner_takes_all(axis,
 
 @loss
 def margin_loss(axis,
-                logits=True,
+                from_logits=True,
                 onehot=True,
                 reuse=False,
                 name=None,
                 scope=None,
-                mode='capsule',
                 positive_margin=0.9,
                 negative_margin=0.1,
                 downweighting=0.5):
-    if mode not in ['capsule', 'svm']:
-        raise ValueError('margin loss support `capsule` and `svm` mode only.'
-                         'given mode {}'.format(mode))
     def _margin_loss(x, labels):
         with scope:
-            if mode == 'capsule':
-                # the length (norm) of the activity vector of each
-                # capsule in digit_caps layer indicates presence
-                # of an instance of each class
-                #   [batch-size, rows, cols, nclass, capdim]
-                # =>[batch-size, rows, cols, nclass]
-                x = core.norm(x, core.axis)
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
@@ -167,12 +156,11 @@ def margin_loss(axis,
 def get(l, **kwargs):
     """ get loss from None | string | callable function
     """
-    print('kwargs:', **kwargs)
     if l is None:
-        return None
+        raise TypeError('no loss specified to get loss function')
     elif isinstance(l, str):
         return eval('{}(**kwargs)'.format(l))
-    elif callable(l):
+    elif helper.is_tensor(l) or callable(l):
         return l
     else:
         raise ValueError('cannot get loss `{}` with type {}'

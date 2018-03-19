@@ -477,7 +477,7 @@ def soft_conv(input_shape,
                             [batch-idx, row-idx, col-idx]]
         """
         shape = core.tshape(offset_grids)
-        batch_range = tf.expand_dims(tf.range(core.cast(shape[0],
+        batch_range = core.expand_dims(core.range(core.cast(shape[0],
                                                       dtype=core.float32)
                                               ), axis=-1)
         batch_range = tf.tile(batch_range, [1, nkernels * ndims])
@@ -505,12 +505,12 @@ def soft_conv(input_shape,
         elif mode == 'ceil':
             offset_grids = tf.ceil(offset_grids)
         offset_grids = core.cast(offset_grids, dtype=core.int32)
-        unstacks = tf.unstack(offset_grids, axis=-1)
+        unstacks = core.unstack(offset_grids, axis=-1)
         for dim, bound in enumerate(dim_shape):
             # dim + 1 to skip batch-idx dimension
             unstacks[dim+dimoffset] = core.clip(unstacks[dim+dimoffset],
                                                        0, bound-1)
-        return tf.stack(unstacks, axis=-1)
+        return core.stack(unstacks, axis=-1)
 
     def _enumerate(length, nvalue=2):
         """ enumerate all combinations given nvalue and length
@@ -542,7 +542,7 @@ def soft_conv(input_shape,
             offset_grids = _check_bounds_with_cast(offset_grids)
             # [batch-size, rows, cols, channels] =>
             # [channels, batch-size, rows, cols] for map_fn
-            gathers = tf.map_fn(lambda c:tf.gather_nd(c, offset_grids), x)
+            gathers = tf.map_fn(lambda c:core.gather_nd(c, offset_grids), x)
             # [batch-size, rows * cols * krows * kcols, channels]
         else:
             floor = tf.floor(offset_grids)
@@ -562,8 +562,8 @@ def soft_conv(input_shape,
             # [[[batch-idx, rows-idx, col-idx], ...]
             #  [[batch-idx, rows-idx, col-idx], ...]]
             combines = [unstack_floor, unstack_ceil]
-            unstack_dfloor = tf.unstack(dfloor, axis=-1)
-            unstack_dceil  = tf.unstack(dceil, axis=-1)
+            unstack_dfloor = core.unstack(dfloor, axis=-1)
+            unstack_dceil  = core.unstack(dceil, axis=-1)
             dcombines = [unstack_dfloor, unstack_dceil]
 
             # combinations::
@@ -591,19 +591,19 @@ def soft_conv(input_shape,
                         factor *= dcombines[comb[idx]][idx+1]
 
                     # [batch-size, rows * cols * krows * kcols, dimlen]
-                    pos = tf.stack(pos, axis=-1)
+                    pos = core.stack(pos, axis=-1)
                     # [batch-size, rows * cols * krows * kcols]
-                    gather = tf.gather_nd(feature_map, pos)
+                    gather = core.gather_nd(feature_map, pos)
                     #gather = tf.stack(gather, axis=-1)
                     gather = gather * factor
-                    interpolated.append(tf.reshape(gather, shape))
+                    interpolated.append(core.reshape(gather, shape))
                 # [batch-size, rows, cols, channels]
-                return tf.add_n(interpolated)
+                return core.add(interpolated)
 
             gathers = tf.map_fn(_bilinear, x)
         # [channels, batch-size, rows , cols, krows * kcols]
         shape = [input_shape[axis], -1] + dim_strided_shape + [nkernels]
-        gathers = tf.reshape(gathers, shape)
+        gathers = core.reshape(gathers, shape)
         return gathers, offset_grids
 
     scope = tf.name_scope(scope)

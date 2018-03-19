@@ -2,6 +2,7 @@ from .. import colors
 from . import core, actives, helper, mm
 import tensorflow as tf
 
+
 def _leaky_routing(logits):
     """ leaky routing
         This enables active capsules to be routed to the added
@@ -115,6 +116,35 @@ def _agreement_routing(prediction_vectors,
     return core.reshape(activations.read(iterations-1), shape)
 
 
+def norm(input_shape,
+         axis=None,
+         act=None,
+         reuse=None,
+         name=None,
+         scope=None):
+    """ classically,  inputs_shape is in the form of
+        [batch-size, capsules, capdims]
+        this function calculates the norm of each capsule
+        along capsdims dimension
+
+    """
+    ops_scope, _, _ = helper.assign_scope(name, scope, 'caps_norm', reuse)
+    if axis is None:
+        axis = core.axis
+    act = actives.get(act)
+    output_shape = input_shape[:]
+    output_shape.pop(axis)
+    def _norm(x):
+        with ops_scope:
+            # the length (norm) of the activity vector of each
+            # capsule in digit_caps layer indicates presence
+            # of an instance of each class
+            #   [batch-size, rows, cols, nclass, capdim]
+            # =>[batch-size, rows, cols, nclass]
+            return core.norm(x, axis)
+    return _norm, output_shape
+
+
 def conv(convop, bias_shape, logits_shape, iterations,
          leaky=False,
          bias_initializer='zeros',
@@ -131,9 +161,9 @@ def conv(convop, bias_shape, logits_shape, iterations,
                              for conv2d operation
     """
     ops_scope, _, name = helper.assign_scope(name,
-                                          scope,
-                                          'caps'+convop.__name__,
-                                          reuse)
+                                             scope,
+                                             'caps'+convop.__name__,
+                                             reuse)
     act = actives.get(act)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',

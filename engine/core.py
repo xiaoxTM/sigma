@@ -1,21 +1,6 @@
 from .. import helpers, colors, dbs, ops, layers
-from timeit import default_timer as timer
 import tensorflow as tf
-import numpy as np
-import math
 import sigma
-
-def intsize(x, cminus=False):
-    if x > 0:
-        return int(np.log10(x)) + 1
-    elif x == 0:
-        return 1
-    else:
-        if cminus:
-            return int(np.log10(-x)) + 2
-        else:
-            return int(np.log10(-x)) + 1
-
 
 def predict_op(input_shape,
                predop=None,
@@ -83,6 +68,7 @@ def predict(session, x, xtensor, ypred,
                                                                 nclass)
     progress = line(range(nsamples), timeit=True, nprompts=20, enum=True)
     preds = []
+    sigma.status.is_training = False
     for (idx, iteration) in progress():
         samples, step = next(generator)
         _ypred = session.run(ypred, feed_dict=samples)
@@ -94,7 +80,27 @@ def predict(session, x, xtensor, ypred,
                 dbs.images.save_image('{}/{}.png'.format(idx, i),
                                       helpers.stack(images, interval=10,
                                                     value=[0, 0, 0]))
+    sigma.status.is_training = True
     return preds[0] if len(preds) == 1 else preds
+
+
+def validate(session, generator, metric, iterations):
+    acc = 0
+    validop = {'acc':metric}
+    sigma.status.is_training = False
+    for iteration in range(iterations):
+        samples, step = next(generator)
+        rdict = session.run(validop, feed_dict=samples)
+        accuracy = rdict['acc']
+        if isinstance(accuracy, (list, tuple)):
+            # if metric are built from tf.metrics.*
+            # it will include
+            # [accuracy, update_op]
+            accuracy = accuracy[0]
+        acc += accuracy
+    mean = acc / iterations
+    sigma.status.is_training = True
+    return mean
 
 
 def session(target='',
@@ -122,179 +128,7 @@ def session(target='',
     return ans
 
 
-def line(iterable,
-         epochs,
-         #batch_size,
-         brief=False,
-         nprompts=10,
-         feedbacks=False,
-         timeit=False,
-         show_total_time=False,
-         accuracy=5,
-         message=None,
-         nc='x',
-         cc='+'):
-    """ Python Generator Tips [next|send / yield]
-        show line message in a programmatic interactive mode
-        to interactivate with line, call generator in the following order:
-        (global_idx, elem, epoch, iteration) = (generator)
-        while True:
-            # do some work here
-            (global_idx, elem, epoch, iteration) = generator.send(value)
-            if need_break:
-                break
-        That is, to interactivate next / send with yield in generator, do
-        it in the following loop:
-                next(generator) \
-                                 V
-                    -------------|
-                    |            |
-                    |            V
-                  send         yield
-                    ^            |
-                    |            |
-                    |____________|
-                   
-        Attibutes
-        =========
-            iterable : list / tuple / np.ndarray / range
-                       iterable object or function that can yield something
-                       generally speaking, iterable have length of:
-                       "iterations * epochs"
-            epochs : int or None
-                     total iterations
-            brief : bool
-                    if true, show extra information in form of
-                        `[current-iter / total-iter]`
-            nprompts : int
-                       how many prompt (`nc`/`cc`) to mimic the progress
-            feedbacks : boolean
-                        if true, yield data and waiting for feedbacks from caller
-                        else only yield data
-            timeit : bool
-                     time each iteration or not
-            show_total_time : bool
-                              show the sum of each iteration time if true
-            accuracy : int
-                       specifying print format precision for time
-            message : string or None
-                      message to be shown at the begining of each line
-            nc : char
-                 character to show as running prompt
-            cc : char
-                 character to show as running and ran prompt for each iteration
-        Returns
-        ==========
-            tuple of (global_index, iterable_element, epoch, iteration), where:
-            global_index : int
-                            global index for iterable
-            epoch : int
-            iteration : int
-                        iteration inside epoch
-    """
-    if epochs is None:
-        epochs = 1
-    try:
-        iterable_size = len(iterable)
-    except TypeError:
-        raise TypeError('getting the length of `iterable` failed')
-    epochsize = intsize(epochs)
-    if message is None:
-        message = '@'
-    nc = nc.encode('utf8')
-    cc = cc.encode('utf8')
-    # number of iterations per each epoch
-    iterations = int(iterable_size / epochs)
-    # rotation times per one `+` / `x`
-    scale = nprompts / iterations
-    step = max(1, int(scale))
-    _prompt = np.asarray([nc] * nprompts, dtype=np.string_)
-    itersize = intsize(iterations)
-    beg = None
-    elapsed = None
-    if brief:
-        if timeit:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] -- {{:.{}}}(s) {{}}' \
-                   .format(epochsize, message, epochs, nprompts, accuracy)
-        else:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] {{}} '.format(epochsize,
-                                                                   message,
-                                                                   epochs,
-                                                                   message,
-                                                                   nprompts)
-    else:
-        if timeit:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
-                   ' -- {{:.{}}}(s) {{}}'.format(epochsize,
-                                                 message,
-                                                 epochs,
-                                                 nprompts,
-                                                 itersize,
-                                                 itersize,
-                                                 accuracy)
-        else:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
-                   .format(epochsize, message, epochs, itersize, itersize, nprompts)
-    def _line():
-        totaltime = 0
-        prev = 0
-        idx = 0
-        while True:
-            elem = iterable[idx % iterable_size]
-            time_beg = timer()
-            epoch = int(idx / iterations)
-            iteration = (idx % iterations)
-            if feedbacks:
-                ret = (yield (idx, elem, epoch, iteration))
-            else:
-                yield (idx, elem, epoch, iteration)
-                ret = ''
-            # convert iteration index to nprompts index
-            block_beg = int(iteration * scale)
-            if block_beg >= nprompts:
-                block_beg = nprompts - step
-            block_end = block_beg + step
-            elapsed = (timer() - time_beg)
-            totaltime += elapsed
-            iteration += 1
-
-            percentage = int(iteration * 100 / iterations)
-
-            if _prompt[block_beg] == nc or prev != block_beg or percentage == 100:
-                _prompt[block_beg:block_end] = cc
-                if prev != block_beg:
-                    _prompt[prev:block_beg] = cc
-            else:
-                _prompt[block_beg:block_end] = nc
-            prev = block_beg
-            prompt = _prompt[:block_end].tostring().decode('utf-8')
-            if brief:
-                if timeit:
-                    message = spec.format(epoch+1, prompt, percentage,
-                                          elapsed, ret)
-                else:
-                    message = spec.format(epoch+1, prompt, percentage, ret)
-            else:
-                if timeit:
-                    message = spec.format(epoch+1, prompt, iteration, iterations,
-                                          percentage, elapsed, ret)
-                else:
-                    message = spec.format(epoch+1, prompt, iteration, iterations,
-                                          percentage, ret)
-            end_flag = ''
-            if percentage == 100:
-                # start new epoch
-                end_flag = '\n'
-            print(message, end=end_flag, flush=True)
-            idx += 1
-        if show_total_time and timeit:
-            print('\nTotal time elapsed:{}(s)'.format(totaltime))
-        else:
-            print()
-    return _line
-
-
-def _loss_filter(save='all'):
+def _save_op(save='all'):
     def _max(x, y):
         if y is None:
             return True
@@ -325,16 +159,16 @@ def run(x, xtensor, optimizer, loss,
         y=None,
         ytensor=None,
         nclass=None,
-        metrics=None,
         epochs=1000,
         batch_size=32,
         shuffle=True,
         valids=None,
+        metric=None,
         graph=None,
         config=None,
         checkpoints=None,
         logs=None,
-        save='all',
+        savemode='all',
         emc=None):
     """ run to train networks
         Attributes
@@ -398,15 +232,35 @@ def run(x, xtensor, optimizer, loss,
                                                                 batch_size,
                                                                 shuffle,
                                                                 nclass)
-    total_iterations = iterations * epochs
-    progressor = line(range(total_iterations),
-                      epochs=epochs,
-                      feedbacks=True, # use `send` to get next data instead of `next`
-                      timeit=True,
-                      nprompts=20)()
+    valid_gen = None
+    valid_iters = 0
+    if valids is not None and metric is not None:
+        if isinstance(valids, dict):
+            vx = valids['x']
+            vy = valids['y']
+        elif isinstance(valids, (list, tuple)):
+            vx, vy = valids
+        else:
+            raise TypeError('`valids` for run must have type of '
+                            '{}. given {}'.format(
+                                colors.blue(
+                                    'dict / list / tuple'),
+                                colors.red(type(valids))))
+        valid_gen, _, valid_iters = dbs.images.make_generator(vx, vy,
+                                                              xtensor,
+                                                              ytensor,
+                                                              batch_size,
+                                                              False,
+                                                              nclass)
+    progressor = helpers.line(None,
+                              epochs=epochs,
+                              iterations=iterations,
+                              feedbacks=True, # use `send` to get next data instead of `next`
+                              timeit=True,
+                              nprompts=20)[0]()
     # tensors to be calculated
     trainop = {'optimizer':optimizer, 'loss':loss}
-    saverop = _loss_filter(save)
+    saverop = _save_op(savemode)
     if summarize is not None:
         trainop['summarize'] = summarize
     best_result = None
@@ -415,37 +269,41 @@ def run(x, xtensor, optimizer, loss,
         emc.get('epm', -1)
         if 'epm' in emc.keys():
             emc.pop('epm')
-    (global_idx, _, epoch, _) = next(progressor)
-    while True:
-        if epoch >= epochs: # if generator not stop iterate
-            break
+    (global_idx, _, epoch, iteration) = next(progressor)
+    while epoch < epochs:
+        acc = '$'
         samples, step = next(generator)
         rdict = sess.run(trainop,
                          feed_dict=samples)
         if writer is not None:
             writer.add_summary(rdict['summarize'], global_step=global_idx)
         _loss = rdict['loss']
-        need_save = saverop(_loss, best_result)
-        if need_save:
-            best_result = _loss
-            (global_idx, _, epoch, _) = progressor.send(
-                ' -- loss: {}{:.6}{} / {}{:.6}{}$'.format(
-                    colors.fg.green, _loss, colors.reset,
-                    colors.fg.green, best_result, colors.reset))
-        else:
-            (global_idx, _, epoch, _) = progressor.send(
-                ' -- loss: {}{:.6}{} / {}{:.6}{}$'.format(
-                    colors.fg.red, _loss, colors.reset,
-                    colors.fg.green, best_result, colors.reset))
+        # begin of evaluation
+        if (iteration + 1) == iterations and \
+          valid_gen is not None:
+            acc = validate(sess, valid_gen, metric, valid_iters)
+            acc = ' -- {:.6}$'.format(colors.blue(acc))
+        # end of evaluation
 
-        if need_save and saver is not None:
-            helpers.save(sess, checkpoints, saver,
-                         write_meta_graph=False,
-                         verbose=False)
-        #if valids is not None:
-        #    validates(valids, batch_size)
-        #if epm > 0 and (epoch + 1) % epm == 0:
-        #    helpers.sendmail(emc)
+        if saverop(_loss, best_result):
+            # if current loss is better than best result
+            # save it to best_result
+            best_result = _loss
+            loss_string = colors.green(_loss)
+            if saver is not None:
+                helpers.save(sess, checkpoints, saver,
+                             write_meta_graph=False,
+                             verbose=False)
+        else:
+            loss_string = colors.red(_loss)
+
+        best_result_string = colors.green(best_result)
+        (global_idx, _, epoch, iteration) = progressor.send(
+            ' -- loss: {:.6} / {:.6}{}'.format(loss_string,
+                                               best_result_string,
+                                               acc))
+        if epm > 0 and (epoch + 1) % epm == 0:
+            helpers.sendmail(emc)
     if writer is not None:
         writer.close()
     sess.close()
@@ -455,71 +313,149 @@ def train(x, xtensor, optimizer, loss,
           y=None,
           ytensor=None,
           nclass=None,
-          metrics=None,
           epochs=1000,
           batch_size=32,
           shuffle=True,
           valids=None,
+          metric=None,
           graph=None,
           config=None,
           checkpoints=None,
           logs=None,
-          save='all'):
-    optimization_op = ops.optimizers.get(optimizer)
-    loss = ops.losses.get(loss)
-    run(x, xtensor, optimization_op, loss, y, ytensor, nclass, metrics, epochs,
-        batch_size, shuffle, valids, graph, config, checkpoints, logs, save)
+          savemode='all'):
+    sigma.status.is_training = True
+    loss_op = ops.losses.get(loss)
+    optimization_op = ops.optimizers.get(optimizer).minimize(loss_op)
+    metric_op = ops.metrics.get(metric)
+    run(x, xtensor,
+        optimization_op,
+        loss_op,
+        y, ytensor,
+        nclass,
+        epochs,
+        batch_size,
+        shuffle,
+        valids,
+        metric_op,
+        graph,
+        config,
+        checkpoints,
+        logs,
+        savemode)
+    sigma.status.is_training = False
 
 
-def build(input_shape, build_fun, loss,
+def build(input_shape,
+          build_fun,
+          label_shape=None,
           dtype='float32',
-          funopts=None,
           name=None,
           reuse=False,
           scope=None,
-          lossopts=None):
+          **kwargs):
     """ build network architecture
         Attributes
         ==========
         input_shape : list / tuple
                       input shape for network entrance
+        label_shape : list / tuple
+                      label shape for network entrance
         build_fun : callable
                     callable function receives only one
                     parameter. should have signature of:
-                    `def build_fun(x) --> tensor:`
-        loss : string or callable
-               loss to be maximized or mimimized
-        dtype : string
-                data type of input layer
-        funopts : None or {}
-                  parameters to build_fun function
-                  if None, funopts will be ignored
-        name : string
-               name of input layer
+                    `def build_fun(x) --> (tensor, tensor):`
+                    where the first tensor is loss and the
+                    second tensor is metric (can be None)
+        dtype : string / list / dict
+                data type of input / label layer
+        name : string / list / dict
+               name of input / label layer
         reuse : bool
         scope : string
-        lossopts : None or dict
-                   parameters passed to loss function (layer)
-                   if None, lossopts will be ignored
+        kwargs : None or dict
+                 parameters passed to build_fun
+                 e.g.,
+                     loss='margin_loss',
+                     metric='accuracy',
+                     fastmode=True,
+                     ...
+                     etc.
         Returns
         ==========
-        inputs : tensor
-                 input tensor to be feed by samples
-        loss : loss
+            ([inputs, labels], [loss, metric])
+            inputs : tensor
+                     input tensor to be feed by samples
+            labels : tensor
+                     placeholder for ground truth
+            loss   : tensor
+                     loss to be optimized
+            metric : tensor
+                     metric to measure the performance
     """
+    if isinstance(dtype, str):
+        xdtype, ydtype = dtype, dtype
+    elif isinstance(dtype, list):
+        if len(dtype) == 1: # e.g., ['float32']
+            xdtype, ydtype = dtype[0], dtype[0]
+        elif len(dtype) == 2: # e.g., ['float32', int32]
+            xdtype, ydtype = dtype
+        else:
+            raise ValueError('`dtype` as list must has length of 1 or 2. '
+                             'given {}'.format(len(dtype)))
+    elif isinstance(dtype, dict):
+        xdtype = dtype['inputs']
+        ydtype = dtype['labels']
+    else:
+        raise TypeError('`dtype` must be str / list / dict. given {}'
+                        .format(type(dtype)))
+    if  name is None:
+        xname, yname = name, name
+    elif isinstance(name, str):
+        xname, yname = 'input-{}'.format(name), 'label-{}'.format(name)
+    elif isinstance(name, list):
+        if len(name) == 1:
+            xname, yname = name[0], name[0]
+        elif len(name) == 2:
+            xname, yname = name
+        else:
+            raise ValueError('`name` as list must has length of 1 or 2. '
+                             'given {}'.format(len(name)))
+    elif isinstance(name, dict):
+        xname = name['inputs']
+        yname = name['labels']
+    else:
+        raise TypeError('`name` must be str / list / dict. given {}'
+                        .format(type(name)))
+
     with sigma.defaults(reuse=reuse, scope=scope):
-        inputs = layers.base.input_spec(input_shape, dtype=dtype, name=name)
-        if funopts is None:
-            x = build_fun(inputs)
-        elif isinstance(funopts, dict):
-            x = build_fun(inputs, funopts)
+        inputs = layers.base.input_spec(input_shape, dtype=xdtype, name=xname)
+        if label_shape is not None:
+            labels = layers.base.label_spec(label_shape, dtype=ydtype, name=yname)
+            # build_fun should returns `loss`, `metrics`
+            # that is, `x` in the form of:
+            #    [loss, metric]
+            # or (loss, metric)
+            # or {'loss': loss, 'metric': metric}
+            x = build_fun(inputs, labels, **kwargs)
         else:
-            raise TypeError('`funopts` for build_fun can only be None or dict'
-                            '. given {}({})'.format(type(funopts), funopts))
-        if lossopts is None:
-            return inputs, layers.losses.get(loss, x)
-        elif isinstance(lossopts, dict):
-            return inputs, layers.losses.get(loss, x, **lossopts)
+            labels = None
+            x = buuild_fun(inputs, **kwargs)
+        if ops.helper.is_tensor(x):
+            loss, metric = x, None
+        elif isinstance(x, (list, tuple)):
+            if len(x) == 1:
+                loss, metric = x, None
+            elif len(x) == 2:
+                loss, metric = x
+            else:
+                raise ValueError('The return value of `build_fun` must have'
+                                 ' length of 1 or 2 in list / tuple. given {}'
+                                 .format(len(x)))
+        elif isinstance(x, dict):
+            loss = x['loss']
+            metric = x.get('metric', None)
         else:
-            raise TypeError('`lossopts` for loss function can only be None or dict'
-                            '. given {}({})'.format(type(lossopts), lossopts))
+            raise TypeError('The return value type of `build_fun` must be'
+                            ' tensor / list / tuple / dict. given {}'
+                            .format(type(x)))
+        return ([inputs, labels], [loss, metric])

@@ -5,6 +5,7 @@ from . import pools
 from . import base
 from . import merge
 from . import losses
+from . import metrics
 from . import core
 from . import capsules
 from .core import defaults

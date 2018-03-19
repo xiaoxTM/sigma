@@ -1,4 +1,4 @@
-from .core import predict, session, line, run, train, build
+from .core import predict, session, run, train, build
 from ..ops.core import __backend__
 from ..layers.core import set_print, export_graph
 

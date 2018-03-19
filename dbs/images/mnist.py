@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+#import gzip
 import os.path
 from sigma import helpers
 
@@ -8,10 +9,10 @@ def load(dirs=None, to_tensor=True, onehot=False, nclass=None):
         output in tf.tensor form
     """
     def _load(dset, nsamples):
-        with open(os.path.join(dirs, '{}-images.idx3-ubyte'.format(dset))) as fd:
+        with open(os.path.join(dirs, '{}-images.idx3-ubyte'.format(dset)), 'rb') as fd:
             loaded = np.fromfile(file=fd, dtype=np.uint8)
             x = loaded[16:].reshape((nsamples, 28, 28, 1)).astype(np.float32) / 255.0
-        with open(os.path.join(dirs, '{}-labels.idx1-ubyte'.format(dset))) as fd:
+        with open(os.path.join(dirs, '{}-labels.idx1-ubyte'.format(dset)), 'rb') as fd:
             loaded = np.fromfile(file=fd, dtype=np.uint8)
             y = loaded[8:].reshape((nsamples)).astype(np.int32)
         if to_tensor:

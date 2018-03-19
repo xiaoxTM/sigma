@@ -1,7 +1,7 @@
-import tensorflow as tf
+from . import core
 
 def get(optimizer, **kwargs):
-    """ get optimizer from None | string | callable function
+    """ get optimizer from None | string | Tensor | callable function
     """
     if optimizer is None:
         return None
@@ -17,9 +17,10 @@ def get(optimizer, **kwargs):
                              'ProximalGradientDescentOptimizer',
                              'ProximalAdagradOptimizer',
                              'RMSPropOptimizer']:
-            raise NotImplementedError('optimizer `{}` not implemented'.format(optimizer))
+            raise NotImplementedError('optimizer `{}` not implemented'
+                                      .format(optimizer))
         return eval('tf.train.{}(**kwargs)'.format(optimizer))
-    elif callable(optimizer):
+    elif isinstance(optimizer, core.Optimizer) or callable(optimizer):
         return optimizer
     else:
         raise ValueError('cannot get optimizer `{}` with type {}'

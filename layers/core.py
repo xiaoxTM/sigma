@@ -45,17 +45,26 @@ __layers__ = {'actives': ['crelu',
                           'sigmoid',
                           'tanh',
                           'linear'],
-              'base': ['flatten', 'reshape', 'expand_dims'],
+              'base': ['flatten',
+                       'reshape',
+                       'expand_dims',
+                       'norm',
+                       'maskout'],
               'convs': ['fully_conv',
                         'dense',
+                        'dot',
                         'conv1d',
                         'conv2d',
                         'conv3d',
                         'soft_conv2d',
                         'deconv2d',
                         'sepconv2d'],
-              'merge': ['concat', 'add', 'mul'],
-              'norms': ['instance_norm', 'batch_norm', 'dropout'],
+              'merge': ['concat',
+                        'add',
+                        'mul'],
+              'norms': ['instance_norm',
+                        'batch_norm',
+                        'dropout'],
               'pools': ['avg_pool2d',
                         'avg_pool2d_global',
                         'max_pool2d',
@@ -64,13 +73,36 @@ __layers__ = {'actives': ['crelu',
 
 
 __colormaps__ = {'actives' : 'Magenta',
-              'base' : 'Red',
-              'convs' : 'Blue',
-              'merge' : 'Cyan',
-              'norms' : 'Cyan',
-              'pools' : 'Gold',
-              'other' : 'Yellow'
-             }
+                 'base' : 'Red',
+                 'convs' : 'Blue',
+                 'merge' : 'Cyan',
+                 'norms' : 'Cyan',
+                 'pools' : 'Gold',
+                 'other' : 'Yellow'
+                 }
+
+
+def split_inputs(inputs):
+    """ split inputs into two parts according to the type of inputs:
+        - inputs
+        - output
+    """
+    if isinstance(inputs, (list, tuple)):
+        if len(inputs) == 1:
+            inputs, labels = inputs, None
+        elif len(inputs) == 2:
+            inputs, labels = inputs
+        else:
+            raise ValueError('`inputs` as list must have length of 1 or 2.'
+                             ' given {}'.format(len(inputs)))
+    elif isinstance(inputs, dict):
+        inputs = inputs['logits']
+        labels = inputs.get('labels', None)
+    else:
+        raise TypeError('`inputs` must be list / tuple / dict.'
+                        ' given {}'.format(type(inputs)))
+
+    return [inputs, labels]
 
 
 # interstatus for visualization
@@ -162,7 +194,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                 raise ValueError('name is not given')
             if isinstance(inputs, (list, tuple)):
                 if ops.helper.is_tensor(inputs[0]):
-                    input_shape = [shape(x) for x in inputs]
+                    input_shape = [ops.core.shape(x) for x in inputs]
                     inputname = [ops.helper.name_normalize(x.name, scope) for x in inputs]
                 else:
                     is_input_layer = True

@@ -1,12 +1,16 @@
 from . import core
 from . import convolutional as convs
 from . import normalization as norms
+from . import capsules
+from . import optimizers
+from . import regularizers
 from . import actives
 from . import pools
+from . import merge
 from . import helper
 from . import base
 from . import losses
-from . import capsules
+from . import metrics
 
 def get():
     return {'data_format' : core.data_format,

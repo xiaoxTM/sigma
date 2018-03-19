@@ -78,3 +78,52 @@ def expand_dims(input_shape,
         with ops_scope:
             return core.expand_dims(x, axis)
     return _expand_dims, output_shape
+
+
+def maskout(input_shape,
+            indices,
+            axis=-1,
+            reuse=False,
+            name=None,
+            scope=None):
+    ops_scope, _, _ = helper.assign_scope(name,
+                                          scope,
+                                          'maskout',
+                                          reuse)
+    axis = helper.normalize_axes(input_shape, axis)
+    output_shape = input_shape[:]
+    index_shape = input_shape[:]
+    if indices is None:
+        index_shape[axis] = 1
+        output_shape.pop(axis)
+        nelems = 1
+    else:
+        nelems = len(indices)
+        output_shape[axis] = nelems
+        index_shape[axis] = nelems
+
+    ones = [1] * len(input_shape)
+    def _index(i, index=None):
+        if index is None:
+            index = core.range(input_shape[i])
+        shape = ones[:]
+        shape[i] = input_shape[i]
+        index = core.reshape(index, shape)
+        multiples = [int(x / y) for x, y in zip(index_shape, shape)]
+        index = core.reshape(core.tile(index, multiples), (-1,1))
+        return index
+        
+    indexlist = [_index(i) for i in range(len(input_shape)) if i != axis]
+    def _maskout(x, elements=None):
+        with ops_scope:
+            if elements is None:
+                if axis != len(input_shape) - 1:
+                    xnorm = core.norm(x, -1)
+                elements = core.argmax(xnorm, -1, dtype=core.int32)
+                elements = _index(0, elements)
+            positions = indexlist[:]
+            positions.insert(axis, elements)
+            positions = core.concat(positions, axis=1)
+            x = core.gather_nd(x, positions, name=name)
+            return core.reshape(x, output_shape)
+    return _maskout, output_shape

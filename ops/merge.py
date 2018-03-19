@@ -7,6 +7,9 @@ def concat(inputs_shape,
            reuse=False,
            name=None,
            scope=None):
+    """ concatenate multiple tensors into one
+        along with axis
+    """
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
                         '{}list / tpule{}, given {}{}{}'
@@ -34,9 +37,13 @@ def concat(inputs_shape,
 
 
 def add(inputs_shape,
+        weights=None,
         reuse=False,
         name=None,
         scope=None):
+    """ add multiple tensors into one
+        with weight `weights`
+    """
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs as '
                         '{}list / tpule{}, given {}{}{}'
@@ -54,9 +61,12 @@ def add(inputs_shape,
                              .format(colors.fg.red, idx+1, colors.reset,
                                      colors.fg.red,
                                      output_shape, ip, colors.reset))
+    if weights is None:
+        weights = [1] * len(inputs_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'add', reuse)
     def _add(x):
         with ops_scope:
+            x = [e * w for e, w in zip(x, weights)]
             return core.add(x, name)
     return _add, output_shape
 

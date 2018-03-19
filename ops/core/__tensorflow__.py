@@ -33,6 +33,8 @@ qint32 = tf.qint32
 
 TensorArray = tf.TensorArray
 
+Optimizer = tf.train.Optimizer
+
 def padnorm(fun):
     def _padnorm(*args, **kwargs):
         signature = inspect.signature(fun)
@@ -82,6 +84,42 @@ def rank(x):
 
 def gather(x, indices, validate=None, name=None, axis=0):
     return tf.gather(x, indices, validate, name, axis)
+
+
+def gather_nd(x, indices, name=None):
+    return tf.gather_nd(x, indices, name)
+
+
+def meshgrid(*args, **kwargs):
+    return tf.meshgrid(*args, **kwargs)
+
+
+def stack(values, axis=0, name='stack'):
+    return tf.stack(values, axis, name)
+
+
+def unstack(x, num=None, axis=0, name='unstack'):
+    return tf.unstack(x, num, axis, name)
+
+
+def concat(inputs, axis, name='concat'):
+    return tf.concat(inputs, axis, name)
+
+
+def split(x, num_or_size_splits,
+          axis=0,
+          num=None,
+          name='split'):
+    return tf.split(x, num_or_size_splits, axis, num, name)
+
+
+def range(start, limit=None, delta=1, dtype=None, name='range'):
+    if limit is None:
+        # treat `start` as `limit`
+        return tf.range(start, delta=delta, dtype=dtype, name=name)
+    else:
+        return tf.range(start, limit=limit, delta=delta, dtype=dtype,
+                        name=name)
 
 
 def dtype(x):
@@ -202,17 +240,6 @@ def sum(x,
     return tf.reduce_sum(x, axis, keepdims, name)
 
 
-def concat(inputs, axis, name='concat'):
-    return tf.concat(inputs, axis, name)
-
-
-def split(x, num_or_size_splits,
-          axis=0,
-          num=None,
-          name='split'):
-    return tf.split(value, num_or_size_splits, axis, num, name)
-
-
 def add(inputs, name=None):
     return tf.add_n(inputs, name)
 
@@ -319,6 +346,7 @@ def constant(value,
 
 def fill(shape, values, name=None):
     return tf.fill(shape, values, name)
+
 
 
 #===========================================================

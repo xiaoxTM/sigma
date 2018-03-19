@@ -29,12 +29,13 @@ def concat(inputs,
 
 @core.layer
 def add(inputs,
+        weights=None,
         return_shape=False,
         reuse=False,
         name='add',
         scope=None):
     input_shape = [ops.core.shape(ip) for ip in inputs]
-    fun, output = ops.merge.add(input_shape, reuse, name, scope)
+    fun, output = ops.merge.add(input_shape, weights, reuse, name, scope)
     return _merge(fun, inputs, output, 'add', return_shape)
 
 
