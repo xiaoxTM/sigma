@@ -35,7 +35,7 @@ def timeit(print_it):
 def line(iterable,
          epochs,
          iterations=None,
-         brief=False,
+         brief=True,
          nprompts=10,
          feedbacks=False,
          timeit=False,

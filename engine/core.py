@@ -218,6 +218,9 @@ def run(x, xtensor, optimizer, loss,
                   - other parameters see @helpers.mail.sendmail
     """
     # //FIXME: remove validating time from final iteration of train time
+    # //FUTURE: to show accuracy after each iteration of training
+    # //FUTURE: `savemode` with respect to loss or accuracy
+    # //FUTURE: to show progress <epoch @epochs>[+++++++++x, iter/iters, p%]{loss / acc => loss / acc}@time$
     ans = session(graph=graph,
                   config=config,
                   checkpoints=checkpoints,
@@ -258,7 +261,7 @@ def run(x, xtensor, optimizer, loss,
                               iterations=iterations,
                               feedbacks=True, # use `send` to get next data instead of `next`
                               timeit=True,
-                              nprompts=20)[0]()
+                              nprompts=10)[0]()
     # tensors to be calculated
     trainop = {'optimizer':optimizer, 'loss':loss}
     saverop = _save_op(savemode)
