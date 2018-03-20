@@ -11,7 +11,7 @@ import tensorflow as tf
 
 
 def build_func(inputs, labels,
-               fastmode=False):
+               mode='depthwise'):
     x = layers.convs.conv2d(inputs, 256, 9, padding='valid', act='relu')
     x = layers.base.expand_dims(x, -2)
     # no routing between conv1 and primary caps
@@ -22,7 +22,7 @@ def build_func(inputs, labels,
     x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
                                          stride=2,
                                          return_shape=True,
-                                         fastmode=fastmode)
+                                         mode=mode)
     x = layers.base.reshape(x, [outshape[0], -1, outshape[-1]])
     x = layers.capsules.dot(x, 10, 16, 3)
     # norm the output to represent the existance probabilities
@@ -48,7 +48,7 @@ def train(xtrain, ytrain,
           nclass=10,
           epochs=30,
           batch_size=64,
-          fastmode=False,
+          mode='depthwise',
           shuffle=True):
     input_shape = list(xtrain.shape)
     # sigma.engine.set_print(True)
@@ -56,7 +56,7 @@ def train(xtrain, ytrain,
     [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
                                                      build_func,
                                                      [batch_size, nclass],
-                                                     fastmode=fastmode)
+                                                     mode=mode)
     tf.summary.scalar('loss', loss)
     # sigma.engine.export_graph('cache/network-architecture.png')
 
@@ -74,7 +74,7 @@ def train(xtrain, ytrain,
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
-    config.gpu_options.visible_device_list = '0'
+    config.gpu_options.visible_device_list = '0, 1'
     config.intra_op_parallelism_threads = 1
 
     logs = 'cache/logs/capsulewise'
@@ -105,15 +105,15 @@ parser.add_argument('--checkpoints', type=str,
 parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--batch_size', type=int, default=100)
 parser.add_argument('--shuffle', type=bool, default=True)
-parser.add_argument('--fastmode', type=bool, default=True)
+parser.add_argument('--mode', type=str, default='depthwise')
 
 if __name__=='__main__':
     args = parser.parse_args()
-    print('checkpoints: {}'.format(colors.blue(args.checkpoints)))
-    print('epochs: {}'.format(colors.blue(args.epochs)))
-    print('batch size: {}'.format(colors.blue(args.batch_size)))
-    print('shuffle: {}'.format(colors.blue(args.shuffle)))
-    print('fast mode: {}'.format(colors.blue(args.fastmode)))
+    print('checkpoints: {}'.format(colors.red(args.checkpoints)))
+    print('epochs: {}'.format(colors.red(args.epochs)))
+    print('batch size: {}'.format(colors.red(args.batch_size)))
+    print('shuffle: {}'.format(colors.red(args.shuffle)))
+    print('mode: {}'.format(colors.red(args.mode)))
     (xtrain, ytrain), (xvalid, yvalid) = dbs.images.mnist.load(
         '/home/xiaox/studio/db/mnist', to_tensor=False)
     train(xtrain, ytrain,
@@ -121,5 +121,5 @@ if __name__=='__main__':
           args.checkpoints,
           epochs=args.epochs,
           batch_size=args.batch_size,
-          fastmode=args.fastmode,
+          mode=args.mode,
           shuffle=args.shuffle)

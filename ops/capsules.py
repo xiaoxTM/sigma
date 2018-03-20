@@ -282,7 +282,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
            leaky=False,
            stride=1,
            padding='valid',
-           fastmode=False,
+           mode='capsulewise',
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
            bias_initializer='zeros',
@@ -311,12 +311,20 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                     output capsule vector size (aka. outcapdim)
         kshape : int / list / tuple
                  kernel shape for convolving operation
+        mode : string
+               must be one of `depthwise` and `capsulewise`
+               If using multi-GPUs, it seems `capsulewise`
+               will be faster then `depthwise`, while using
+               single GPU, `depthwise` seems to be faster
     """
     if len(input_shape) != 5:
         raise ValueError('capsule conv2d require input shape {}[batch-size, '
                          'rows, cols, incaps, incapdim]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
+    if mode not in ['depthwise', 'capsulewise']:
+        raise ValueError('`mode` must be `depthwise` or `capsulewise`. '
+                         'given {}'.format(colors.red(mode)))
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
 
@@ -334,7 +342,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     bias_shape = [nouts, caps_dims]
     # kernel shape:
     # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-    if fastmode:
+    if mode == 'depthwise':
         # if run in fast mode, apply depthwise_conv2d
         kernel_shape = kshape[1:-1] + \
                        [input_shape[-2] * input_shape[core.axis], 1]
@@ -443,7 +451,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         return core.reshape(core.sum(x * weight, 4),
                             xshape[:3] + [incaps, nouts, caps_dims])
 
-    if fastmode:
+    if mode == 'depthwise':
         _conv2d = _depthwise_conv2d
     else:
         _conv2d = _capsulewise_conv2d
