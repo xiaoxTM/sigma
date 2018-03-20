@@ -16,6 +16,32 @@ def intsize(x, cminus=False):
             return int(np.log10(-x)) + 1
 
 
+def print_args(args, argcolor='green', valuecolor='red'):
+    """ print arguments in the form of
+        arg : value
+        Attributes
+        ==========
+            args : arguments
+                   arguments object returned by
+                   argparser.ArgumentParsers().parse_args()
+            argcolor : string / None
+                       arg color. None will make no color
+            valuecolor : string / None
+                         value color. None will make no color
+    """
+    if argcolor is None:
+        argcolor = lambda x:x
+    else:
+        argcolor = eval('colors.{}'.format(argcolor))
+    if valuecolor is None:
+        valuecolor = lambda x:x
+    else:
+        valuecolor = eval('colors.{}'.format(valuecolor))
+
+    for arg in vars(args):
+        print('{}: {}'.format(argcolor(arg), valuecolor(getattr(args, arg))))
+
+
 def timeit(print_it):
     def _timeit(fun):
         def _wrap(*args, **kwargs):
