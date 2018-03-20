@@ -84,6 +84,52 @@ def dot(inputs, nouts, caps_dims,
 
 
 @core.layer
+def conv1d(inputs, nouts, caps_dims, kshape,
+           iterations=3,
+           leaky=False,
+           stride=1,
+           padding='valid',
+           mode='capsulewise',
+           weight_initializer='glorot_uniform',
+           weight_regularizer=None,
+           bias_initializer='zeros',
+           bias_regularizer=None,
+           act=None,
+           trainable=True,
+           dtype=ops.core.float32,
+           return_shape=False,
+           collections=None,
+           summarize=True,
+           reuse=False,
+           name=None,
+           scope=None):
+    input_shape = ops.core.shape(inputs)
+    fun, output = ops.capsules.conv1d(input_shape,
+                                      nouts,
+                                      caps_dims,
+                                      kshape,
+                                      iterations,
+                                      leaky,
+                                      stride,
+                                      padding,
+                                      mode,
+                                      weight_initializer,
+                                      weight_regularizer,
+                                      bias_initializer,
+                                      bias_regularizer,
+                                      act,
+                                      trainable,
+                                      dtype,
+                                      collections,
+                                      summarize,
+                                      reuse,
+                                      name,
+                                      scope)
+    return convs._layers(fun, inputs, output, return_shape,
+                         'caps_conv1d', reuse, name)
+
+
+@core.layer
 def conv2d(inputs, nouts, caps_dims, kshape,
            iterations=3,
            leaky=False,
