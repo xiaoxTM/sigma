@@ -141,27 +141,40 @@ def line(iterable,
     elapsed = None
     if brief:
         if timeit:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] -- {{:.{}}}(s) {{}}' \
-                   .format(epochsize, message, epochs, nprompts, accuracy)
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%]' \
+                   ' {{}} @{{:0>.{}f}}(s){}'.format(epochsize,
+                                                   message,
+                                                   epochs,
+                                                   nprompts,
+                                                   accuracy,
+                                                   colors.red('$'))
         else:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] {{}} '.format(epochsize,
-                                                                      message,
-                                                                      epochs,
-                                                                      message,
-                                                                      nprompts)
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] {{}}{}' \
+                   .format(epochsize,
+                           message,
+                           epochs,
+                           nprompts,
+                           colors.red('$'))
     else:
         if timeit:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
-                   ' -- {{:.{}}}(s) {{}}'.format(epochsize,
-                                                 message,
-                                                 epochs,
-                                                 nprompts,
-                                                 itersize,
-                                                 itersize,
-                                                 accuracy)
+                   ' {{}} @{{:0>.{}f}}(s){}'.format(epochsize,
+                                                    message,
+                                                    epochs,
+                                                    nprompts,
+                                                    itersize,
+                                                    itersize,
+                                                    accuracy,
+                                                    colors.red('$'))
         else:
-            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%] {{}} ' \
-                   .format(epochsize, message, epochs, itersize, itersize, nprompts)
+            spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
+                   ' {{}}{}'.format(epochsize,
+                                    message,
+                                    epochs,
+                                    nprompts,
+                                    itersize,
+                                    itersize,
+                                    colors.red('$'))
     def _line():
         totaltime = 0
         prev = 0
@@ -181,7 +194,7 @@ def line(iterable,
             if block_beg >= nprompts:
                 block_beg = nprompts - step
             block_end = block_beg + step
-            elapsed = (timer() - time_beg)
+            elapsed = round((timer() - time_beg), accuracy)
             totaltime += elapsed
             iteration += 1
 
@@ -198,13 +211,13 @@ def line(iterable,
             if brief:
                 if timeit:
                     message = spec.format(epoch+1, prompt, percentage,
-                                          elapsed, ret)
+                                          ret, elapsed)
                 else:
                     message = spec.format(epoch+1, prompt, percentage, ret)
             else:
                 if timeit:
                     message = spec.format(epoch+1, prompt, iteration, iterations,
-                                          percentage, elapsed, ret)
+                                          percentage, ret, elapsed)
                 else:
                     message = spec.format(epoch+1, prompt, iteration, iterations,
                                           percentage, ret)

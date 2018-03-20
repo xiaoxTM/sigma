@@ -84,23 +84,29 @@ def predict(session, x, xtensor, ypred,
     return preds[0] if len(preds) == 1 else preds
 
 
-def validate(session, generator, metric, iterations):
-    acc = 0
-    validop = {'acc':metric}
+def validate(session, validop, generator, iterations):
+    acc = None
+    if 'metric' in validop.keys():
+        acc = 0
+    loss = 0
     sigma.status.is_training = False
     for iteration in range(iterations):
         samples, step = next(generator)
         rdict = session.run(validop, feed_dict=samples)
-        accuracy = rdict['acc']
-        if isinstance(accuracy, (list, tuple)):
-            # if metric are built from tf.metrics.*
-            # it will include
-            # [accuracy, update_op]
-            accuracy = accuracy[0]
-        acc += accuracy
-    mean = acc / iterations
+        accuracy = rdict.get('metric', None)
+        if accuracy is not None:
+            if isinstance(accuracy, (list, tuple)):
+                # if metric are built from tf.metrics.*
+                # it will include
+                # [accuracy, update_op]
+                accuracy = accuracy[0]
+            acc += accuracy
+        loss += rdict['loss']
+    if acc is not None:
+        acc = acc / iterations
+    loss = loss / iterations
     sigma.status.is_training = True
-    return mean
+    return (loss, acc)
 
 
 def session(target='',
@@ -128,7 +134,7 @@ def session(target='',
     return ans
 
 
-def _save_op(save='all'):
+def _save_op(savemode='all', modetarget='loss'):
     def _max(x, y):
         if y is None:
             return True
@@ -144,18 +150,19 @@ def _save_op(save='all'):
     def _all(x, y):
         return True
 
-    if save == 'all':
+    if savemode == 'all':
         return _all
-    elif save == 'max':
+    elif savemode == 'max':
         return _max
-    elif save == 'min':
+    elif savemode == 'min':
         return _min
     else:
-        raise ValueError('`save` must be `all`, `max` or `min`. given {}'
-                         .format(save))
+        raise ValueError('`savemode` must be `all`, `max` or `min`. given {}'
+                         .format(savemode))
 
 
 def run(x, xtensor, optimizer, loss,
+        metric=None,
         y=None,
         ytensor=None,
         nclass=None,
@@ -163,12 +170,12 @@ def run(x, xtensor, optimizer, loss,
         batch_size=32,
         shuffle=True,
         valids=None,
-        metric=None,
         graph=None,
         config=None,
         checkpoints=None,
         logs=None,
         savemode='all',
+        modetarget='loss',
         emc=None):
     """ run to train networks
         Attributes
@@ -179,8 +186,10 @@ def run(x, xtensor, optimizer, loss,
                       input placeholder of the network
             optimizer : tf.optimizer
                         optimizer to update network parameter
-            loss : tf.Tensor
+            loss : Tensor
                    objectives network tries to minimize / maximize
+            metrics : Tensor / None
+                      measurement of result accuracy
             y : np.ndarray or list / tuple / None
                 ground truth for x.
             ytensor : tf.placeholder / None
@@ -189,8 +198,6 @@ def run(x, xtensor, optimizer, loss,
                      number of class for classification
                      Note, None indicates no one_hot op when generate
                      (sample, label) pairs
-            metrics : tf.Op / None
-                      measurement of result accuracy
             epochs : int
                      `epochs` times to run optimization
             batch_size : int
@@ -205,22 +212,25 @@ def run(x, xtensor, optimizer, loss,
                           checkpoints for restoring / saving parameters
             logs : string
                    logs directory for tensorboard
-            save : string, `all` / `max` / `min`
-                   saving parameter policy.
-                   `all` : save each iteration of all epochs
-                   `max` : save only max loss / accuracy iteration
-                   `min` : save only min loss / accuracy iteration
-                   (NOTE: loss that is been saved will be shown in green,
-                          while loss that is ignored will be shonw in red)
+            savemode : string, `all` / `max` / `min`
+                       saving parameter policy.
+                       `all` : save each iteration of all epochs
+                       `max` : save only max loss / accuracy iteration
+                       `min` : save only min loss / accuracy iteration
+            modetarget : string, `loss` / `metric`
+                         which target to decide save or not
+                         NOTE that when modetarget is metric and metric
+                         is not given, save modetarget will change to
+                         loss automatically
             emc : dict
                   email configuration, including:
                   - epm : epoch per message
                   - other parameters see @helpers.mail.sendmail
     """
     # //FIXME: remove validating time from final iteration of train time
-    # //FUTURE: to show accuracy after each iteration of training
-    # //FUTURE: `savemode` with respect to loss or accuracy
-    # //FUTURE: to show progress <epoch @epochs>[+++++++++x, iter/iters, p%]{loss / acc => loss / acc}@time$
+    if modetarget not in ['loss', 'metric']:
+        raise ValueError('modetarget must be `loss` or `metric`. given {}'
+                         .format(colors.red(modetarget)))
     ans = session(graph=graph,
                   config=config,
                   checkpoints=checkpoints,
@@ -238,7 +248,7 @@ def run(x, xtensor, optimizer, loss,
                                                                 nclass)
     valid_gen = None
     valid_iters = 0
-    if valids is not None and metric is not None:
+    if valids is not None:
         if isinstance(valids, dict):
             vx = valids['x']
             vy = valids['y']
@@ -264,9 +274,24 @@ def run(x, xtensor, optimizer, loss,
                               nprompts=10)[0]()
     # tensors to be calculated
     trainop = {'optimizer':optimizer, 'loss':loss}
-    saverop = _save_op(savemode)
+    validop = {'loss': loss}
+    def _encode_loss_and_acc(loss, acc):
+        return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
+                                colors.green(round(acc, 6), '{: >.6f}'))
+    def _encode_loss(loss, acc):
+        return '{}'.format(colors.blue(round(loss, 6), '{:<.6}'))
+    def _get_acc(result):
+        return result['metric'][0]
+    get_acc = lambda x: None
+    encodeop = _encode_loss
+    if metric is not None:
+        trainop['metric'] = metric
+        validop['metric'] = metric
+        encodeop = _encode_loss_and_acc
+        get_acc = _get_acc
     if summarize is not None:
         trainop['summarize'] = summarize
+    saverop = _save_op(savemode, modetarget)
     best_result = None
     epm = -1
     if emc is not None:
@@ -275,38 +300,37 @@ def run(x, xtensor, optimizer, loss,
             emc.pop('epm')
     (global_idx, _, epoch, iteration) = next(progressor)
     while epoch < epochs:
-        acc = '$'
+        validmessage = ''
         samples, step = next(generator)
         rdict = sess.run(trainop,
                          feed_dict=samples)
         if writer is not None:
             writer.add_summary(rdict['summarize'], global_step=global_idx)
-        _loss = rdict['loss']
+        trainloss = rdict['loss']
+        trainacc = get_acc(rdict)
 
         # begin of evaluation
         if (iteration + 1) == iterations and \
           valid_gen is not None:
-            acc = validate(sess, valid_gen, metric, valid_iters)
-            acc = ' -- acc: {}$'.format(colors.blue(acc, '{:.6}'))
+            validloss, validacc = validate(sess, validop, valid_gen, valid_iters)
+            validmessage = ' => {}'.format(encodeop(validloss, validacc))
         # end of evaluation
-
-        if saverop(_loss, best_result):
+        current = trainloss
+        if modetarget == 'metric' and metric is not None:
+            current = trainacc
+        if saverop(current, best_result):
             # if current loss is better than best result
             # save it to best_result
-            best_result = _loss
-            loss_string = colors.green(_loss, '{:6}')
+            best_result = current
             if saver is not None:
                 helpers.save(sess, checkpoints, saver,
                              write_meta_graph=False,
                              verbose=False)
-        else:
-            loss_string = colors.red(_loss, '{:6}')
-
-        best_result_string = colors.green(best_result, '{:6}')
+#        print('loss:', trainloss, '- acc:', trainacc)
+        trainmessage = encodeop(trainloss, trainacc)
         (global_idx, _, epoch, iteration) = progressor.send(
-            ' -- loss: {} / {}{}'.format(loss_string,
-                                         best_result_string,
-                                         acc))
+            '{{{}{}}}'.format(trainmessage,
+                              validmessage))
         if epm > 0 and (epoch + 1) % epm == 0:
             helpers.sendmail(emc)
     if writer is not None:
@@ -315,6 +339,7 @@ def run(x, xtensor, optimizer, loss,
 
 
 def train(x, xtensor, optimizer, loss,
+          metric=None,
           y=None,
           ytensor=None,
           nclass=None,
@@ -322,12 +347,12 @@ def train(x, xtensor, optimizer, loss,
           batch_size=32,
           shuffle=True,
           valids=None,
-          metric=None,
           graph=None,
           config=None,
           checkpoints=None,
           logs=None,
-          savemode='all'):
+          savemode='all',
+          modetarget='loss'):
     sigma.status.is_training = True
     loss_op = ops.losses.get(loss)
     optimization_op = ops.optimizers.get(optimizer).minimize(loss_op)
@@ -335,18 +360,19 @@ def train(x, xtensor, optimizer, loss,
     run(x, xtensor,
         optimization_op,
         loss_op,
+        metric_op,
         y, ytensor,
         nclass,
         epochs,
         batch_size,
         shuffle,
         valids,
-        metric_op,
         graph,
         config,
         checkpoints,
         logs,
-        savemode)
+        savemode,
+        modetarget)
     sigma.status.is_training = False
 
 

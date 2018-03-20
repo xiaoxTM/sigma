@@ -67,6 +67,10 @@ def cond(condition,
                    name)
 
 
+def name_scope(name, default_name=None, values=None):
+    return tf.name_scope(name, default_name, values)
+
+
 def assign(x, y,
            validate_shape=None,
            use_locking=None,

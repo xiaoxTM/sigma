@@ -85,6 +85,7 @@ def train(xtrain, ytrain,
                 xtensor,
                 optimizer,
                 loss,
+                metric,
                 ytrain,
                 ytensor,
                 nclass=10,
@@ -92,7 +93,6 @@ def train(xtrain, ytrain,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 valids=[xvalid, yvalid],
-                metric=metric,
                 config=config,
                 checkpoints=checkpoints,
                 logs=logs,
@@ -110,10 +110,10 @@ parser.add_argument('--fastmode', type=bool, default=True)
 if __name__=='__main__':
     args = parser.parse_args()
     print('checkpoints: {}'.format(colors.blue(args.checkpoints)))
-    print('epochs:', args.epochs)
-    print('batch size:', args.batch_size)
-    print('shuffle:', args.shuffle)
-    print('fast mode:', args.fastmode)
+    print('epochs: {}'.format(colors.blue(args.epochs)))
+    print('batch size: {}'.format(colors.blue(args.batch_size)))
+    print('shuffle: {}'.format(colors.blue(args.shuffle)))
+    print('fast mode: {}'.format(colors.blue(args.fastmode)))
     (xtrain, ytrain), (xvalid, yvalid) = dbs.images.mnist.load(
         '/home/xiaox/studio/db/mnist', to_tensor=False)
     train(xtrain, ytrain,

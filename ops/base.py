@@ -86,10 +86,13 @@ def maskout(input_shape,
             reuse=False,
             name=None,
             scope=None):
-    ops_scope, _, _ = helper.assign_scope(name,
-                                          scope,
-                                          'maskout',
-                                          reuse)
+    ops_scope, name_with_ltype, _ = helper.assign_scope(name,
+                                                        scope,
+                                                        'maskout',
+                                                        reuse)
+    prepare_scope = '{}/preprocess'.format(name_with_ltype)
+    if scope is not None:
+        prepare_scope = '{}/{}'.format(scope, prepare_scope)
     axis = helper.normalize_axes(input_shape, axis)
     output_shape = input_shape[:]
     index_shape = input_shape[:]
@@ -103,17 +106,17 @@ def maskout(input_shape,
         index_shape[axis] = nelems
 
     ones = [1] * len(input_shape)
-    def _index(i, index=None):
-        if index is None:
-            index = core.range(input_shape[i])
-        shape = ones[:]
-        shape[i] = input_shape[i]
-        index = core.reshape(index, shape)
-        multiples = [int(x / y) for x, y in zip(index_shape, shape)]
-        index = core.reshape(core.tile(index, multiples), (-1,1))
-        return index
-        
-    indexlist = [_index(i) for i in range(len(input_shape)) if i != axis]
+    with core.name_scope(prepare_scope):
+        def _index(i, index=None):
+            if index is None:
+                index = core.range(input_shape[i])
+            shape = ones[:]
+            shape[i] = input_shape[i]
+            index = core.reshape(index, shape)
+            multiples = [int(x / y) for x, y in zip(index_shape, shape)]
+            index = core.reshape(core.tile(index, multiples), (-1,1))
+            return index
+        indexlist = [_index(i) for i in range(len(input_shape)) if i != axis]
     def _maskout(x, elements=None):
         with ops_scope:
             if elements is None:
