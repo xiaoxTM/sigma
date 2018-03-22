@@ -66,22 +66,28 @@ def predict(session, x, xtensor, ypred,
                                                                 batch_size,
                                                                 False,
                                                                 nclass)
-    progress = line(range(nsamples), timeit=True, nprompts=20, enum=True)
+    progressor = helper.line(iterable=None,
+                             epochs=None,
+                             iterations=iterations,
+                             timeit=True)[0]()
     preds = []
     sigma.status.is_training = False
-    for (idx, iteration) in progress():
+    (global_idx, _, epoch, iteration) = next(progressor)
+    while epoch < 1:
         samples, step = next(generator)
-        _ypred = session.run(ypred, feed_dict=samples)
+        pred = ops.core.run(session, ypred, feed_dict=samples)
         if savedir is None:
-            preds.append(_ypred)
+            preds.append(pred)
         else:
             os.makedirs(savedir, exist_ok=True)
-            for i, images in enumerate(zip(samples, _ypred.astype(np.int8))):
-                dbs.images.save_image('{}/{}.png'.format(idx, i),
+            for i, images in enumerate(zip(samples, pred.astype(np.int8))):
+                dbs.images.save_image('{}/{}.png'.format(global_idx, i),
                                       helpers.stack(images, interval=10,
                                                     value=[0, 0, 0]))
+        (global_idx, _, epoch, iteration) = next(progressor)
     sigma.status.is_training = True
-    return preds[0] if len(preds) == 1 else preds
+    if len(preds) > 0:
+        return preds[0] if len(preds) == 1 else preds
 
 
 def validate(session, validop, generator, iterations):
@@ -92,11 +98,11 @@ def validate(session, validop, generator, iterations):
     sigma.status.is_training = False
     for iteration in range(iterations):
         samples, step = next(generator)
-        rdict = session.run(validop, feed_dict=samples)
+        rdict = ops.core.run(session, validop, feed_dict=samples)
         accuracy = rdict.get('metric', None)
         if accuracy is not None:
             if isinstance(accuracy, (list, tuple)):
-                # if metric are built from tf.metrics.*
+                # if metric are built from metrics.*
                 # it will include
                 # [accuracy, update_op]
                 accuracy = accuracy[0]
@@ -107,31 +113,6 @@ def validate(session, validop, generator, iterations):
     loss = loss / iterations
     sigma.status.is_training = True
     return (loss, acc)
-
-
-def session(target='',
-            graph=None,
-            config=None,
-            initializers=None,
-            checkpoints=None,
-            logs=None,
-            verbose=True):
-    sess = tf.Session(target, graph, config)
-    sess.run([tf.global_variables_initializer(),
-              tf.local_variables_initializer()])
-    if initializers is not None:
-        sess.run(initializers)
-    ans = {'session': sess}
-    if checkpoints is not None:
-        sess, saver = helpers.load(sess, checkpoints, verbose=verbose)
-        ans['session'] = sess
-        ans['saver'] = saver
-    if logs is not None:
-        summarize = tf.summary.merge_all()
-        writer = tf.summary.FileWriter(logs, sess.graph)
-        ans['summarize'] = summarize
-        ans['writer'] = writer
-    return ans
 
 
 def _save_op(savemode='all', modetarget='loss'):
@@ -159,6 +140,29 @@ def _save_op(savemode='all', modetarget='loss'):
     else:
         raise ValueError('`savemode` must be `all`, `max` or `min`. given {}'
                          .format(savemode))
+
+
+def session(target='',
+            graph=None,
+            config=None,
+            initializers=None,
+            checkpoints=None,
+            logs=None,
+            verbose=True):
+    """ get session and setup Graph, GPU, checkpoints, logs
+    """
+    sess = ops.core.session(target, graph, config, initializers)
+    ans = {'session': sess}
+    if checkpoints is not None:
+        sess, saver = helpers.load(sess, checkpoints, verbose=verbose)
+        ans['session'] = sess
+        ans['saver'] = saver
+    if logs is not None:
+        summarize = ops.core.summary_merge()
+        writer = ops.core.summary_writer(logs, sess.graph)
+        ans['summarize'] = summarize
+        ans['writer'] = writer
+    return ans
 
 
 def run(x, xtensor, optimizer, loss,
@@ -302,10 +306,10 @@ def run(x, xtensor, optimizer, loss,
     while epoch < epochs:
         validmessage = ''
         samples, step = next(generator)
-        rdict = sess.run(trainop,
-                         feed_dict=samples)
+        rdict = ops.core.run(sess, trainop, feed_dict=samples)
         if writer is not None:
-            writer.add_summary(rdict['summarize'], global_step=global_idx)
+            ops.core.add_summary(writer, rdict['summarize'],
+                                 global_step=global_idx)
         trainloss = rdict['loss']
         trainacc = get_acc(rdict)
 
@@ -333,10 +337,8 @@ def run(x, xtensor, optimizer, loss,
                               validmessage))
         if epm > 0 and (epoch + 1) % epm == 0:
             helpers.sendmail(emc)
-    if writer is not None:
-        writer.close()
-    sess.close()
-
+    ops.core.close_summary_writer(writer)
+    ops.core.close_session(sess)
 
 def train(x, xtensor, optimizer, loss,
           metric=None,
@@ -353,10 +355,10 @@ def train(x, xtensor, optimizer, loss,
           logs=None,
           savemode='all',
           modetarget='loss'):
-    sigma.status.is_training = True
     loss_op = ops.losses.get(loss)
     optimization_op = ops.optimizers.get(optimizer).minimize(loss_op)
     metric_op = ops.metrics.get(metric)
+    sigma.status.is_training = True
     run(x, xtensor,
         optimization_op,
         loss_op,
@@ -461,7 +463,9 @@ def build(input_shape,
     with sigma.defaults(reuse=reuse, scope=scope):
         inputs = layers.base.input_spec(input_shape, dtype=xdtype, name=xname)
         if label_shape is not None:
-            labels = layers.base.label_spec(label_shape, dtype=ydtype, name=yname)
+            labels = layers.base.label_spec(label_shape,
+                                            dtype=ydtype,
+                                            name=yname)
             # build_fun should returns `loss`, `metrics`
             # that is, `x` in the form of:
             #    [loss, metric]
@@ -470,7 +474,7 @@ def build(input_shape,
             x = build_fun(inputs, labels, **kwargs)
         else:
             labels = None
-            x = buuild_fun(inputs, **kwargs)
+            x = build_fun(inputs, **kwargs)
         if ops.helper.is_tensor(x):
             loss, metric = x, None
         elif isinstance(x, (list, tuple)):

@@ -1,4 +1,21 @@
-import tensorflow as tf
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from . import mm, helper, actives, core
 from .. import status
 
@@ -11,6 +28,7 @@ def instance_norm(input_shape,
                   act=None,
                   trainable=True,
                   collections=None,
+                  summary='histogram',
                   reuse=False,
                   name=None,
                   scope=None):
@@ -36,6 +54,7 @@ def instance_norm(input_shape,
                            offset_regularizer,
                            trainable,
                            collections,
+                           summary,
                            reuse,
                            scope)
     scale = None
@@ -49,12 +68,13 @@ def instance_norm(input_shape,
                           scale_regularizer,
                           trainable,
                           collections,
+                          summary,
                           reuse,
                           scope)
     act = actives.get(act)
     def _instance_norm(x):
         with ops_scope:
-            mean, variance = tf.nn.moments(x, axes, keep_dims=True)
+            mean, variance = core.moments(x, axes, keep_dims=True)
             normalized = (x - mean) / core.sqrt(variance + epsilon)
             if scale is not None:
                 normalized = scale * normalized
@@ -80,6 +100,7 @@ def conditional_instance_norm(input_shape,
                               act=None,
                               trainable=True,
                               collections=None,
+                              summary='histogram',
                               reuse=False,
                               name=None,
                               scope=None):
@@ -105,6 +126,7 @@ def conditional_instance_norm(input_shape,
                            offset_regularizer,
                            trainable,
                            collections,
+                           summary,
                            reuse,
                            scope)
     scale = None
@@ -118,19 +140,20 @@ def conditional_instance_norm(input_shape,
                           scale_regularizer,
                           trainable,
                           collections,
+                          summary,
                           reuse,
                           scope)
     act = actives.get(act)
     def _condition_on(labels):
-        select_scale = tf.gather(scale, labels)
-        select_offset = tf.gather(offset, labels)
-        select_scale = tf.expand_dims(tf.expand_dims(select_scale, 1), 1)
-        select_offset = tf.expand_dims(tf.expand_dims(select_offset, 1), 1)
+        select_scale = core.gather(scale, labels)
+        select_offset = core.gather(offset, labels)
+        select_scale = core.expand_dims(core.expand_dims(select_scale, 1), 1)
+        select_offset = core.expand_dims(core.expand_dims(select_offset, 1), 1)
         return select_scale, select_offset
-    
+
     def _conditional_instance_norm(x, labels):
         with ops_scope:
-            mean, variance = tf.nn.moments(x, axes, keep_dims=True)
+            mean, variance = core.moments(x, axes, keep_dims=True)
             normalized = (x - mean) / core.sqrt(variance + epsilon)
             select_scale, select_offset = _condition_on(labels)
             if select_scale is not None:
@@ -154,6 +177,7 @@ def batch_norm(input_shape,
                trainable=True,
                fused=False,
                collections=None,
+               summary='histogram',
                reuse=False,
                name=None,
                scope=None):
@@ -208,6 +232,7 @@ def batch_norm(input_shape,
                            offset_regularizer,
                            trainable,
                            collections,
+                           summary,
                            reuse,
                            scope)
     scale = None
@@ -221,6 +246,7 @@ def batch_norm(input_shape,
                           scale_regularizer,
                           trainable,
                           collections,
+                          summary,
                           reuse,
                           scope)
 
@@ -233,6 +259,7 @@ def batch_norm(input_shape,
                             None,
                             trainable,
                             collections,
+                            summary,
                             reuse,
                             scope)
 
@@ -245,29 +272,30 @@ def batch_norm(input_shape,
                                 None,
                                 trainable,
                                 collections,
+                                summary,
                                 reuse,
                                 scope)
     act = actives.get(act)
     def _train(x):
         if fused:
-            # tf.nn.fused_batch_norm(x, scale, offset, mean=None, variance=None,
-            #                        epsionl=0.001, is_training=True, name=None)
+            # fused_batch_norm(x, scale, offset, mean=None, variance=None,
+            #                  epsionl=0.001, is_training=True, name=None)
             # x must be 4-d tensor
             # mean / variance used for inference
             x_shape = core.shape(x)
             for _ in range(4 - x.get_shape().ndims):
-                x = tf.expand_dims(x, 1)
-            x, mean, variance = tf.nn.fused_batch_norm(x, scale,
-                                                       offset, epsilon=epsilon)
+                x = core.expand_dims(x, 1)
+            x, mean, variance = core.fused_batch_norm(x, scale,
+                                                      offset, epsilon=epsilon)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = tf.nn.moments(x, axis, keep_dims=True)
-            # tf.nn.batch_normalize(x, mean, variance, offset,
-            #                       scale, variance_epsilon, name)
-            x = tf.nn.batch_normalization(x, mean, variance,
-                                          offset, scale, epsilon)
-            mean = tf.squeeze(mean)
-            variance = tf.squeeze(variance)
+            mean, variance = core.moments(x, axis, keep_dims=True)
+            # batch_normalize(x, mean, variance, offset,
+            #                 scale, variance_epsilon, name)
+            x = core.batch_normalization(x, mean, variance,
+                                         offset, scale, epsilon)
+            mean = core.squeeze(mean)
+            variance = core.squeeze(variance)
         if momentum is not None:
             moving_mean.assign(moving_mean * momentum + mean * (1 - momentum))
             moving_variance.assign(
@@ -278,20 +306,20 @@ def batch_norm(input_shape,
         if fused:
             x_shape = core.shape(x)
             for _ in range(4 - x.get_shape().ndims):
-                x = tf.expand_dims(x, 1)
-            x, mean, variance = tf.nn.fused_batch_norm(x, scale,
-                                         offset, moving_mean, moving_variance,
-                                         epsilon, is_training=False)
+                x = core.expand_dims(x, 1)
+            x, mean, variance = core.fused_batch_norm(x, scale,
+                                 offset, moving_mean, moving_variance,
+                                 epsilon, is_training=False)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = tf.nn.moments(x, axis, keep_dims=True)
-            x = tf.nn.batch_normalization(x, moving_mean, moving_variance,
-                                          offset, scale, epsilon)
+            mean, variance = core.moments(x, axis, keep_dims=True)
+            x = core.batch_normalization(x, moving_mean, moving_variance,
+                                         offset, scale, epsilon)
         return act(x)
 
     def _batch_norm(x):
         with ops_scope:
-            x = tf.cond(tf.cast(status.is_training, tf.bool),
+            x = core.cond(core.cast(status.is_training, core.boolean),
                         lambda: _train(x),
                         lambda: _infer(x))
             # if update moving_mean and moving_variance
@@ -313,8 +341,8 @@ def dropout(pkeep,
                                                  reuse)
         def _dropout(x):
             with ops_scope:
-                return tf.nn.dropout(x, pkeep, noise_shape, seed, name)
+                return core.dropout(x, pkeep, noise_shape, seed, name)
     else:
         def _dropout(x):
-            return tf.nn.dropout(x, pkeep, noise_shape, seed, name)
+            return core.dropout(x, pkeep, noise_shape, seed, name)
     return _dropout

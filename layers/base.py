@@ -1,3 +1,21 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from .. import colors
 from .. import ops
 from . import core
@@ -10,7 +28,7 @@ def embedding(inputs, table_size,
               regularizer=None,
               trainable=True,
               collections=None,
-              summarize=True,
+              summary='histogram',
               reuse=False,
               name=None,
               scope=None):
@@ -21,7 +39,7 @@ def embedding(inputs, table_size,
                               regularizer,
                               trainable,
                               collections,
-                              summarize,
+                              summary,
                               reuse,
                               name,
                               scope)
@@ -91,15 +109,31 @@ def expand_dims(inputs,
 
 @core.layer
 def maskout(inputs,
-            axis=-1,
-            elements=None,
+            indices=None,
+            axis=-2, # axis according to which to maskout
+            drop=False,
+            flatten=True,
             return_shape=False,
             reuse=False,
             name=None,
             scope=None):
+    """ maskout specificated features given by `indices`
+        NOTE this layer will drop if `drop` is True the other indices
+        > inputs: [batch-size, nclass, depth]
+        > outputs: [batch-size, len(indices), depth] if indices
+          have more than one indices
+        > outputs: [batch-size, depth] if indices have only one indices
+    """
     input_shape = ops.core.shape(inputs)
-    fun, output = ops.base.maskout(input_shape, elements, axis, reuse, name, scope)
-    x = fun(inputs, elements)
+    fun, output = ops.base.maskout(input_shape,
+                                   indices,
+                                   axis,
+                                   drop,
+                                   flatten,
+                                   reuse,
+                                   name,
+                                   scope)
+    x = fun(inputs, indices)
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '

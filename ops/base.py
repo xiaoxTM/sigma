@@ -1,3 +1,21 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import numpy as np
 from . import helper, core, mm
 
@@ -8,7 +26,7 @@ def embedding(table_shape,
               regularizer=None,
               trainable=True,
               collections=None,
-              summarize=True,
+              summary='histogram',
               reuse=False,
               name=None,
               scope=None):
@@ -29,9 +47,7 @@ def embedding(table_shape,
                                              reuse)
     embeddings = mm.malloc('embedding', name, table_shape, dtype,
                            initializer, regularizer, trainable,
-                           collections, reuse, scope)
-    if summarize and not reuse:
-        tf.summary.histogram(embeddings.name, table)
+                           collections, summary, reuse, scope)
     def _embedding(ids):
         with ops_scope:
             if core.dtype(ids) != core.int32:
@@ -48,7 +64,7 @@ def flatten(input_shape,
     output_shape = [-1, np.prod(input_shape[1:])]
     def _flatten(x):
         with ops_scope:
-            return core.reshape(x, output_shape, name)
+            return core.reshape(x, output_shape)
     return _flatten, output_shape
 
 
@@ -59,7 +75,7 @@ def reshape(output_shape,
     ops_scope, _, name = helper.assign_scope(name, scope, 'reshape', reuse)
     def _reshape(x):
         with ops_scope:
-            return core.reshape(x, output_shape, name)
+            return core.reshape(x, output_shape)
     return _reshape, output_shape
 
 
@@ -81,52 +97,87 @@ def expand_dims(input_shape,
 
 
 def maskout(input_shape,
-            indices,
-            axis=-1,
+            indices=None,
+            axis=-2,
+            drop=False,
+            flatten=True,
             reuse=False,
             name=None,
             scope=None):
+    """ typical input_shape form:
+        [batch-size, nclass, depth]
+    """
     ops_scope, name_with_ltype, _ = helper.assign_scope(name,
                                                         scope,
                                                         'maskout',
                                                         reuse)
-    prepare_scope = '{}/preprocess'.format(name_with_ltype)
-    if scope is not None:
-        prepare_scope = '{}/{}'.format(scope, prepare_scope)
-    axis = helper.normalize_axes(input_shape, axis)
     output_shape = input_shape[:]
     index_shape = input_shape[:]
-    if indices is None:
-        index_shape[axis] = 1
-        output_shape.pop(axis)
-        nelems = 1
-    else:
-        nelems = len(indices)
-        output_shape[axis] = nelems
-        index_shape[axis] = nelems
-
     ones = [1] * len(input_shape)
-    with core.name_scope(prepare_scope):
-        def _index(i, index=None):
-            if index is None:
-                index = core.range(input_shape[i])
-            shape = ones[:]
-            shape[i] = input_shape[i]
-            index = core.reshape(index, shape)
-            multiples = [int(x / y) for x, y in zip(index_shape, shape)]
-            index = core.reshape(core.tile(index, multiples), (-1,1))
-            return index
-        indexlist = [_index(i) for i in range(len(input_shape)) if i != axis]
-    def _maskout(x, elements=None):
-        with ops_scope:
-            if elements is None:
-                if axis != len(input_shape) - 1:
-                    xnorm = core.norm(x, -1)
-                elements = core.argmax(xnorm, -1, dtype=core.int32)
-                elements = _index(0, elements)
-            positions = indexlist[:]
-            positions.insert(axis, elements)
-            positions = core.concat(positions, axis=1)
-            x = core.gather_nd(x, positions, name=name)
-            return core.reshape(x, output_shape)
+    axis = helper.normalize_axes(input_shape, axis)
+    if drop:
+        prepare_scope = '{}/preprocess'.format(name_with_ltype)
+        if scope is not None:
+            prepare_scope = '{}/{}'.format(scope, prepare_scope)
+        if indices is None:
+            index_shape[axis] = 1
+            output_shape.pop(axis)
+            nelems = 1
+        else:
+            nelems = len(indices)
+            index_shape[axis] = nelems
+            output_shape[axis] = nelems
+            if flatten:
+                output_shape[-1] *= output_shape[axis]
+                output_shape.pop(axis)
+        with core.name_scope(prepare_scope):
+            def _index(i, index=None):
+                if index is None:
+                    index = core.range(input_shape[i])
+                shape = ones[:]
+                shape[i] = input_shape[i]
+                index = core.reshape(index, shape)
+                multiples = [int(x / y) for x, y in zip(index_shape, shape)]
+                index = core.reshape(core.tile(index, multiples), (-1,1))
+                return index
+            indexlist = [_index(i) for i in range(len(input_shape)) if i != axis]
+
+        def _maskout(x, elements=None):
+            with ops_scope:
+                if elements is None:
+                    if axis != len(input_shape) - 1:
+                        xnorm = core.norm(x, -1)
+                        elements = core.argmax(xnorm, -1, dtype=core.int32)
+                    elements = _index(0, elements)
+                positions = indexlist[:]
+                positions.insert(axis, elements)
+                positions = core.concat(positions, axis=1)
+                x = core.gather_nd(x, positions)
+                return core.reshape(x, output_shape)
+    else:
+        tiles = ones
+        tiles[core.axis] = input_shape[core.axis]
+        if flatten:
+            output_shape[-1] *= output_shape[axis]
+            output_shape.pop(axis)
+        def _maskout(x, elements=None):
+            with ops_scope:
+                if elements is None:
+                    if axis != len(input_shape) - 1:
+                        # x shape: [batch-size, nclass, depth]
+                        # xnorm shape: [batch-size, nclass]
+                        xnorm = core.norm(x, -1)
+                        # elements shape: [batch-size]
+                        elements = core.argmax(xnorm, -1, dtype=core.int32)
+                # onehot to from
+                # [batch-size]
+                # to
+                # [batch-size, nclass]
+                elements = core.one_hot(elements, input_shape[-2])
+                # tile to [batch-size, nclass, depth]
+                elements = core.tile(core.expand_dims(elements, -1), tiles)
+                x = x * elements
+                if flatten:
+                    x = core.flatten(x)
+                return x
     return _maskout, output_shape

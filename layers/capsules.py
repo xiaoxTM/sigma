@@ -1,3 +1,21 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from .. import ops, colors
 from . import core, convs
 
@@ -33,54 +51,47 @@ def norm(inputs,
 
 
 @core.layer
-def dot(inputs, nouts, caps_dims,
-        iterations=2,
-        leaky=False,
-        weight_initializer='glorot_uniform',
-        weight_regularizer=None,
-        bias_initializer='zeros', # no bias
-        bias_regularizer=None,
-        act=None,
-        trainable=True,
-        dtype=ops.core.float32,
-        return_shape=False,
-        collections=None,
-        summarize=True,
-        reuse=False,
-        name=None,
-        scope=None):
-    """ dot operation inside a capsule. That is:
-        ----     ---------
-        |c1|     |w11|w12|     --------------------------
-        |--|     ---------     |c1*w11 + c2*w12 + c3*w13|
-        |c2| dot |w12|w22| ==> --------------------------
-        |--|     ---------     |c1*w21 + c2*w22 + c3*w23|
-        |c3|     |w13|w23|     --------------------------
-        ----     ---------
-        NOTE in ''Dynamtic Routing Between Capsules``
-        this operations is called fully_connected layer
-        (a.k.a., dense layer)
+def fully_connected(inputs, nouts, caps_dims,
+                    iterations=2,
+                    leaky=False,
+                    weight_initializer='glorot_uniform',
+                    weight_regularizer=None,
+                    bias_initializer='zeros', # no bias
+                    bias_regularizer=None,
+                    act=None,
+                    trainable=True,
+                    dtype=ops.core.float32,
+                    return_shape=False,
+                    collections=None,
+                    summary='histogram',
+                    reuse=False,
+                    name=None,
+                    scope=None):
+    """ fully_connected operation between capsules
     """
     input_shape = ops.core.shape(inputs)
-    fun, output = ops.capsules.dot(input_shape,
-                                   nouts,
-                                   caps_dims,
-                                   iterations,
-                                   leaky,
-                                   weight_initializer,
-                                   weight_regularizer,
-                                   bias_initializer,
-                                   bias_regularizer,
-                                   act,
-                                   trainable,
-                                   dtype,
-                                   collections,
-                                   summarize,
-                                   reuse,
-                                   name,
-                                   scope)
+    fun, output = ops.capsules.fully_connected(input_shape,
+                                               nouts,
+                                               caps_dims,
+                                               iterations,
+                                               leaky,
+                                               weight_initializer,
+                                               weight_regularizer,
+                                               bias_initializer,
+                                               bias_regularizer,
+                                               act,
+                                               trainable,
+                                               dtype,
+                                               collections,
+                                               summary,
+                                               reuse,
+                                               name,
+                                               scope)
     return convs._layers(fun, inputs, output, return_shape,
-                         'caps_dot', reuse, name)
+                         'caps_fully_connected', reuse, name)
+
+
+dense = fully_connected
 
 
 @core.layer
@@ -99,7 +110,7 @@ def conv1d(inputs, nouts, caps_dims, kshape,
            dtype=ops.core.float32,
            return_shape=False,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -121,7 +132,7 @@ def conv1d(inputs, nouts, caps_dims, kshape,
                                       trainable,
                                       dtype,
                                       collections,
-                                      summarize,
+                                      summary,
                                       reuse,
                                       name,
                                       scope)
@@ -145,7 +156,7 @@ def conv2d(inputs, nouts, caps_dims, kshape,
            dtype=ops.core.float32,
            return_shape=False,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -167,7 +178,7 @@ def conv2d(inputs, nouts, caps_dims, kshape,
                                       trainable,
                                       dtype,
                                       collections,
-                                      summarize,
+                                      summary,
                                       reuse,
                                       name,
                                       scope)

@@ -1,4 +1,21 @@
-import tensorflow as tf
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from .. import colors
 from . import mm
 from . import actives
@@ -37,7 +54,7 @@ def conv(convop, kernel_shape,
          dtype=core.float32,
          bias_axis=-1,
          collections=None,
-         summarize=True,
+         summary='histogram',
          reuse=False,
          name=None,
          scope=None):
@@ -60,10 +77,9 @@ def conv(convop, kernel_shape,
                        weight_regularizer,
                        trainable,
                        collections,
+                       summary,
                        reuse,
                        scope)
-    if summarize and not reuse:
-        tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          name,
@@ -73,10 +89,9 @@ def conv(convop, kernel_shape,
                          bias_regularizer,
                          trainable,
                          collections,
+                         summary,
                          reuse,
                          scope)
-        if summarize and not reuse:
-            tf.summary.histogram(bias.name, bias)
     else:
         bias = False
     def _conv(x):
@@ -89,21 +104,21 @@ def conv(convop, kernel_shape,
     return _conv
 
 
-""" fully convolutional operation
+""" fully connected operation
 """
-def fully_conv(input_shape, nouts,
-               weight_initializer='glorot_uniform',
-               weight_regularizer=None,
-               bias_initializer='zeros',
-               bias_regularizer=None,
-               act=None,
-               trainable=True,
-               dtype=core.float32,
-               collections=None,
-               summarize=True,
-               reuse=False,
-               name=None,
-               scope=None):
+def fully_connected(input_shape, nouts,
+                    weight_initializer='glorot_uniform',
+                    weight_regularizer=None,
+                    bias_initializer='zeros',
+                    bias_regularizer=None,
+                    act=None,
+                    trainable=True,
+                    dtype=core.float32,
+                    collections=None,
+                    summary='histogram',
+                    reuse=False,
+                    name=None,
+                    scope=None):
     if len(input_shape) != 2:
         raise ValueError('fully_conv require input shape {}[batch-size,'
                          'channels]{}, given {}'
@@ -111,9 +126,9 @@ def fully_conv(input_shape, nouts,
                                  colors.red(input_shape)))
     kernel_shape = [input_shape[1], nouts] # get rid of batch_size axis
     output_shape = [input_shape[0], nouts]
-    def _full_conv(x, weight):
+    def _fully_connected(x, weight):
         return core.dot(x, weight)
-    return conv(_full_conv,
+    return conv(_fully_connected,
                 kernel_shape,
                 weight_initializer,
                 weight_regularizer,
@@ -124,7 +139,7 @@ def fully_conv(input_shape, nouts,
                 dtype,
                 -1,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape
@@ -143,7 +158,7 @@ def conv1d(input_shape, nouts, kshape,
            trainable=True,
            dtype=core.float32,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -159,7 +174,7 @@ def conv1d(input_shape, nouts, kshape,
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
     kernel_shape = [kshape[1], input_shape[-1], nouts]
-    # tf.nn.conv1d requires stride to be integer
+    # conv1d requires stride to be integer
     # collapse dimension into scalar
     stride = stride[1]
     def _conv1d(x, weight):
@@ -175,7 +190,7 @@ def conv1d(input_shape, nouts, kshape,
                 dtype,
                 -1,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape
@@ -194,7 +209,7 @@ def conv2d(input_shape, nouts, kshape,
            trainable=True,
            dtype=core.float32,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -221,7 +236,7 @@ def conv2d(input_shape, nouts, kshape,
                 dtype,
                 -1,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape
@@ -241,7 +256,7 @@ def conv3d(input_shape, nouts,
            trainable=True,
            dtype=core.float32,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -267,7 +282,7 @@ def conv3d(input_shape, nouts,
                 dtype,
                 -1,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape
@@ -287,7 +302,7 @@ def deconv2d(input_shape, output_shape, nout,
              trainable=True,
              dtype=core.float32,
              collections=None,
-             summarize=True,
+             summary='histogram',
              reuse=False,
              name=None,
              scope=None):
@@ -338,7 +353,7 @@ def deconv2d(input_shape, output_shape, nout,
                 dtype,
                 -2,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), out_shape
@@ -361,7 +376,7 @@ def soft_conv(input_shape,
               trainable=True,
               dtype=core.float32,
               collections=None,
-              summarize=True,
+              summary='histogram',
               reuse=False,
               name=None,
               scope=None):
@@ -395,10 +410,9 @@ def soft_conv(input_shape,
                        weight_regularizer,
                        trainable,
                        collections,
+                       summary,
                        reuse,
                        scope)
-    if summarize and not reuse:
-        tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          name,
@@ -408,10 +422,9 @@ def soft_conv(input_shape,
                          bias_regularizer,
                          trainable,
                          collections,
+                         summary,
                          reuse,
                          scope)
-        if summarize and not reuse:
-            tf.summary.histogram(bias.name, bias)
     else:
         bias = False
     if mode not in ['naive', 'nearest', 'floor', 'ceil', 'bilinear']:
@@ -480,7 +493,7 @@ def soft_conv(input_shape,
         batch_range = core.expand_dims(core.range(core.cast(shape[0],
                                                       dtype=core.float32)
                                               ), axis=-1)
-        batch_range = tf.tile(batch_range, [1, nkernels * ndims])
+        batch_range = core.tile(batch_range, [1, nkernels * ndims])
         int_shape = core.shape(offset_grids)
         batch_range = core.reshape(batch_range, int_shape[:-1] + [1])
         offset_grids = core.concat([batch_range, offset_grids], axis=-1)
@@ -501,9 +514,9 @@ def soft_conv(input_shape,
         if mode == 'nearest':
             offset_grids = offset_grids + 0.5
         elif mode == 'floor':
-            offset_grids = tf.floor(offset_grids)
+            offset_grids = core.floor(offset_grids)
         elif mode == 'ceil':
-            offset_grids = tf.ceil(offset_grids)
+            offset_grids = core.ceil(offset_grids)
         offset_grids = core.cast(offset_grids, dtype=core.int32)
         unstacks = core.unstack(offset_grids, axis=-1)
         for dim, bound in enumerate(dim_shape):
@@ -535,18 +548,18 @@ def soft_conv(input_shape,
 
     def _gather(x, offset_grids):
         # offset_grids: [batch-size, rows * cols * krows * kcols, [batch-idx, row-idx, col-idx]]
-        x = tf.transpose(x, [axis, 0] + dims)
+        x = core.transpose(x, [axis, 0] + dims)
         if mode in ['naive', 'nearest', 'floor', 'ceil']:
             # [batch-size * rows * cols * krows * kcols, 3]
             # [[batch-idx, row-idx, col-idx], ...]
             offset_grids = _check_bounds_with_cast(offset_grids)
             # [batch-size, rows, cols, channels] =>
             # [channels, batch-size, rows, cols] for map_fn
-            gathers = tf.map_fn(lambda c:core.gather_nd(c, offset_grids), x)
+            gathers = core.map_fn(lambda c:core.gather_nd(c, offset_grids), x)
             # [batch-size, rows * cols * krows * kcols, channels]
         else:
-            floor = tf.floor(offset_grids)
-            ceil  = tf.ceil(offset_grids)
+            floor = core.floor(offset_grids)
+            ceil  = core.ceil(offset_grids)
             dfloor = 1 - (offset_grids - floor)
             dceil  = 1 - (ceil - offset_grids)
 
@@ -557,8 +570,8 @@ def soft_conv(input_shape,
             # rows-idx : [batch-size, rows * cols * krows * kcols]
             # cols-idx : [batch-size, rows * cols * krows * kcols]
             # [[batch-idx, rows-idx, col-idx], ...]
-            unstack_floor = tf.unstack(floor, axis=-1)
-            unstack_ceil  = tf.unstack(ceil, axis=-1)
+            unstack_floor = core.unstack(floor, axis=-1)
+            unstack_ceil  = core.unstack(ceil, axis=-1)
             # [[[batch-idx, rows-idx, col-idx], ...]
             #  [[batch-idx, rows-idx, col-idx], ...]]
             combines = [unstack_floor, unstack_ceil]
@@ -594,35 +607,34 @@ def soft_conv(input_shape,
                     pos = core.stack(pos, axis=-1)
                     # [batch-size, rows * cols * krows * kcols]
                     gather = core.gather_nd(feature_map, pos)
-                    #gather = tf.stack(gather, axis=-1)
                     gather = gather * factor
                     interpolated.append(core.reshape(gather, shape))
                 # [batch-size, rows, cols, channels]
                 return core.add(interpolated)
 
-            gathers = tf.map_fn(_bilinear, x)
+            gathers = core.map_fn(_bilinear, x)
         # [channels, batch-size, rows , cols, krows * kcols]
         shape = [input_shape[axis], -1] + dim_strided_shape + [nkernels]
         gathers = core.reshape(gathers, shape)
         return gathers, offset_grids
 
-    scope = tf.name_scope(scope)
+    scope = core.name_scope(scope)
 
     def _soft_conv(x):
         with ops_scope:
-            with tf.name_scope('offsets'):
+            with core.name_scope('offsets'):
                 # [batch-size, rows, cols, 2 * krows * kcols]
                 offsets = convop(x)
                 # [batch-size, rows * cols * krows * kcols, 2]
                 offsets = core.reshape(offsets, [-1]+list(grids.shape))
                 offset_grids = grids + offsets
-            with tf.name_scope('gathers'):
+            with core.name_scope('gathers'):
                 offset_grids = _append_batch_grids(offset_grids)
                 # gathers:
                 #    [channels, batch-size, rows, cols, krows * kcols]
                 gathers, offset_grids = _gather(x, offset_grids)
-            with tf.name_scope('convolves'):
-                x = tf.tensordot(gathers, weight, axes=[[0, -1], [1, 0]])
+            with core.name_scope('convolves'):
+                x = core.tensordot(gathers, weight, axes=[[0, -1], [1, 0]])
                 if bias:
                     x = core.bias_add(x, bias)
             return act(x), offset_grids
@@ -637,7 +649,7 @@ def soft_conv(input_shape,
 #                 bias_initializer=None,
 #                 bias_regularizer=None,
 #                 act=None, trainable=True,
-#                 dtype=tf.float32, collections=None,
+#                 dtype=core.float32, collections=None,
 #                 reuse=False, summarize=True,
 #                 name=None, scope=None):
 #     if name is None:
@@ -684,7 +696,7 @@ def soft_conv2d(input_shape, nouts,
                 trainable=True,
                 dtype=core.float32,
                 collections=None,
-                summarize=True,
+                summary='histogram',
                 reuse=False,
                 name=None,
                 scope=None):
@@ -716,7 +728,7 @@ def soft_conv2d(input_shape, nouts,
                      trainable,
                      dtype,
                      collections,
-                     summarize,
+                     summary,
                      reuse,
                      name,
                      scope), output_shape
@@ -727,11 +739,11 @@ def soft_conv2d(input_shape, nouts,
 # def soft_conv3d(input_shape, nouts, kshape, stride, padding='valid',
 #                 weight_initializer=None, weight_regularizer=None,
 #                 bias_initializer=None, bias_regularizer=None, act=None,
-#                 trainable=True, dtype=tf.float32, collections=None,
+#                 trainable=True, dtype=core.float32, collections=None,
 #                 reuse=False, summarize=True, name=None, scope=None):
 #     if name is None:
 #         name = helper.dispatch_name('conv3d')
-#     if tf.is_tensor(inputs):
+#     if core.is_tensor(inputs):
 #         input_shape = inputs.get_shape().as_list()
 #     if len(input_shape) != 4:
 #         raise ValueError('{}conv2d require input shape [batch-size, rows,'
@@ -763,7 +775,7 @@ def soft_conv2d(input_shape, nouts,
 #                   bias_initializer=None,
 #                   bias_regularizer=None,
 #                   act=None, offsets=None,
-#                   trainable=True, dtype=tf.float32,
+#                   trainable=True, dtype=core.float32,
 #                   collections=None, reuse=False,
 #                   summarize=True, name=None, scope=None):
 #     # NOTE: unlike normal convolutional, de-convolutional weights has shape of:
@@ -821,7 +833,7 @@ def sepconv(sepconvop,
             dtype=core.float32,
             caxis=-1,
             collections=None,
-            summarize=True,
+            summary='histogram',
             reuse=False,
             name=None,
             scope=None):
@@ -843,6 +855,7 @@ def sepconv(sepconvop,
                           weight_regularizer,
                           trainable,
                           collections,
+                          summary,
                           reuse,
                           scope)
     pointwise = mm.malloc('pointwise-weight',
@@ -852,11 +865,10 @@ def sepconv(sepconvop,
                           weight_regularizer,
                           trainable,
                           collecitons,
+                          summary,
                           reuse,
                           name,
                           scope)
-    if summarize and not reuse:
-        tf.summary.histogram(weight.name, weight)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          name,
@@ -866,10 +878,9 @@ def sepconv(sepconvop,
                          bias_regularizer,
                          trainable,
                          collections,
+                         summary,
                          reuse,
                          scope)
-        if summarize and not reuse:
-            tf.summary.histogram(bias.name, bias)
     else:
         bias = False
     def _sepconv(x):
@@ -896,7 +907,7 @@ def sepconv2d(input_shape, nouts,
               trainable=True,
               dtype=core.float32,
               collections=None,
-              summarize=True,
+              summary='histogram',
               reuse=False,
               name=None,
               scope=None):
@@ -950,7 +961,7 @@ def sepconv2d(input_shape, nouts,
                    trainable,
                    dtype,
                    collections,
-                   summarize,
+                   summary,
                    reuse,
                    name,
                    scope), output_shape

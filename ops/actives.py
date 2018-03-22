@@ -1,3 +1,21 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from .. import colors
 from . import helper, core
 
@@ -57,10 +75,10 @@ def crelu(aslayer=False,
         ops_scope, _, name = helper.assign_scope(name, scope, 'crelu', reuse)
         def _crelu(x):
             with ops_scope:
-                return core.crelu(x, name)
+                return core.crelu(x)
     else:
         def _crelu(x):
-            return core.crelu(x, name)
+            return core.crelu(x)
     return _crelu
 
 
@@ -79,10 +97,10 @@ def relu(aslayer=False,
                                                  reuse)
         def _relu(x):
             with ops_scope:
-                return core.relu(x, name)
+                return core.relu(x)
     else:
         def _relu(x):
-            return core.relu(x, name)
+            return core.relu(x)
     return _relu
 
 
@@ -98,10 +116,10 @@ def relu6(aslayer=False,
         ops_scope, _, name = helper.assign_scope(name, scope, 'relu6', reuse)
         def _relu6(x):
             with ops_scope:
-                return core.relu6(x, name)
+                return core.relu6(x)
     else:
         def _relu6(x):
-            return core.relu6(x, name)
+            return core.relu6(x)
     return _relu6
 
 
@@ -117,10 +135,10 @@ def elu(aslayer=False,
         ops_scope, _, name = helper.assign_scope(name, scope, 'elu', reuse)
         def _elu(x):
             with ops_scope:
-                return core.elu(x, name)
+                return core.elu(x)
     else:
         def _elu(x):
-            return core.elu(x, name)
+            return core.elu(x)
     return _elu
 
 
@@ -161,10 +179,10 @@ def leaky_relu(alpha=0.2,
                                                  reuse)
         def _leaky_relu(x):
             with ops_scope:
-                return core.leaky_relu(x, alpha, name)
+                return core.leaky_relu(x, alpha)
     else:
         def _leaky_relu(x):
-            return core.leaky_relu(x, alpha, name)
+            return core.leaky_relu(x, alpha)
     return _leaky_relu
 
 
@@ -172,7 +190,7 @@ def leaky_relu(alpha=0.2,
     calculates:
         exp(x) / reduce_sum(exp(x), dim)
 """
-def softmax(dim=-1,
+def softmax(axis=-1,
             aslayer=False,
             reuse=False,
             name=None,
@@ -181,10 +199,10 @@ def softmax(dim=-1,
         ops_scope, _, name = helper.assign_scope(name, scope, 'softmax', reuse)
         def _softmax(x):
             with ops_scope:
-                return core.softmax(x, dim, name)
+                return core.softmax(x, axis)
     else:
         def _softmax(x):
-            return core.softmax(x, dim, name)
+            return core.softmax(x, axis)
     return _softmax
 
 
@@ -203,10 +221,10 @@ def softplus(aslayer=False,
                                                  reuse)
         def _softplus(x):
             with ops_scope:
-                return core.softplus(x, name)
+                return core.softplus(x)
     else:
         def _softplus(x):
-            return core.softplus(x, name)
+            return core.softplus(x)
     return _softplus
 
 
@@ -225,10 +243,10 @@ def softsign(aslayer=False,
                                                  reuse)
         def _softsign(x):
             with ops_scope:
-                return core.softsign(x, name)
+                return core.softsign(x)
     else:
         def _softsign(x):
-            return core.softsign(x, name)
+            return core.softsign(x)
     return _softsign
 
 
@@ -244,10 +262,10 @@ def sigmoid(aslayer=False,
         ops_scope, _, name = helper.assign_scope(name, scope, 'sigmoid', reuse)
         def _sigmoid(x):
             with ops_scope:
-                return core.sigmoid(x, name)
+                return core.sigmoid(x)
     else:
         def _sigmoid(x):
-            return core.sigmoid(x, name)
+            return core.sigmoid(x)
     return _sigmoid
 
 
@@ -263,10 +281,10 @@ def tanh(aslayer=False,
         ops_scope, _, name = helper.assign_scope(name, scope, 'tanh', reuse)
         def _tanh(x):
             with ops_scope:
-                return core.tanh(x, name)
+                return core.tanh(x)
     else:
         def _tanh(x):
-            return core.tanh(x, name)
+            return core.tanh(x)
     return _tanh
 
 

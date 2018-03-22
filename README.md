@@ -26,7 +26,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] label_spec
     - [ ] embedding
   - convolutional
-    - [x] fully_conv [aka. dense]
+    - [x] fully_connected [aka. dense]
     - [ ] conv1d
     - [x] conv2d
     - [x] conv3d
@@ -37,7 +37,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] norm
     - [ ] conv1d
     - [x] conv2d
-    - [x] dot [aka. dense]
+    - [x] fully_connected [aka. dense]
   - losses
     - [x] binary_cross_entropy
     - [x] categorical_cross_entropy
@@ -71,10 +71,10 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] avg_pool2d_global
     - [x] max_pool2d
     - [ ] max_pool2d_global
-    
+
 # useful functions
   - [ ] session
-    - build tf.Session object with all setup done (e.g., checkpoints, logs)
+    - build Session object with all setup done (e.g., checkpoints, logs)
   - [x] build
     - build workflow given build_fun to build networks
   - [ ] train

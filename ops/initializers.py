@@ -1,9 +1,27 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import numpy as np
 from . import core
 
 """ Computes the number of input and output units for a weight shape.
     Args:
-        shape: Integer shape tuple or TF tensor shape.
+        shape: Integer shape tuple or Tensor shape.
     Returns:
         A tuple of scalars (fan_in, fan_out).
 
@@ -136,15 +154,6 @@ def random_uniform(minval=0, maxval=None, seed=None, name=None):
         return core.random_uniform(x, minval, maxval, dtype, seed, name)
     return _random_uniform
 
-#""" random gamma initializer
-#"""
-#def random_gamma(alpha, beta=None, dtype=tf.float32, seed=None, name=None):
-#    def _random_gamma(x):
-#        return tf.random_gamma(x, alpha, beta, dtype, seed, name)
-#
-#    return _random_gamma
-#
-
 
 """
 """
@@ -153,9 +162,6 @@ def constant(value=0, name=None):
         return core.constant(value, dtype, x, name)
     return _constant
 
-#
-#def orthogonal():
-#    return tf.orthogonal_initializer
 
 """
 """

@@ -24,7 +24,7 @@ def build_func(inputs, labels,
                                          return_shape=True,
                                          mode=mode)
     x = layers.base.reshape(x, [outshape[0], -1, outshape[-1]])
-    x = layers.capsules.dot(x, 10, 16, 3)
+    x = layers.capsules.dense(x, 10, 16, 3)
     # norm the output to represent the existance probabilities
     # of each class
     classification = layers.capsules.norm(x)
@@ -77,9 +77,7 @@ def train(xtrain, ytrain,
     config.gpu_options.visible_device_list = '0, 1'
     config.intra_op_parallelism_threads = 1
 
-    logs = 'cache/logs/capsulewise'
-    if fastmode:
-        logs = 'cache/logs/depthwise'
+    logs = 'cache/logs/{}'.format(mode)
 
     sigma.train(xtrain,
                 xtensor,
@@ -105,7 +103,7 @@ parser.add_argument('--checkpoints', type=str,
 parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--batch_size', type=int, default=100)
 parser.add_argument('--shuffle', type=bool, default=True)
-parser.add_argument('--mode', type=str, default='depthwise')
+parser.add_argument('--mode', type=str, default='capsulewise')
 
 if __name__=='__main__':
     args = parser.parse_args()

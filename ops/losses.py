@@ -1,6 +1,22 @@
-import tensorflow as tf
-from . import helper, core
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
 
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+from . import helper, core
 
 def loss(fun):
     def _loss(axis,
@@ -10,7 +26,7 @@ def loss(fun):
               name=None,
               scope=None,
               *args):
-        ops_scope, _, name = helper.assign_scope(name,
+        ops_scope, _, _ = helper.assign_scope(name,
                                                  scope,
                                                  fun.__name__,
                                                  reuse)
@@ -36,9 +52,8 @@ def binary_cross_entropy(axis,
                 x = core.clip(x, statis.epsilon, 1- statis.epsilon)
                 x = core.log(x / (1-x))
             return core.mean(
-                tf.nn.sigmoid_cross_entropy_with_logits(labels=labels,
-                                                        logits=x,
-                                                        name=name),
+                core.sigmoid_cross_entropy_with_logits(labels=labels,
+                                                       logits=x),
                 axis=axis)
     return _binary_cross_entropy
 
@@ -57,9 +72,8 @@ def categorical_cross_entropy(axis,
                 labels = core.one_hot(labels, depth)
             if from_logits:
                 return core.mean(
-                    tf.nn.softmax_cross_entropy_with_logits(labels=labels,
-                                                            logits=x,
-                                                            name=name),
+                    core.softmax_cross_entropy_with_logits(labels=labels,
+                                                           logits=x),
                     axis=axis)
             else:
                 # source code borrowed from:
@@ -118,7 +132,7 @@ def winner_takes_all(axis,
             pred = core.argmax(x, axis=axis)
             if not onehot:
                 labels = core.one_hot(labels, shape[axis])
-            loss_tensor = tf.where(pred==labels,
+            loss_tensor = core.where(pred==labels,
                                    core.zeros_like(labels),
                                    core.ones_like(labels))
             loss_matrix = core.reshape(loss_tensor, (shape[0], -1))

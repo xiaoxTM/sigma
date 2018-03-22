@@ -1,9 +1,36 @@
-# Copyright 2017 Renwu GAO All Rights Reserved.
-#
-# ==============================================================================
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import inspect
+import h5py
+import io
+import pickle
+import gzip
+import os.path
+
 import tensorflow as tf
+from tensorflow.examples.tutorials import mnist
+
 from . import commons
+from sigma import colors
+
+# backend version
+version = tf.__version__
 
 # floating data type
 float16 = tf.float16
@@ -34,6 +61,77 @@ qint32 = tf.qint32
 TensorArray = tf.TensorArray
 
 Optimizer = tf.train.Optimizer
+
+#----- tensorflow GraphKeys -----#
+""" tf.GraphKeys
+  - [ ] ACTIVATIONS
+  - [ ] ASSET_FILEPATHS
+  - [ ] BIASES
+  - [ ] CONCATENATED_VARIABLES
+  - [ ] COND_CONTEXT
+  - [ ] EVAL_STEP
+  - [ ] GLOBAL_STEP
+  - [x] GLOBAL_VARIABLES
+  - [ ] INIT_OP
+  - [ ] LOCAL_INIT_OP
+  - [ ] LOCAL_RESOURCES
+  - [x] LOCAL_VARIABLES
+  - [x] LOSSES
+  - [ ] METRIC_VARIABLES
+  - [ ] MODEL_VARIABLES
+  - [ ] MOVING_AVERAGE_VARIABLES
+  - [ ] QUEUE_RUNNERS
+  - [ ] READY_FOR_LOCAL_INIT_OP
+  - [ ] READY_OP
+  - [ ] REGULARIZATION_LOSSES
+  - [ ] RESOURCES
+  - [ ] SAVEABLE_OBJECTS
+  - [ ] SAVERS
+  - [ ] SUMMARIES
+  - [ ] SUMMARY_OP
+  - [ ] TABLE_INITIALIZERS
+  - [ ] TRAINABLE_RESOURCE_VARIABLES
+  - [x] TRAINABLE_VARIABLES
+  - [ ] TRAIN_OP
+  - [ ] UPDATE_OPS
+  - [x] VARIABLES
+  - [x] WEIGHTS
+  - [ ] WHILE_CONTEXT
+"""
+class Collections():
+    @staticmethod
+    @property
+    def global_variables():
+        return tf.GraphKeys.GLOBAL_VARIABLES
+
+    @staticmethod
+    @property
+    def local_variables():
+        return tf.GraphKeys.LOCAL_VARIABLES
+
+    @staticmethod
+    @property
+    def losses():
+        return tf.GraphKeys.LOSSES
+
+    @staticmethod
+    @property
+    def trainable_variables():
+        return tf.GraphKeys.TRAINABLE_VARIABLES
+
+    @staticmethod
+    @property
+    def variables():
+        return tf.GraphKeys.VARIABLES
+
+    @staticmethod
+    @property
+    def weights():
+        return tf.GraphKeys.WEIGHTS
+
+
+def is_tensor(x):
+    return tf.contrib.framework.is_tensor(x)
 
 def padnorm(fun):
     def _padnorm(*args, **kwargs):
@@ -67,8 +165,102 @@ def cond(condition,
                    name)
 
 
+def while_loop(cond,
+               body,
+               loop_vars,
+               shape_invariants=None,
+               parallel_iterations=10,
+               back_prop=True,
+               swap_memory=False,
+               name=None,
+               **kwargs):
+    """ tensorflow while loop
+        NOTE that for tensorflow > 1.4, it has more than 8 parameters
+        e.g., 1.5 => 9 (+ maximum_iterations)
+        which will be restored in kwargs
+    """
+    return tf.while_loop(cond,
+                         body,
+                         loop_vars,
+                         shape_invariants,
+                         parallel_iterations,
+                         back_prop,
+                         swap_memory,
+                         name,
+                         **kwargs)
+
+#----- tensorflow scop -----#
 def name_scope(name, default_name=None, values=None):
     return tf.name_scope(name, default_name, values)
+
+
+def variable_scope(name_or_scope,
+                   default_name=None,
+                   values=None,
+                   initializer=None,
+                   regularizer=None,
+                   caching_device=None,
+                   partitioner=None,
+                   custom_getter=None,
+                   reuse=None,
+                   dtype=None,
+                   use_resource=None,
+                   **kwargs):
+    """ create variable scope
+        NOTE that for tensorflow > 1.3, it has more than 11 parameters
+        e.g., 1.4 => 12 (+ constraint)
+              1.5 => 13 (+ constraint, auxiliary_name_scope)
+        which will be restored in kwargs
+    """
+    return tf.variable_scope(name_or_scope,
+                             default_name,
+                             values,
+                             initializer,
+                             regularizer,
+                             caching_device,
+                             partitioner,
+                             custom_getter,
+                             reuse,
+                             dtype,
+                             use_resource,
+                             **kwargs)
+
+def get_variable(name,
+                 shape=None,
+                 dtype=None,
+                 initializer=None,
+                 regularizer=None,
+                 trainable=True,
+                 collections=None,
+                 caching_device=None,
+                 partitioner=None,
+                 validate_shape=True,
+                 use_resource=None,
+                 custom_getter=None,
+                 **kwargs):
+    """ create variable
+        NOTE that for tensorflow > 1.3, it has more than 12 parameters
+        e.g., 1.4 => 12 (+ constraint)
+        which will be restored in kwargs
+    """
+    return tf.get_variable(name,
+                           shape,
+                           dtype,
+                           initializer,
+                           regularizer,
+                           trainable,
+                           collections,
+                           caching_device,
+                           partitioner,
+                           validate_shape,
+                           use_resource,
+                           custom_getter,
+                           **kwargs)
+
+
+#----- tensorflow collections -----#
+def add_to_collection(name, variable):
+    return tf.add_to_collection(name, variable)
 
 
 def assign(x, y,
@@ -104,6 +296,10 @@ def stack(values, axis=0, name='stack'):
 
 def unstack(x, num=None, axis=0, name='unstack'):
     return tf.unstack(x, num, axis, name)
+
+
+def transpose(x, orders):
+    return tf.transpose(x, orders)
 
 
 def concat(inputs, axis, name='concat'):
@@ -147,6 +343,10 @@ def tshape(x, name=None, out_type=int32):
 
 
 def reshape(x, output_shape, smart=True, name=None):
+    """ if in smart mode
+        it will automatically change `None` to `-1`
+        if appliable
+    """
     if smart:
         stats = commons.shape_statistics(output_shape)
         nones = stats['nones']
@@ -165,6 +365,12 @@ def reshape(x, output_shape, smart=True, name=None):
                 raise ValueError('`output_shape` can not contains multiple '
                                '`-1`. {}'.format(output_shape))
     return tf.reshape(x, output_shape, name)
+
+
+def flatten(x, name=None):
+    xshape = shape(x)
+    nshape = [xshape[0], -1]
+    return tf.reshape(x, nshape, name)
 
 
 def tile(x, multiples, name=None):
@@ -314,7 +520,6 @@ def clip(x, minv, maxv, name=None):
 #===========================================================
 """
 """
-
 def zeros(shape, dtype=float32, name=None):
     return tf.zeros(shape, dtype, name)
 
@@ -356,7 +561,6 @@ def fill(shape, values, name=None):
 #===========================================================
 """ activations
 """
-
 def crelu(x, name=None):
     return tf.nn.crelu(x, name)
 
@@ -567,3 +771,602 @@ def tensordot(a, b, axes, name=None):
 
 def expand_dims(x, axis=None, name=None):
     return tf.expand_dims(x, axis, name)
+
+#----- tensorflow losses -----#
+def softmax_cross_entropy_with_logits(labels=None,
+                                      logits=None,
+                                      axis=-1,
+                                      name=None):
+    return tf.nn.softmax_cross_entropy_with_logits(_sentine=None,
+                                                   labels=labels,
+                                                   logits=logits,
+                                                   dim=axis,
+                                                   name=name)
+
+
+def sigmoid_cross_entropy_with_logits(labels=None,
+                                      logits=None,
+                                      name=None):
+    return tf.nn.sigmoid_cross_entropy_with_logits(_sentinel=None,
+                                                   labels=labels,
+                                                   logits=logits,
+                                                   name=name)
+
+
+#----- tensorflow summaries -----#
+def summarize(name, tensor, mode='histogram', **kwargs):
+    if mode == 'histogram':
+        return tf.summary.histogram(name, tensor)
+    elif mode == 'scalar':
+        return tf.summary.scalar(name, tensor)
+    elif mode == 'image':
+        return tf.summary.image(name, tensor, **kwargs)
+    else:
+        raise ValueError('`{}` mode for summary not supported'
+                         .format(mode))
+
+
+#----- tensorflow metrics -----#
+def metrics_accuracy(labels,
+                     predictions,
+                     weights=None,
+                     metrics_collections=None,
+                     updates_collections=None,
+                     name=None):
+    return tf.metrics.accuracy(labels,
+                               predictions,
+                               weights,
+                               metrics_collections,
+                               updates_collections,
+                               name)
+
+
+def metrics_auc(labels,
+               predictions,
+               weights=None,
+               num_thresholds=200,
+               metrics_collections=None,
+               updates_collections=None,
+               curve='ROC',
+               name=None):
+    return tf.metrics.auc(labels,
+                          predictions,
+                          weights,
+                          num_thresholds,
+                          metrics_collections,
+                          updates_collections,
+                          curve,
+                          name)
+
+
+def metrics_false_negatives(labels,
+                            predictions,
+                            weights=None,
+                            metrics_collections=None,
+                            updates_collections=None,
+                            name=None):
+    return tf.metrics.false_negatives(labels,
+                                      predictions,
+                                      weights,
+                                      metrics_collections,
+                                      updates_collections,
+                                      name)
+
+
+def metrics_false_negatives_at_threshold(labels,
+                                         predictions,
+                                         thresholds,
+                                         weights=None,
+                                         metrics_collections=None,
+                                         updates_collections=None,
+                                         name=None):
+    return tf.metrics.false_negatives_at_threshold(labels,
+                                                   predictions,
+                                                   thresholds,
+                                                   weights,
+                                                   metrics_collections,
+                                                   updates_collections,
+                                                   name)
+
+
+def metrics_false_positives(labels,
+                            predictions,
+                            weights=None,
+                            metrics_collections=None,
+                            updates_collections=None,
+                            name=None):
+    return tf.metrics.false_positives(labels,
+                                      predictions,
+                                      weights,
+                                      metrics_collections,
+                                      updates_collections,
+                                      name)
+
+
+def metrics_false_positives_at_threshold(labels,
+                                         predictions,
+                                         thresholds,
+                                         weights=None,
+                                         metrics_collections=None,
+                                         updates_collections=None,
+                                         name=None):
+    return tf.metrics.false_positives_at_threshold(labels,
+                                                   predictions,
+                                                   thresholds,
+                                                   weights,
+                                                   metrics_collections,
+                                                   updates_collections,
+                                                   name)
+
+def metrics_true_negatives(labels,
+                           predictions,
+                           weights=None,
+                           metrics_collections=None,
+                           updates_collections=None,
+                           name=None):
+    return tf.metrics.true_negatives(labels,
+                                     predictions,
+                                     weights,
+                                     metrics_collections,
+                                     updates_collections,
+                                     name)
+
+
+def metrics_true_negatives_at_threshold(labels,
+                                        predictions,
+                                        thresholds,
+                                        weights=None,
+                                        metrics_collections=None,
+                                        updates_collections=None,
+                                        name=None):
+    return tf.metrics.true_negatives_at_threshold(labels,
+                                                  predictions,
+                                                  thresholds,
+                                                  weights,
+                                                  metrics_collections,
+                                                  updates_collections,
+                                                  name)
+
+
+def metrics_true_positives(labels,
+                           predictions,
+                           weights=None,
+                           metrics_collections=None,
+                           updates_collections=None,
+                           name=None):
+    return tf.metrics.true_positives(labels,
+                                     predictions,
+                                     weights,
+                                     metrics_collections,
+                                     updates_collections,
+                                     name)
+
+
+def metrics_true_positives_at_threshold(labels,
+                                        predictions,
+                                        thresholds,
+                                        weights=None,
+                                        metrics_collections=None,
+                                        updates_collections=None,
+                                        name=None):
+    return tf.metrics.true_positives_at_threshold(labels,
+                                                  predictions,
+                                                  thresholds,
+                                                  weights,
+                                                  metrics_collections,
+                                                  updates_collections,
+                                                  name)
+
+
+def metrics_mean_iou(labels,
+                     predictions,
+                     num_classes,
+                     weights=None,
+                     metrics_collections=None,
+                     updates_collections=None,
+                     name=None):
+    return tf.metrics.mean_iou(labels,
+                               predictions,
+                               num_classes,
+                               weights,
+                               metrics_collections,
+                               updates_collections,
+                               name)
+
+def metrics_precision(labels,
+                      predictions,
+                      weights=None,
+                      metrics_collections=None,
+                      updates_collections=None,
+                      name=None):
+    return tf.metrics.precision(labels,
+                                precision,
+                                weights,
+                                metrics_collections,
+                                updates_collections,
+                                name)
+
+
+def metrics_recall(labels,
+                   predictions,
+                   weights=None,
+                   metrics_collections=None,
+                   updates_collections=None,
+                   name=None):
+    return tf.metrics.recall(labels,
+                             predictions,
+                             weights,
+                             metrics_collections,
+                             updates_collections,
+                             name)
+
+
+#----- tensorflow optimizer -----#
+def get_optimizer(optimizer, **kwargs):
+    if optimizer not in ['Optimizer', 'GradientDescentOptimizer',
+                         'AdadeltaOptimizer', 'AdagradOptimizer',
+                         'AdagradDAOptimizer', 'MomentumOptimizer',
+                         'AdamOptimizer', 'FtrlOptimizer',
+                         'ProximalGradientDescentOptimizer',
+                         'ProximalAdagradOptimizer',
+                         'RMSPropOptimizer']:
+        raise NotImplementedError('optimizer `{}` not implemented'
+                                  .format(optimizer))
+    return eval('tf.train.{}(**kwargs)'.format(optimizer))
+
+
+#------ tensorflow pooling -----#
+@padnorm
+def avg_pool(x, ksize, strides, padding,
+             data_format=commons.data_format,
+             name=None):
+    return tf.nn.avg_pool(x,
+                          ksize,
+                          strides,
+                          padding,
+                          data_format,
+                          name)
+
+
+@padnorm
+def max_pool(x, ksize, strides, padding,
+            data_format=commons.data_format,
+            name=None):
+    return tf.nn.max_pool(x,
+                          size,
+                          strides,
+                          padding,
+                          data_format,
+                          name)
+
+
+#----- tensorflow resize -----#
+def resize_nearest_neighbor(images,
+                            size,
+                            align_corners=False,
+                            name=None):
+    return tf.image.resize_nearest_neighbor(images,
+                                            size,
+                                            align_corners,
+                                            name)
+
+def resize_bilinear(images,
+                    size,
+                    align_corners=False,
+                    name=None):
+    return tf.image.resize_bilinear(images,
+                                    size,
+                                    align_corners,
+                                    name)
+
+
+def resize_bicubic(images,
+                   size,
+                   align_corners=False,
+                   name=None):
+    return tf.image.resize_bicubic(images,
+                                   size,
+                                   align_corners,
+                                   name)
+
+
+def resize_area(images,
+                size,
+                align_corners=False,
+                name=None):
+    return tf.image.resize_area(images,
+                                size,
+                                align_corners,
+                                name)
+
+
+#------ tensorflow lx_loss -----#
+def l2_loss(tensor, name):
+    return tf.nn.l2_loss(tensor, name)
+
+
+#----- tensorflow dropout
+def dropout(x,
+            keep_prob,
+            noise_shape=None,
+            seed=None,
+            name=None):
+    return tf.nn.dropout(x,
+                         keep_prob,
+                         noise_shape,
+                         seed,
+                         name)
+
+#----- tensorflow moments -----#
+def moments(x,
+            axes,
+            shift=None,
+            keepdims=False,
+            name=None):
+    return tf.nn.moments(x,
+                         axes,
+                         shift,
+                         name,
+                         keepdims)
+
+
+#----- tensorflow batch norm -----#
+def fused_batch_norm(x,
+                     scale,
+                     offset,
+                     mean=None,
+                     variance=None,
+                     epsilon=commons.epsilon,
+                     data_format=commons.data_format,
+                     is_training=True,
+                     name=None):
+    return tf.nn.fused_batch_norm(x,
+                                  scale,
+                                  offset,
+                                  mean,
+                                  variance,
+                                  epsilon,
+                                  data_format,
+                                  is_training,
+                                  name)
+
+def batch_norm(x,
+               mean,
+               variance,
+               offset,
+               scale,
+               variance_epsilon,
+               name=None):
+    return tf.nn.batch_norm(x,
+                            mean,
+                            variance,
+                            offset,
+                            scale,
+                            variance_epsilon,
+                            name)
+
+#----- tensorflow save model / weights -----#
+def load_mnist(path, one_hot):
+    return mnist.input_data.read_data_set(path, one_hot)
+
+
+def load(session, checkpoints,
+         saver=None,
+         verbose=True):
+    if saver is None:
+        saver = tf.train.Saver()
+    if not isinstance(saver, tf.train.Saver):
+        raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
+                        'given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.fg.blue, colors.reset,
+                                colors.red(type(saver))))
+    if not isinstance(session, tf.Session):
+        raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
+                        'given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.fg.blue, colors.reset,
+                                colors.fg.red(type(session))))
+    ckpt = tf.train.get_checkpoint_state(os.path.dirname(checkpoints))
+    if ckpt and ckpt.model_checkpoint_path:
+        if verbose:
+            print('{}load check point from {}{}{}'
+                   .format(colors.fg.cyan, colors.fg.red,
+                           ckpt.model_checkpoint_path, colors.reset)
+                 )
+        saver.restore(session, ckpt.model_checkpoint_path)
+    elif verbose:
+        print('{}restoring from checkpoint {}ignored{}'
+              .format(colors.fg.blue, colors.fg.red, colors.reset))
+    return session, saver
+
+
+def save(session, checkpoints,
+         saver=None,
+         verbose=True,
+         **kwargs):
+    if saver is None:
+        saver = tf.train.Saver()
+    if not isinstance(saver, tf.train.Saver):
+        raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
+                        'given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.fg.blue, colors.reset,
+                                colors.red(type(saver))))
+    if not isinstance(session, tf.Session):
+        raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
+                        'given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.fg.blue, colors.reset,
+                                colors.red(type(session))))
+    if verbose:
+        print('{}saving check point to {}{}{}'
+               .format(colors.fg.cyan, colors.fg.red,
+                       checkpoints, colors.reset))
+    saver.save(session, checkpoints, **kwargs)
+    return session, saver
+
+
+def import_weights(filename, session,
+                   graph=None,
+                   collections=[Collections.global_variables],
+                   verbose=True):
+    if graph is None:
+        graph = session.graph
+    if collections is None:
+        collections = graph.get_all_collection_keys()
+    elif isinstance(collections, str):
+        collections = [collections]
+
+    if not isinstance(collections, (list, tuple, np.ndarray)):
+        raise TypeError('collections must be list/tuple. given {}'
+                        .format(colors.red(type(collections))))
+    with h5py.File(filename, 'r') as f:
+        if verbose:
+            print('importing weights from {}'
+                  .format(colors.green(filename)))
+        imported_weights = {}
+        for collection in collections:
+            weight_group = f[collection]
+            weight_names = commons.decode(weight_group.attrs['weight_names'])
+            params = graph.get_collection(collection)
+            for param in params:
+                if not imported_weights.get(param.name, False):
+                    if param.name in weight_names:
+                        value = np.asarray(weight_group[param.name])
+                        op = tf.assign(param, value)
+                        session.run(op)
+                    elif verbose:
+                        print('parameter {} not found.'
+                              .format(colors.red(param.name)))
+                    imported_weights[param.name] = True
+    return graph, session
+
+
+def export_weights(filename, session,
+                   graph=None,
+                   collections=[Collections.global_variables],
+                   verbose=True):
+    with h5py.File(filename, mode='w') as f:
+        if verbose:
+            print('exporting weights to {}{}{}'
+                  .format(colors.green(filename)))
+        if graph is None:
+            graph = session.graph
+        f.attrs['sigma_version'] = sigma.__version__.encode('utf-8')
+        f.attrs['data_format'] = commons.data_format.encode('utf-8')
+        if collections is None:
+            collections = graph.get_all_collection_keys()
+        elif isinstance(collections, str):
+            collections = [collections]
+        if not isinstance(collections, (list, tuple, np.ndarray)):
+            raise TypeError('`collections` must be list/tuple or np.ndarray')
+        exported_weights = {}
+        for collection in collections:
+            weight_group = f.create_group(collection)
+            params = graph.get_collection(collection)
+            names = []
+            for param in params:
+                if not exported_weights.get(param.name, False):
+                    val = session.run(param)
+                    pset = weight_group.create_dataset(str(param.name),
+                                                       val.shape,
+                                                       dtype=val.dtype)
+                    names.append(param.name)
+                    if not val.shape:
+                        pset[()] = val
+                    else:
+                        pset[:] = val
+                    exported_weights[param.name] = True
+            if len(names) != 0:
+                weight_group.attrs['weight_names'] = commons.encode(names)
+
+
+def import_model(filename, session,
+                 verbose=True,
+                 **kwargs):
+    if verbose:
+        print('importing model from {}'
+              .format(colors.green(filename)))
+    pkl = gzip.open(filename, 'rb')
+    meta, data = pickle.load(pkl, **kwargs)
+    pkl.close()
+    with io.StringIO(meta) as sio:
+        saver = tf.train.import_meta_graph(sio, **kwargs)
+    with io.StringIO(data) as sio:
+        saver.restore(session, sio)
+
+
+def export_model(filename, session,
+                 verbose=True,
+                 **kwargs):
+    if verbose:
+        print('exporting model to {}'
+              .format(colors.green(filename)))
+    if saver is None:
+        saver = tf.train.Saver()
+    pkl = gzip.open(filename, 'wb')
+    meta = tf.train.export_meta_graph(**kwargs)
+    with io.StringIO() as sio:
+        saver.save(session, sio)
+        data = sio.getvalue()
+        pkl.dummy([meta, data])
+    pkl.close()
+
+#----- tensorflow session run -----#
+def run(session, operations,
+        feed_dict=None,
+        options=None,
+        run_metadata=None):
+    return session.run(operations,
+                       feed_dict,
+                       options,
+                       run_metadata)
+
+
+#----- tensorflow engine -----#
+def session(target='',
+            graph=None,
+            config=None,
+            initializers=None,
+            checkpoints=None,
+            logs=None,
+            verbose=True):
+    sess = tf.Session(target, graph, config)
+    sess.run([tf.global_variables_initializer(),
+              tf.local_variables_initializer()])
+    if initializers is not None:
+        sess.run(initializers)
+    return sess
+
+
+def close_session(session):
+    if session is not None:
+        session.close()
+
+
+def close_summary_writer(writer):
+    if writer is not None:
+        return writer.close()
+
+
+def summary_merge():
+    return tf.summary.merge_all()
+
+
+def summary_writer(logdir,
+                   graph=None,
+                   max_queue=10,
+                   flush_secs=120,
+                   graph_def=None,
+                   filename_suffix=None):
+    return tf.summary.FileWriter(logdir,
+                                 graph,
+                                 max_queue,
+                                 flush_secs,
+                                 graph_def,
+                                 filename_suffix)
+
+
+def add_summary(filewriter, summary, global_step=None):
+    return filewriter.add_summary(summary, global_step)

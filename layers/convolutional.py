@@ -1,3 +1,21 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from .. import ops, colors
 from . import core
 
@@ -45,54 +63,54 @@ def _layers(fun, inputs, output, return_shape, typename, reuse, name):
                       name of collections. if None, default is GLOBAL
                       (therefore can be initialized by call:
                        ```python
-                          session.run(tf.global_variables_initializer())
+                          session.run(global_variables_initializer())
                        ```
                       )
-        summarize : bool
-                    if True, write to tf.summary.histogram
+        summary : string / None [`histogram`, `image`, `text`, `scalar`]
+                  if not None, write to summary as `summary`
         reuse : bool
                 whether should reuse weight / bias instead of allocat new
         name : string | None
                variable name when allocating one
 """
 
-""" fully convolutional operation
+""" fully connected operation
 """
 @core.layer
-def fully_conv(inputs, nouts,
-               weight_initializer=core.__defaults__['weight_initializer'],
-               weight_regularizer=core.__defaults__['weight_regularizer'],
-               bias_initializer=core.__defaults__['bias_initializer'],
-               bias_regularizer=core.__defaults__['bias_regularizer'],
-               act=None,
-               trainable=True,
-               dtype=ops.core.float32,
-               return_shape=False,
-               collections=None,
-               summarize=core.__defaults__['summarize'],
-               reuse=False,
-               name=None,
-               scope=None):
+def fully_connected(inputs, nouts,
+                    weight_initializer=core.__defaults__['weight_initializer'],
+                    weight_regularizer=core.__defaults__['weight_regularizer'],
+                    bias_initializer=core.__defaults__['bias_initializer'],
+                    bias_regularizer=core.__defaults__['bias_regularizer'],
+                    act=None,
+                    trainable=True,
+                    dtype=ops.core.float32,
+                    return_shape=False,
+                    collections=None,
+                    summary=core.__defaults__['summary'],
+                    reuse=False,
+                    name=None,
+                    scope=None):
     input_shape = ops.core.shape(inputs)
-    fun, output = ops.convs.fully_conv(input_shape,
-                                       nouts,
-                                       weight_initializer,
-                                       weight_regularizer,
-                                       bias_initializer,
-                                       bias_regularizer,
-                                       act,
-                                       trainable,
-                                       dtype,
-                                       collections,
-                                       summarize,
-                                       reuse,
-                                       name,
-                                       scope)
+    fun, output = ops.convs.fully_connected(input_shape,
+                                            nouts,
+                                            weight_initializer,
+                                            weight_regularizer,
+                                            bias_initializer,
+                                            bias_regularizer,
+                                            act,
+                                            trainable,
+                                            dtype,
+                                            collections,
+                                            summary,
+                                            reuse,
+                                            name,
+                                            scope)
     return _layers(fun, inputs, output, return_shape,
-                   'fully-conv', reuse, name)
+                   'fully-connected', reuse, name)
 
-# alias of fully-conv
-dense = fully_conv
+# alias of fully-connected
+dense = fully_connected
 
 """ 1-D convolutional operation
 """
@@ -110,7 +128,7 @@ def conv1d(inputs, nouts,
            dtype=ops.core.float32,
            return_shape=False,
            collections=None,
-           summarize=core.__defaults__['summarize'],
+           summary=core.__defaults__['summary'],
            reuse=False,
            name=None,
            scope=None):
@@ -128,7 +146,7 @@ def conv1d(inputs, nouts,
                                    trainable,
                                    dtype,
                                    collections,
-                                   summarize,
+                                   summary,
                                    reuse,
                                    name,
                                    scope)
@@ -145,9 +163,9 @@ def conv1d(inputs, nouts,
 #                 bias_initializer='zeros',
 #                 bias_regularizer=None,
 #                 act=None, trainable=True,
-#                 dtype=tf.float32,
+#                 dtype=core.float32,
 #                 collections=None,
-#                 reuse=False, summarize=True,
+#                 reuse=False, summary='histogram',
 #                 name=None, scope=None):
 #     input_shape = inputs.get_shape().as_list()
 #     fun, output = convs.soft_conv1d(input_shape, nouts,
@@ -158,7 +176,7 @@ def conv1d(inputs, nouts,
 #                                     bias_regularizer,
 #                                     act, trainable, dtype,
 #                                     collections, reuse,
-#                                     summarize, name, scope)
+#                                     summary, name, scope)
 #     x = fun(inputs, offsets)
 #     return x
 
@@ -179,7 +197,7 @@ def conv2d(inputs, nouts,
            dtype=ops.core.float32,
            return_shape=False,
            collections=None,
-           summarize=core.__defaults__['summarize'],
+           summary=core.__defaults__['summary'],
            reuse=False,
            name=None,
            scope=None):
@@ -196,7 +214,7 @@ def conv2d(inputs, nouts,
                                    trainable,
                                    dtype,
                                    collections,
-                                   summarize,
+                                   summary,
                                    reuse,
                                    name,
                                    scope)
@@ -245,7 +263,7 @@ def soft_conv2d(inputs, nouts,
                 dtype=ops.core.float32,
                 return_shape=False,
                 collections=None,
-                summarize=core.__defaults__['summarize'],
+                summary=core.__defaults__['summary'],
                 reuse=False,
                 name=None,
                 scope=None):
@@ -268,7 +286,7 @@ def soft_conv2d(inputs, nouts,
                                         trainable,
                                         dtype,
                                         collections,
-                                        summarize,
+                                        summary,
                                         reuse,
                                         name,
                                         scope)
@@ -305,7 +323,7 @@ def conv3d(inputs, nouts,
            dtype=ops.core.float32,
            return_shape=False,
            collections=None,
-           summarize=core.__defaults__['summarize'],
+           summary=core.__defaults__['summary'],
            reuse=False,
            name=None,
            scope=None):
@@ -324,7 +342,7 @@ def conv3d(inputs, nouts,
                                    trainable,
                                    dtype,
                                    collections,
-                                   summarize,
+                                   summary,
                                    reuse,
                                    name,
                                    scope)
@@ -349,7 +367,7 @@ def deconv2d(inputs, output_shape, nouts,
              dtype=ops.core.float32,
              return_shape=False,
              collections=None,
-             summarize=core.__defaults__['summarize'],
+             summary=core.__defaults__['summary'],
              reuse=False,
              name=None,
              scope=None):
@@ -366,7 +384,7 @@ def deconv2d(inputs, output_shape, nouts,
                                      trainable,
                                      dtype,
                                      collections,
-                                     summarize,
+                                     summary,
                                      reuse,
                                      name,
                                      scope)
@@ -391,7 +409,7 @@ def sepconv2d(inputs, nouts,
               dtype=ops.core.float32,
               return_shape=False,
               collections=None,
-              summarize=core.__defaults__['summarize'],
+              summary=core.__defaults__['summary'],
               reuse=False,
               name=None,
               scope=None):
@@ -410,7 +428,7 @@ def sepconv2d(inputs, nouts,
                                       act, trainable,
                                       dtype,
                                       collections,
-                                      summarize,
+                                      summary,
                                       reuse,
                                       name,
                                       scope)

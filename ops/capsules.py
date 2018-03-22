@@ -1,6 +1,23 @@
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from .. import colors
 from . import core, actives, helper, mm
-import tensorflow as tf
 
 
 def _leaky_routing(logits):
@@ -11,7 +28,7 @@ def _leaky_routing(logits):
 
         Attributes
         ==========
-        logits : tf.Tensor
+        logits : Tensor
                  output tensor of one layer with shape of:
                  [batch-size, ncaps, caps_dim]
                  for fully connected
@@ -41,7 +58,7 @@ def _agreement_routing(prediction_vectors,
     """ calculate v_j by dynamic routing
         Attributes
         ==========
-        prediction_vectors : tf.Tensor
+        prediction_vectors : Tensor
                              predictions from previous layers
                              denotes u_{j|i}_hat in paper
                              with the shape of
@@ -51,7 +68,7 @@ def _agreement_routing(prediction_vectors,
                              for conv1d
                              [batch-size, nrows, ncols, incaps, outcaps, outcapdim]
                              for conv2d
-        logits : tf.Tensor
+        logits : Tensor
                  with the shape of
                  [1, incaps, outcaps, 1]
                  for fully_connected
@@ -81,7 +98,7 @@ def _agreement_routing(prediction_vectors,
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
                                    clear_after_read=False)
-    logits = tf.fill(logits_shape, 0.0)
+    logits = core.fill(logits_shape, 0.0)
     act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
     capsule_axis = helper.normalize_axes(core.shape(logits), -3)
@@ -106,7 +123,7 @@ def _agreement_routing(prediction_vectors,
         logits += distance
         return (i+1, logits, activations)
 
-    _, logits, activations = tf.while_loop(
+    _, logits, activations = core.while_loop(
         lambda idx, logits, activations: idx < iterations,
         _update,
         loop_vars=[idx, logits, activations],
@@ -126,7 +143,6 @@ def norm(input_shape,
         [batch-size, capsules, capdims]
         this function calculates the norm of each capsule
         along capsdims dimension
-
     """
     ops_scope, _, _ = helper.assign_scope(name, scope, 'caps_norm', reuse)
     if axis is None:
@@ -153,7 +169,7 @@ def conv(convop, bias_shape, logits_shape, iterations,
          trainable=True,
          dtype=core.float32,
          collections=None,
-         summarize=True,
+         summary='histogram',
          reuse=False,
          name=None,
          scope=None):
@@ -174,10 +190,9 @@ def conv(convop, bias_shape, logits_shape, iterations,
                          bias_regularizer,
                          trainable,
                          collections,
+                         summary,
                          reuse,
                          scope)
-        if summarize and not reuse:
-            tf.summary.histogram(bias.name, bias)
     else:
         bias = False
     def _conv(x):
@@ -193,27 +208,27 @@ def conv(convop, bias_shape, logits_shape, iterations,
             #     [batch-size, neurons, incaps, outcaps, caps_dims]
             # for 2d:
             #     [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
-            with tf.name_scope('agreement_routing'):
+            with core.name_scope('agreement_routing'):
                 x = _agreement_routing(x, logits_shape, iterations, bias, leaky)
             return x
     return _conv
 
 
-def dot(input_shape, nouts, caps_dims,
-        iterations=2,
-        leaky=False,
-        weight_initializer='glorot_uniform',
-        weight_regularizer=None,
-        bias_initializer='zeros',
-        bias_regularizer=None,
-        act=None,
-        trainable=True,
-        dtype=core.float32,
-        collections=None,
-        summarize=True,
-        reuse=False,
-        name=None,
-        scope=None):
+def fully_connected(input_shape, nouts, caps_dims,
+                    iterations=2,
+                    leaky=False,
+                    weight_initializer='glorot_uniform',
+                    weight_regularizer=None,
+                    bias_initializer='zeros',
+                    bias_regularizer=None,
+                    act=None,
+                    trainable=True,
+                    dtype=core.float32,
+                    collections=None,
+                    summary='histogram',
+                    reuse=False,
+                    name=None,
+                    scope=None):
     """ fully_connected layer for capsule networks
         Attributes
         ==========
@@ -243,11 +258,10 @@ def dot(input_shape, nouts, caps_dims,
                        weight_regularizer,
                        trainable,
                        collections,
+                       summary,
                        reuse,
                        scope)
-    if summarize and not reuse:
-        tf.summary.histogram(weight.name, weight)
-    def _dot(x):
+    def _fully_connected(x):
         # x shape:
         #    [batch-size, incaps, incapdims]
         # weight shape:
@@ -260,7 +274,7 @@ def dot(input_shape, nouts, caps_dims,
         # then sum along with incapdims to get [batch-size, incaps, nouts * caps_dims]
         # then reshape to [batch-size, incaps, nouts, caps_dims]
         return core.reshape(core.sum(x * weight, 2), [-1, incaps, nouts, caps_dims])
-    return conv(_dot,
+    return conv(_fully_connected,
                 bias_shape,
                 logits_shape,
                 iterations,
@@ -271,7 +285,7 @@ def dot(input_shape, nouts, caps_dims,
                 trainable,
                 dtype,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape
@@ -291,7 +305,7 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
            trainable=True,
            dtype=core.float32,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -351,18 +365,17 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
                         weight_regularizer,
                         trainable,
                         collections,
+                        summary,
                         reuse,
                         scope)
-    if summarize and not reuse:
-        tf.summary.histogram(kernels.name, kernels)
 
     def _body(idx, x, array):
         # kernels shape : [k, incaps, incapdims, outcaps * outcapdims]
         # kernel shape  : [k, incapdims, outcaps * outcapdims]
-        kernel = tf.gather(kernels, idx, axis=-3)
+        kernel = core.gather(kernels, idx, axis=-3)
         # x shape    : [batch-size, neurons, incaps, incapdim]
         # subx shape : [batch-size, neurons, incapdim]
-        subx = tf.gather(x, idx, axis=-2)
+        subx = core.gather(x, idx, axis=-2)
         conv1d_output = core.conv2d(subx,
                                     kernel,
                                     stride,
@@ -381,7 +394,7 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
         array = core.TensorArray(dtype=core.float32,
                                  size=iterations,
                                  clear_after_read=False)
-        _, x, array = tf.while_loop(
+        _, x, array = core.while_loop(
             lambda idx, x, array : idx < iterations,
             _body,
             loop_vars = [idx, x, array],
@@ -399,7 +412,7 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
         array = core.reshape(array, newshape)
         # then transpose to
         # [batch-size, nneurons, incaps, outcaps, caps_dims]
-        array = tf.transpose(array, (1, 2, 0, 3, 4))
+        array = core.transpose(array, (1, 2, 0, 3, 4))
         return array
     return conv(_conv1d,
                 bias_shape,
@@ -412,7 +425,7 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
                 trainable,
                 dtype,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape
@@ -433,7 +446,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
            trainable=True,
            dtype=core.float32,
            collections=None,
-           summarize=True,
+           summary='histogram',
            reuse=False,
            name=None,
            scope=None):
@@ -497,10 +510,9 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                            weight_regularizer,
                            trainable,
                            collections,
+                           summary,
                            reuse,
                            scope)
-        if summarize and not reuse:
-            tf.summary.histogram(weight.name, weight)
     else:
         # else run in slow mode, apply capsulewise_conv2d
         # that is, for each `capsule version of feature map`
@@ -515,18 +527,17 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                         weight_regularizer,
                         trainable,
                         collections,
+                        summary,
                         reuse,
                         scope)
-    if summarize and not reuse:
-        tf.summary.histogram(kernels.name, kernels)
 
     def _body(idx, x, array):
         # kernels shape : [krow, kcol, incaps, incapdims, outcaps * outcapdims]
         # kernel shape  : [krow, kcol, incapdims, outcaps * outcapdims]
-        kernel = tf.gather(kernels, idx, axis=-3)
+        kernel = core.gather(kernels, idx, axis=-3)
         # x shape    : [batch-size, rows, cols, incaps, incapdim]
         # subx shape : [batch-size, rows, cols, incapdim]
-        subx = tf.gather(x, idx, axis=-2)
+        subx = core.gather(x, idx, axis=-2)
         conv2d_output = core.conv2d(subx,
                                     kernel,
                                     stride,
@@ -545,7 +556,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         array = core.TensorArray(dtype=core.float32,
                                  size=iterations,
                                  clear_after_read=False)
-        _, x, array = tf.while_loop(
+        _, x, array = core.while_loop(
             lambda idx, x, array : idx < iterations,
             _body,
             loop_vars = [idx, x, array],
@@ -564,7 +575,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         array = core.reshape(array, newshape)
         # then transpose to
         # [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
-        array = tf.transpose(array, (1, 2, 3, 0, 4, 5))
+        array = core.transpose(array, (1, 2, 3, 0, 4, 5))
         return array
 
     def _depthwise_conv2d(x):
@@ -609,7 +620,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                 trainable,
                 dtype,
                 collections,
-                summarize,
+                summary,
                 reuse,
                 name,
                 scope), output_shape

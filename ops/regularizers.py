@@ -1,4 +1,21 @@
-import tensorflow as tf
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import numpy as np
 from . import core
 
@@ -47,12 +64,12 @@ def total_variation_regularizer(shape, reuse=False, name=None, scope=None):
         latter[axis] = np.delete(latter[axis], 0) # re-indexing [1:]
         previous = np.meshgrid(*previous, indexing='ij')
         previous = np.stack(previous, axis=-1)
-        previous = tf.gather_nd(x, previous)
+        previous = core.gather_nd(x, previous)
         latter = np.meshgrid(*latter, indexing='ij')
         latter = np.stack(latter, axis=-1)
-        latter = tf.gather_nd(x, latter)
-        differences = tf.nn.l2_loss(latter - previous)
-        return tf.reduce_mean(differences)
+        latter = core.gather_nd(x, latter)
+        differences = core.l2_loss(latter - previous)
+        return core.mean(differences)
 
     def _total_variation_regularizer(x):
         return np.sum([_differ(x, axis) for axis in axes])

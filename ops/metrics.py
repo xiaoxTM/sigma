@@ -1,4 +1,21 @@
-import tensorflow as tf
+"""
+    sigma, a deep neural network framework.
+    Copyright (C) 2018  Renwu Gao
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 from . import helper, core
 
 
@@ -39,12 +56,12 @@ def accuracy(from_logits=True,
             if from_logits:
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return tf.metrics.accuracy(labels,
-                                       x,
-                                       weights,
-                                       metrics_collections,
-                                       updates_collections,
-                                       name)
+            return core.metrics_accuracy(labels,
+                                         x,
+                                         weights,
+                                         metrics_collections,
+                                         updates_collections,
+                                         name)
     return _accuracy
 
 
@@ -64,15 +81,15 @@ def auc(from_logits=True,
             if from_logits:
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return tf.metrics,auc(labels,
-                                  x,
-                                  weights,
-                                  num_thresholds,
-                                  metrics_collections,
-                                  updates_collections,
-                                  curve,
-                                  name,
-                                  summation_method)
+            return core.metrics_auc(labels,
+                                    x,
+                                    weights,
+                                    num_thresholds,
+                                    metrics_collections,
+                                    updates_collections,
+                                    curve,
+                                    name,
+                                    summation_method)
     return _auc
 
 
@@ -91,20 +108,20 @@ def false_negatives(from_logits=True,
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return tf.metrics.false_negatives_at_threshold(labels,
-                                                               x,
-                                                               thresholds,
-                                                               weights,
-                                                               metrics_collections,
-                                                               updates_collections,
-                                                               name)
+                return core.metrics_false_negatives_at_threshold(labels,
+                                                                 x,
+                                                                 thresholds,
+                                                                 weights,
+                                                                 metrics_collections,
+                                                                 updates_collections,
+                                                                 name)
             else:
-                return tf.metrics.false_negatives(labels,
-                                                  x,
-                                                  weights,
-                                                  metrics_collections,
-                                                  updates_collections,
-                                                  name)
+                return core.metrics_false_negatives(labels,
+                                                    x,
+                                                    weights,
+                                                    metrics_collections,
+                                                    updates_collections,
+                                                    name)
     return _false_negatives
 
 
@@ -123,20 +140,20 @@ def false_positives(from_logits=True,
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return tf.metrics.false_positives_at_threshold(labels,
-                                                               x,
-                                                               thresholds,
-                                                               weights,
-                                                               metrics_collections,
-                                                               updates_collections,
-                                                               name)
+                return core.metrics_false_positives_at_threshold(labels,
+                                                                 x,
+                                                                 thresholds,
+                                                                 weights,
+                                                                 metrics_collections,
+                                                                 updates_collections,
+                                                                 name)
             else:
-                return tf.metrics.false_positives(labels,
-                                                  x,
-                                                  weights,
-                                                  metrics_collections,
-                                                  updates_collections,
-                                                  name)
+                return core.metrics_false_positives(labels,
+                                                    x,
+                                                    weights,
+                                                    metrics_collections,
+                                                    updates_collections,
+                                                    name)
     return _false_positives
 
 
@@ -155,20 +172,20 @@ def true_negatives(from_logits=True,
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return tf.metrics.true_negatives_at_threshold(labels,
-                                                              x,
-                                                              thresholds,
-                                                              weights,
-                                                              metrics_collections,
-                                                              updates_collections,
-                                                              name)
+                return core.metrics_true_negatives_at_threshold(labels,
+                                                                x,
+                                                                thresholds,
+                                                                weights,
+                                                                metrics_collections,
+                                                                updates_collections,
+                                                                name)
             else:
-                return tf.metrics.true_negatives(labels,
-                                                 x,
-                                                 weights,
-                                                 metrics_collections,
-                                                 updates_collections,
-                                                 name)
+                return core.metrics_true_negatives(labels,
+                                                   x,
+                                                   weights,
+                                                   metrics_collections,
+                                                   updates_collections,
+                                                   name)
     return _true_negatives
 
 
@@ -187,20 +204,20 @@ def true_positives(from_logits=True,
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return tf.metrics.true_positives_at_threshold(labels,
-                                                              x,
-                                                              thresholds,
-                                                              weights,
-                                                              metrics_collections,
-                                                              updates_collections,
-                                                              name)
+                return core.metrics_true_positives_at_threshold(labels,
+                                                                x,
+                                                                thresholds,
+                                                                weights,
+                                                                metrics_collections,
+                                                                updates_collections,
+                                                                name)
             else:
-                return tf.metrics.true_positives(labels,
-                                                 x,
-                                                 weights,
-                                                 metrics_collections,
-                                                 updates_collections,
-                                                 name)
+                return core.metrics_true_positives(labels,
+                                                   x,
+                                                   weights,
+                                                   metrics_collections,
+                                                   updates_collections,
+                                                   name)
     return _true_positives
 
 
@@ -220,13 +237,13 @@ def mean_iou(from_logits=True,
             if from_logits:
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return tf.metrics.mean_iou(labels,
-                                       x,
-                                       nclass,
-                                       weights,
-                                       metrics_collections,
-                                       updates_collections,
-                                       name)
+            return core.metrics_mean_iou(labels,
+                                         x,
+                                         nclass,
+                                         weights,
+                                         metrics_collections,
+                                         updates_collections,
+                                         name)
     return _mean_iou
 
 
@@ -243,12 +260,12 @@ def precision(from_logits=True,
             if from_logits:
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return tf.metrics.precision(labels,
-                                        x,
-                                        weights,
-                                        metrics_collections,
-                                        updates_collections,
-                                        name)
+            return core.metrics_precision(labels,
+                                          x,
+                                          weights,
+                                          metrics_collections,
+                                          updates_collections,
+                                          name)
     return _precision
 
 
@@ -265,12 +282,12 @@ def recall(from_logits=True,
             if from_logits:
                 x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return tf.metrics.recall(labels,
-                                     x,
-                                     weights,
-                                     metrics_collections,
-                                     updates_collections,
-                                     name)
+            return core.metrics_recall(labels,
+                                       x,
+                                       weights,
+                                       metrics_collections,
+                                       updates_collections,
+                                       name)
     return _recall
 
 
@@ -284,7 +301,7 @@ def get(m, **kwargs):
     elif helper.is_tensor(m) or callable(m):
         return m
     elif isinstance(m, (list, tuple)):
-        # tf.metrics.* that includes
+        # metrics.* that includes
         # metric, update_op
         # as tuple
         return m
