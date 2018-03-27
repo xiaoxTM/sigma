@@ -859,6 +859,33 @@ def summarize(name, tensor, mode='histogram', **kwargs):
                          .format(mode))
 
 
+
+#----- tensorflow log gradients -----#
+def optimize_with_summarize(optimizer, loss, exclusion=None):
+    """ summary gradients for given loss
+        and return optimization operation for training
+
+        Attributes
+        ==========
+            optimizer : tf.train.Optimizer or sub-class
+            loss : tensor
+                   loss to be optimized
+            exclusion : list / tuple / None
+                        list of strings which is the gradient name to
+                        be excluded for summarization
+        Returns
+        ==========
+            optimization operation for optimize loss and train networks
+    """
+    if exclusion is None:
+        exclusion = []
+    grads_and_vars = optimizer.compute_gradients(loss)
+    for (grad, var) in grads_and_vars:
+        if grad is not None and grad.name not in exclusion:
+            tf.summary.histogram('{}-grads'.format(grad.name), grad)
+    return optimizer.apply_gradients(grads_and_vars)
+
+
 #----- tensorflow metrics -----#
 def metrics_accuracy(labels,
                      predictions,

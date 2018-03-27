@@ -101,6 +101,7 @@ def feature_dims(x):
     shape.pop(0)
     return shape
 
+
 def name_normalize(names, scope=None):
     """ normalize variable name (or say, remove variable index)
         generally, `names` is a list of :
@@ -143,6 +144,23 @@ def normalize_axes(tensor_shape, axis=core.axis):
 
 
 def get_output_shape(input_shape, nouts, kshape, stride, padding):
+    """ get the corresponding output shape given tensor shape
+        Attributes
+        ==========
+            input_shape : list / tuple
+                          input tensor shape
+            nouts : int
+                    number of output feature maps
+            kshape : int / list / tuple
+                     kernel shape for convolving operation
+            stride : int / list / tuple
+                     stride for convolving operation
+            padding : string
+                      padding for convolving operation
+        Returns
+        ==========
+            output tensor shape of convolving operation
+    """
     typecheck = map(lambda x, y: isinstance(x, y),
                     [input_shape, kshape, stride],
                     [(list, tuple)]*3)
@@ -188,6 +206,18 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
 
 
 def norm_input_1d(shape):
+    """ norm input for 1d convolving operation
+        generally called by norm kernel-shape and stride
+        e.g.,
+        > input shape : 2
+        > output shape: [1, 2, 1]
+
+        > input shape : [2]
+        > output shape: [1, 2, 1]
+
+        > input shape : [1, 2, 1]
+        > output shape: [1, 2, 1]
+    """
     if isinstance(shape, int):
         shape = [1, shape, 1]
     elif isinstance(shape, (list, tuple)):
@@ -206,6 +236,21 @@ def norm_input_1d(shape):
 
 
 def norm_input_2d(shape):
+    """ norm input for 2d convolving operation
+        generally called by norm kernel-shape and stride
+        e.g.,
+        > input shape : 2
+        > output shape: [1, 2, 2, 1]
+
+        > input shape : [2]
+        > output shape: [1, 2, 2, 1]
+
+        > input shape : [2, 2]
+        > output shape: [1, 2, 2, 1]
+
+        > input shape : [1, 2, 2, 1]
+        > output shape: [1, 2, 2, 1]
+    """
     if isinstance(shape, int):
         shape = [1, shape, shape, 1]
     elif isinstance(shape, (list, tuple)):

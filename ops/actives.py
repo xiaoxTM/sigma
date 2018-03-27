@@ -176,7 +176,7 @@ def selu(alpha=1.6732632423543772848170429916717,
     #         return scale * alpha * (core.exp(x) - 1)
     # return _selu
     def _selu(x):
-        with helper.maybe_layer(aslayer, name, scope, 'selu', reuse)
+        with helper.maybe_layer(aslayer, name, scope, 'selu', reuse):
             return scale * alpha * (core.exp(x) - 1)
     return _selu
 

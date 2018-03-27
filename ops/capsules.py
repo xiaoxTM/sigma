@@ -100,13 +100,13 @@ def _agreement_routing(prediction,
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
                                    clear_after_read=False)
-    print('logits shape:', logits_shape)
+    # print('logits shape:', logits_shape)
     logits = core.zeros(logits_shape, dtype=core.float32)
     act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
     # softmax along with `outcaps` axis
     outcaps_axis = helper.normalize_axes(core.shape(logits), -2)
-    print('outcaps axis:', outcaps_axis)
+    # print('outcaps axis:', outcaps_axis)
 
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
