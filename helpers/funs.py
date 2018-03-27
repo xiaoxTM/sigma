@@ -17,9 +17,37 @@
 """
 
 from timeit import default_timer as timer
+from datetime import datetime
 from .. import colors
 import numpy as np
 import math
+
+
+def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S'):
+    """ time stamp function
+        Attributes
+        ==========
+            date : string / None
+                   if date is None, return current time stamp as string
+            fmt : string
+                  datetime format to parse `date` or to format current time
+                  see https://docs.python.org/3.6/library/datetime.html/strftime-strptime-behavior
+                  for more description on format
+
+        Returns
+        ==========
+            datetime if date is not None, otherwise current timestamp as string
+
+        Raises:
+        ==========
+            ValueError if date is not None and fmt incomplete or ambiguous
+    """
+    if date is None:
+        now = datetime.now()
+        fmt = '{{0:{}}}'.format(fmt.replace(' ','-').replace(':', '-'))
+        return fmt.format(now)
+    else:
+        return datetime.strptime(date, fmt)
 
 
 def intsize(x, cminus=False):

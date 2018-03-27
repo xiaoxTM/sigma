@@ -146,7 +146,7 @@ def maskout(input_shape,
             with ops_scope:
                 if elements is None:
                     if axis != len(input_shape) - 1:
-                        xnorm = core.norm(x, -1)
+                        xnorm = core.norm(x, -1, safe=False)
                         elements = core.argmax(xnorm, -1, dtype=core.int32)
                     elements = _index(0, elements)
                 positions = indexlist[:]
@@ -166,7 +166,7 @@ def maskout(input_shape,
                     if axis != len(input_shape) - 1:
                         # x shape: [batch-size, nclass, depth]
                         # xnorm shape: [batch-size, nclass]
-                        xnorm = core.norm(x, -1)
+                        xnorm = core.norm(x, -1, safe=False)
                         # elements shape: [batch-size]
                         elements = core.argmax(xnorm, -1, dtype=core.int32)
                 # onehot to from

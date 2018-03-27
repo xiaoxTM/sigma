@@ -20,6 +20,7 @@ from .. import colors
 from . import helper, core
 
 def squash(epsilon=core.epsilon,
+           safe=False,
            aslayer=False,
            reuse=False,
            name=None,
@@ -29,40 +30,40 @@ def squash(epsilon=core.epsilon,
         @https://papers.nips.cc/paper/6975-dynamic-routing-between-capsules.pdf
 
         input (x) should with shape of
-        [batch-size, ncaps, caps_dim] for fully_connected capsule layer
+        [batch-size, incaps, outcaps, caps_dim] for fully_connected capsule
         or
-        [batch-size, units, ncaps, caps_dim] for conv1d
+        [batch-size, units, incaps, outcaps, caps_dim] for conv1d
         or
-        [batch-size, rows, cols, ncaps, caps_dim] for conv2d
+        [batch-size, rows, cols, incaps, outcaps, caps_dim] for conv2d
         capsule layer
         where `ncaps` denotes the number of capsules
         and `cap_dim` denotes the dimension of each capsule
     """
-    if aslayer:
-        ops_scope, _, _ = helper.assign_scope(name, scope, 'squash', reuse)
-        def _squash(x):
-            with ops_scope:
-                squared_norm = core.sum(core.square(x),
-                                        axis=core.axis,
-                                        keepdims=True)
-                # if squared_norm contains 0 element
-                # add \epsilon to avoid dividing 0
-                norm = core.cond(core.all(core.abs(squared_norm) < 1e-8),
-                                 lambda : core.sqrt(squared_norm),
-                                 lambda : core.sqrt(squared_norm + epsilon)
-                                )
-                return (x / norm) * (squared_norm / (1 + squared_norm))
-    else:
-        def _squash(x):
-            squared_norm = core.sum(core.square(x),
-                                    axis=core.axis,
-                                    keepdims=True)
-            # if squared_norm contains 0 element
-            # add \epsilon to avoid dividing 0
-            norm = core.cond(core.all(core.abs(squared_norm) < 1e-8),
-                             lambda : core.sqrt(squared_norm),
-                             lambda : core.sqrt(squared_norm + epsilon)
-                            )
+    # def _squash_op(x):
+    #     norm, squared_norm = core.norm(x, -1,
+    #                                    safe=safe,
+    #                                    epsilon=epsilon,
+    #                                    return_squared=True,
+    #                                    name=name,
+    #                                    keepdims=True)
+    #     return (x / norm) * (squared_norm / (1 + squared_norm))
+    # if aslayer:
+    #     ops_scope, _, _ = helper.assign_scope(name, scope, 'squash', reuse)
+    #     def _squash(x):
+    #         with ops_scope:
+    #             return _squash_op(x)
+    # else:
+    #     def _squash(x):
+    #         return _squash_op(x)
+    # return _squash
+    def _squash(x):
+        with helper.maybe_layer(aslayer, name, scope, 'squash', reuse):
+            norm, squared_norm = core.norm(x, -1,
+                                           safe=safe,
+                                           epsilon=epsilon,
+                                           return_squared=True,
+                                           name=name,
+                                           keepdims=True)
             return (x / norm) * (squared_norm / (1 + squared_norm))
     return _squash
 
@@ -71,13 +72,17 @@ def crelu(aslayer=False,
           reuse=False,
           name=None,
           scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'crelu', reuse)
-        def _crelu(x):
-            with ops_scope:
-                return core.crelu(x)
-    else:
-        def _crelu(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'crelu', reuse)
+    #     def _crelu(x):
+    #         with ops_scope:
+    #             return core.crelu(x)
+    # else:
+    #     def _crelu(x):
+    #         return core.crelu(x)
+    # return _crelu
+    def _crelu(x):
+        with helper.maybe_layer(aslayer, name, scope, 'crelu', reuse):
             return core.crelu(x)
     return _crelu
 
@@ -90,16 +95,17 @@ def relu(aslayer=False,
          reuse=False,
          name=None,
          scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name,
-                                                 scope,
-                                                 'relu',
-                                                 reuse)
-        def _relu(x):
-            with ops_scope:
-                return core.relu(x)
-    else:
-        def _relu(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'relu', reuse)
+    #     def _relu(x):
+    #         with ops_scope:
+    #             return core.relu(x)
+    # else:
+    #     def _relu(x):
+    #         return core.relu(x)
+    # return _relu
+    def _relu(x):
+        with helper.maybe_layer(aslayer, name, scope, 'relu', reuse):
             return core.relu(x)
     return _relu
 
@@ -112,13 +118,17 @@ def relu6(aslayer=False,
           reuse=False,
           name=None,
           scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'relu6', reuse)
-        def _relu6(x):
-            with ops_scope:
-                return core.relu6(x)
-    else:
-        def _relu6(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'relu6', reuse)
+    #     def _relu6(x):
+    #         with ops_scope:
+    #             return core.relu6(x)
+    # else:
+    #     def _relu6(x):
+    #         return core.relu6(x)
+    # return _relu6
+    def _relu6(x):
+        with helper.maybe_layer(aslayer, name, scope, 'relu6', reuse):
             return core.relu6(x)
     return _relu6
 
@@ -131,13 +141,17 @@ def elu(aslayer=False,
         reuse=False,
         name=None,
         scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'elu', reuse)
-        def _elu(x):
-            with ops_scope:
-                return core.elu(x)
-    else:
-        def _elu(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'elu', reuse)
+    #     def _elu(x):
+    #         with ops_scope:
+    #             return core.elu(x)
+    # else:
+    #     def _elu(x):
+    #         return core.elu(x)
+    # return _elu
+    def _elu(x):
+        with helper.maybe_layer(aslayer, name, scope, 'elu', reuse):
             return core.elu(x)
     return _elu
 
@@ -152,13 +166,17 @@ def selu(alpha=1.6732632423543772848170429916717,
          reuse=False,
          name=None,
          scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'selu', reuse)
-        def _selu(x):
-            with ops_scope:
-                return scale * alpha * (core.exp(x) - 1)
-    else:
-        def _selu(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'selu', reuse)
+    #     def _selu(x):
+    #         with ops_scope:
+    #             return scale * alpha * (core.exp(x) - 1)
+    # else:
+    #     def _selu(x):
+    #         return scale * alpha * (core.exp(x) - 1)
+    # return _selu
+    def _selu(x):
+        with helper.maybe_layer(aslayer, name, scope, 'selu', reuse)
             return scale * alpha * (core.exp(x) - 1)
     return _selu
 
@@ -172,16 +190,20 @@ def leaky_relu(alpha=0.2,
                reuse=False,
                name=None,
                scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name,
-                                                 scope,
-                                                 'leaky_relu',
-                                                 reuse)
-        def _leaky_relu(x):
-            with ops_scope:
-                return core.leaky_relu(x, alpha)
-    else:
-        def _leaky_relu(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name,
+    #                                              scope,
+    #                                              'leaky_relu',
+    #                                              reuse)
+    #     def _leaky_relu(x):
+    #         with ops_scope:
+    #             return core.leaky_relu(x, alpha)
+    # else:
+    #     def _leaky_relu(x):
+    #         return core.leaky_relu(x, alpha)
+    # return _leaky_relu
+    def _leaky_relu(x):
+        with helper.maybe_layer(aslayer, name, scope, 'leaky_relu', reuse):
             return core.leaky_relu(x, alpha)
     return _leaky_relu
 
@@ -195,13 +217,17 @@ def softmax(axis=-1,
             reuse=False,
             name=None,
             scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'softmax', reuse)
-        def _softmax(x):
-            with ops_scope:
-                return core.softmax(x, axis)
-    else:
-        def _softmax(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'softmax', reuse)
+    #     def _softmax(x):
+    #         with ops_scope:
+    #             return core.softmax(x, axis)
+    # else:
+    #     def _softmax(x):
+    #         return core.softmax(x, axis)
+    # return _softmax
+    def _softmax(x):
+        with helper.maybe_layer(aslayer, name, scope, 'softmax', reuse):
             return core.softmax(x, axis)
     return _softmax
 
@@ -214,16 +240,20 @@ def softplus(aslayer=False,
              reuse=False,
              name=None,
              scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name,
-                                                 scope,
-                                                 'softplus',
-                                                 reuse)
-        def _softplus(x):
-            with ops_scope:
-                return core.softplus(x)
-    else:
-        def _softplus(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name,
+    #                                              scope,
+    #                                              'softplus',
+    #                                              reuse)
+    #     def _softplus(x):
+    #         with ops_scope:
+    #             return core.softplus(x)
+    # else:
+    #     def _softplus(x):
+    #         return core.softplus(x)
+    # return _softplus
+    def _softplus(x):
+        with helper.maybe_layer(aslayer, name, scope, 'softplus', reuse):
             return core.softplus(x)
     return _softplus
 
@@ -236,16 +266,20 @@ def softsign(aslayer=False,
              reuse=False,
              name=None,
              scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name,
-                                                 scope,
-                                                 'softsign',
-                                                 reuse)
-        def _softsign(x):
-            with ops_scope:
-                return core.softsign(x)
-    else:
-        def _softsign(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name,
+    #                                              scope,
+    #                                              'softsign',
+    #                                              reuse)
+    #     def _softsign(x):
+    #         with ops_scope:
+    #             return core.softsign(x)
+    # else:
+    #     def _softsign(x):
+    #         return core.softsign(x)
+    # return _softsign
+    def _softsign(x):
+        with helper.maybe_layer(aslayer, name, scope, 'softsign', reuse):
             return core.softsign(x)
     return _softsign
 
@@ -258,13 +292,17 @@ def sigmoid(aslayer=False,
             reuse=False,
             name=None,
             scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'sigmoid', reuse)
-        def _sigmoid(x):
-            with ops_scope:
-                return core.sigmoid(x)
-    else:
-        def _sigmoid(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'sigmoid', reuse)
+    #     def _sigmoid(x):
+    #         with ops_scope:
+    #             return core.sigmoid(x)
+    # else:
+    #     def _sigmoid(x):
+    #         return core.sigmoid(x)
+    # return _sigmoid
+    def _sigmoid(x):
+        with helper.maybe_layer(aslayer, name, scope, 'sigmoid', reuse):
             return core.sigmoid(x)
     return _sigmoid
 
@@ -277,13 +315,17 @@ def tanh(aslayer=False,
          reuse=False,
          name=None,
          scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'tanh', reuse)
-        def _tanh(x):
-            with ops_scope:
-                return core.tanh(x)
-    else:
-        def _tanh(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'tanh', reuse)
+    #     def _tanh(x):
+    #         with ops_scope:
+    #             return core.tanh(x)
+    # else:
+    #     def _tanh(x):
+    #         return core.tanh(x)
+    # return _tanh
+    def _tanh(x):
+        with helper.maybe_layer(aslayer, name, scope, 'tanh', reuse):
             return core.tanh(x)
     return _tanh
 
@@ -296,13 +338,17 @@ def linear(aslayer=False,
            reuse=False,
            name=None,
            scope=None):
-    if aslayer:
-        ops_scope, _, name = helper.assign_scope(name, scope, 'linear', reuse)
-        def _linear(x):
-            with ops_scope:
-                return x
-    else:
-        def _linear(x):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name, scope, 'linear', reuse)
+    #     def _linear(x):
+    #         with ops_scope:
+    #             return x
+    # else:
+    #     def _linear(x):
+    #         return x
+    # return _linear
+    def _linear(x):
+        with helper.maybe_layer(aslayer, name, scope, 'linear', reuse):
             return x
     return _linear
 

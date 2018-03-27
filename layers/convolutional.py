@@ -26,7 +26,7 @@ def _layers(fun, inputs, output, return_shape, typename, reuse, name):
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {} vs {}'
                          .format(colors.green(output),
-                                 colors.red(core.shape(x))))
+                                 colors.red(ops.core.shape(x))))
     if return_shape:
         x = [x, output]
     return x

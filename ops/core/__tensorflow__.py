@@ -133,6 +133,7 @@ class Collections():
 def is_tensor(x):
     return tf.contrib.framework.is_tensor(x)
 
+
 def padnorm(fun):
     def _padnorm(*args, **kwargs):
         signature = inspect.signature(fun)
@@ -189,6 +190,7 @@ def while_loop(cond,
                          name,
                          **kwargs)
 
+
 #----- tensorflow scop -----#
 def name_scope(name, default_name=None, values=None):
     return tf.name_scope(name, default_name, values)
@@ -224,6 +226,7 @@ def variable_scope(name_or_scope,
                              dtype,
                              use_resource,
                              **kwargs)
+
 
 def get_variable(name,
                  shape=None,
@@ -377,6 +380,14 @@ def tile(x, multiples, name=None):
     return tf.tile(x, multiples, name)
 
 
+def expand_dims(x, axis=None, name=None):
+    return tf.expand_dims(x, axis, name)
+
+
+def squeeze(x, axis=None, name=None):
+    return tf.squeeze(x, axis, name)
+
+
 def argmax(x,
            axis=None,
            dtype=int64,
@@ -399,25 +410,25 @@ def mean(x,
 
 
 def max(x,
+        y=None,
         axis=None,
         keepdims=None,
         name=None):
-    return tf.reduce_max(x, axis, keepdims, name)
+    if y is None:
+        return tf.reduce_max(x, axis, keepdims, name)
+    else:
+        return tf.maximum(x, y, name)
 
 
 def min(x,
+        y=None,
         axis=None,
         keepdims=None,
         name=None):
-    return tf.reduce_min(x, axis, keepdims, name)
-
-
-def minimum(x, y, name=None):
-    return tf.minimum(x, y, name)
-
-
-def maximum(x, y, name=None):
-    return tf.maximum(x, y, name)
+    if y is None:
+        return tf.reduce_min(x, axis, keepdims, name)
+    else:
+        return tf.minimum(x, y, name)
 
 
 def prod(x,
@@ -468,10 +479,24 @@ def sqrt(x, name=None):
 
 def norm(x,
          axis=None,
-         keepdims=None,
+         keepdims=False,
          ord='euclidean',
+         epsilon=1e-8,
+         safe=False,
+         return_squared=False,
          name=None):
-    return tf.norm(x, ord, axis, keepdims, name)
+    if not safe:
+        normed = tf.norm(x, ord, axis, keepdims, name)
+        if return_squared:
+            normed = [normed, normed * normed]
+    else:
+        squared = tf.reduce_sum(x * x,
+                                axis=axis,
+                                keep_dims=keepdims)
+        normed = tf.sqrt(squared) + epsilon
+        if return_squared:
+            normed = [normed, squared]
+    return normed
 
 
 """ return reciprocal of square root of input element-wise
@@ -512,6 +537,8 @@ def leq(x, y, name=None):
 def all(x, axis=None, keepdims=None, name=None):
     return tf.reduce_all(x, axis, keepdims, name)
 
+def any(x, axis=None, keepdims=None, name=None):
+    return tf.reduce_any(x, axis, keepdims, name)
 
 def clip(x, minv, maxv, name=None):
     return tf.clip_by_value(x, minv, maxv, name)
@@ -622,6 +649,8 @@ def random_normal(shape,
                             dtype,
                             seed,
                             name)
+
+
 def random_uniform(shape,
                    minval=0,
                    maxval=None,
@@ -634,6 +663,9 @@ def random_uniform(shape,
                              dtype,
                              seed,
                              name)
+
+
+
 def truncated_normal(shape,
                      mean=0.0,
                      stddev=1.0,
@@ -673,6 +705,8 @@ def conv1d(x, filters, stride, padding,
                         use_cudnn_on_gpu,
                         data_format,
                         name)
+
+
 @padnorm
 def conv2d(x, filters, strides, padding,
            use_cudnn_on_gpu=None,
@@ -696,6 +730,8 @@ def conv2d(x, filters, strides, padding,
                             use_cudnn_on_gpu,
                             data_format,
                             name)
+
+
 @padnorm
 def conv3d(x, filters, strides, padding,
            use_cudnn_on_gpu=None,
@@ -719,6 +755,8 @@ def conv3d(x, filters, strides, padding,
                     use_cudnn_on_gpu,
                     data_format,
                     name)
+
+
 @padnorm
 def deconv2d(x,
              filters,
@@ -734,6 +772,8 @@ def deconv2d(x,
                                   padding,
                                   data_format,
                                   name)
+
+
 @padnorm
 def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
               rate=None,
@@ -747,6 +787,8 @@ def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
                                   rate,
                                   name,
                                   data_format)
+
+
 @padnorm
 def depthwise_conv2d(x, kernels, strides, padding,
                      rate=None,
@@ -761,16 +803,27 @@ def depthwise_conv2d(x, kernels, strides, padding,
                                   data_format)
 
 
-def dot(*args, **kwargs):
-    return tf.matmul(*args, **kwargs)
+def dot(a, b,
+        transpose_a=False,
+        transpose_b=False,
+        adjoint_a=False,
+        adjoint_b=False,
+        a_is_sparse=False,
+        b_is_sparse=False,
+        name=None):
+    return tf.matmul(a, b,
+                     transpose_a,
+                     transpose_b,
+                     adjoint_a,
+                     adjoint_b,
+                     a_is_sparse,
+                     b_is_sparse,
+                     name)
 
 
 def tensordot(a, b, axes, name=None):
     return tf.tensordot(a, b, axes, name)
 
-
-def expand_dims(x, axis=None, name=None):
-    return tf.expand_dims(x, axis, name)
 
 #----- tensorflow losses -----#
 def softmax_cross_entropy_with_logits(labels=None,

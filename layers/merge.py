@@ -38,11 +38,11 @@ def concat(inputs,
            axis=-1,
            return_shape=False,
            reuse=False,
-           name='concat',
+           name=None,
            scope=None):
     inputs_shape = [ops.core.shape(ip) for ip in inputs]
     fun, output = ops.merge.concat(inputs_shape, axis, reuse, name, scope)
-    return _merge(fun, inputs, output, 'concatenate', return_shape)
+    return _merge(fun, inputs, output, 'concat', return_shape)
 
 
 @core.layer
@@ -50,7 +50,7 @@ def add(inputs,
         weights=None,
         return_shape=False,
         reuse=False,
-        name='add',
+        name=None,
         scope=None):
     input_shape = [ops.core.shape(ip) for ip in inputs]
     fun, output = ops.merge.add(input_shape, weights, reuse, name, scope)
@@ -61,7 +61,7 @@ def add(inputs,
 def mul(inputs,
         return_shape=False,
         reuse=False,
-        name='mul',
+        name=None,
         scope=None):
     input_shape = [ops.core.shape(ip) for ip in inputs]
     fun, output = ops.merge.mul(input_shape, reuse, name, scope)

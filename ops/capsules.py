@@ -18,7 +18,7 @@
 
 from .. import colors
 from . import core, actives, helper, mm
-
+import logging
 
 def _leaky_routing(logits):
     """ leaky routing
@@ -50,7 +50,7 @@ def _leaky_routing(logits):
     return core.split(leaky_routs, [1, nouts], axis=core.axis)[1]
 
 
-def _agreement_routing(prediction_vectors,
+def _agreement_routing(prediction,
                        logits_shape,
                        iterations,
                        bias,
@@ -58,24 +58,25 @@ def _agreement_routing(prediction_vectors,
     """ calculate v_j by dynamic routing
         Attributes
         ==========
-        prediction_vectors : Tensor
-                             predictions from previous layers
-                             denotes u_{j|i}_hat in paper
-                             with the shape of
-                             [batch-size, incaps, outcaps, outcapdim]
-                             for fully_connected
-                             [batch-size, neurons, incaps, outcaps, outcapdim]
-                             for conv1d
-                             [batch-size, nrows, ncols, incaps, outcaps, outcapdim]
-                             for conv2d
-        logits : Tensor
-                 with the shape of
-                 [1, incaps, outcaps, 1]
-                 for fully_connected
-                 [1, 1, incaps, outcaps, 1]
-                 for conv1d
-                 [1, 1, 1, incaps, outcaps, 1]
-                 for conv2d
+        prediction : Tensor
+                     predictions from previous layers
+                     denotes u^{\hat}_{j|i} in paper
+                     with the shape of
+                     [batch-size, incaps, outcaps, outcapdim]
+                     for fully_connected, and
+                     [batch-size, neurons, incaps, outcaps, outcapdim]
+                     for conv1d, and
+                     [batch-size, nrows, ncols, incaps, outcaps, outcapdim]
+                     for conv2d
+        logits_shape : Tensor
+                       denotes b_{i,j} in paper
+                       with the shape of
+                       [batch-size, incaps, outcaps, 1]
+                       for fully_connected, and
+                       [batch-size, 1, incaps, outcaps, 1]
+                       for conv1d, and
+                       [batch-size, 1, 1, incaps, outcaps, 1]
+                       for conv2d
         iterations : int
                      iteration times to adjust c_{i, j}.
                      donates r in paper
@@ -93,34 +94,53 @@ def _agreement_routing(prediction_vectors,
         [batch-size, nrows, ncols, incaps, outcaps, outcapdim]
         for conv2d
     """
-    shape = core.shape(prediction_vectors)
-    shape.pop(-3)
+    shape = core.shape(prediction)
+    shape.pop(-3) # get rid of `incaps` axis
+    # restore v_j
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
                                    clear_after_read=False)
-    logits = core.fill(logits_shape, 0.0)
+    print('logits shape:', logits_shape)
+    logits = core.zeros(logits_shape, dtype=core.float32)
     act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
-    capsule_axis = helper.normalize_axes(core.shape(logits), -3)
+    # softmax along with `outcaps` axis
+    outcaps_axis = helper.normalize_axes(core.shape(logits), -2)
+    print('outcaps axis:', outcaps_axis)
 
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
+            logits : [batch-size, /*rows, cols,*/ incaps, outcaps, outcapdim]
         """
         if leaky:
             coefficients = _leaky_routing(logits)
         else:
-            coefficients = core.softmax(logits, axis=capsule_axis)
-        preactivate = coefficients * prediction_vectors
-        preactivate = core.sum(preactivate, axis=-3, keepdims=True)
+            # softmax along `outcaps` axis
+            # that is, `agree` on some capsule
+            # a.k.a., which capsule in higher layer to activate
+            coefficients = core.softmax(logits, axis=outcaps_axis)
+        # average all lower capsules's prediction to higher capsule
+        # that is, agreements from all capsules in lower layer
+        # print('coefficients shape:', core.shape(coefficients))
+        # print('prediction shape:', core.shape(prediction))
+        preactivate = core.sum(coefficients * prediction,
+                               axis=-3,
+                               keepdims=True)
+        # print('preactivate shape:', core.shape(preactivate))
         if bias:
             preactivate += bias
+        # typically, squash
+        # print('biased preactivate:', core.shape(preactivate))
         activation = act(preactivate)
         activations = activations.write(i, activation)
         # sum up along outcapdim dimension
-        distance = core.sum(prediction_vectors * activation,
+        # print('activation shape:', core.shape(activation))
+        distance = core.sum(prediction * activation,
                             axis=core.axis,
                             keepdims=True)
+        # print('distance shape:', core.shape(distance))
         logits += distance
+        # print('logits shape after routing:', core.shape(logits))
         return (i+1, logits, activations)
 
     _, logits, activations = core.while_loop(
@@ -135,6 +155,10 @@ def _agreement_routing(prediction_vectors,
 
 def norm(input_shape,
          axis=None,
+         keepdims=False,
+         ord='euclidean',
+         epsilon=None,
+         safe=False,
          act=None,
          reuse=None,
          name=None,
@@ -148,6 +172,8 @@ def norm(input_shape,
     if axis is None:
         axis = core.axis
     act = actives.get(act)
+    if epsilon is None:
+        epsilon = core.epsilon
     output_shape = input_shape[:]
     output_shape.pop(axis)
     def _norm(x):
@@ -157,7 +183,7 @@ def norm(input_shape,
             # of an instance of each class
             #   [batch-size, rows, cols, nclass, capdim]
             # =>[batch-size, rows, cols, nclass]
-            return core.norm(x, axis)
+            return act(core.norm(x, axis, keepdims, ord, epsilon, safe))
     return _norm, output_shape
 
 
@@ -173,7 +199,7 @@ def conv(convop, bias_shape, logits_shape, iterations,
          reuse=False,
          name=None,
          scope=None):
-    """ coefficient_shape : [1, 1, 1, incaps, outcaps, 1]
+    """ logits_shape : [1, 1, 1, incaps, outcaps, 1]
                              for conv2d operation
     """
     ops_scope, _, name = helper.assign_scope(name,
@@ -197,10 +223,11 @@ def conv(convop, bias_shape, logits_shape, iterations,
         bias = False
     def _conv(x):
         with ops_scope:
-            #  [batch-size, nrows, ncols, incaps, incapdim] x [incapdim, outcaps, outcapdim]
+            #  [batch-size, rows, cols, incaps, incapdim]
+            # /*x [incapdim, outcaps, outcapdim]*/
             #=>[batch-size, nrows, ncols, incaps, outcaps, outcapdim]
-            # equal to depthwise convolutional for conv2d
-            x = convop(x)
+            x = act(convop(x))
+            # now x is the pre-predictions denoting u^{\hat}_{j|i}
             # x shape:
             # for fully-connected:
             #     [batch-size, incaps, outcaps, caps_dims]
@@ -266,7 +293,6 @@ def fully_connected(input_shape, nouts, caps_dims,
         #    [batch-size, incaps, incapdims]
         # weight shape:
         #    [incaps, incapdim, nouts * caps_dims]
-
         # expand x to [batch-size, incaps, incapdims, 1]
         # and tile to [batch-size, incaps, incapdims, nouts * caps_dims]
         x = core.tile(core.expand_dims(x, -1), [1, 1, 1, nouts * caps_dims])
@@ -291,145 +317,140 @@ def fully_connected(input_shape, nouts, caps_dims,
                 scope), output_shape
 
 
-def conv1d(input_shape, nouts, caps_dims, kshape,
-           iterations=3,
-           leaky=False,
-           stride=1,
-           padding='valid',
-           mode='capsulewise',
-           weight_initializer='glorot_uniform',
-           weight_regularizer=None,
-           bias_initializer='zeros',
-           bias_regularizer=None,
-           act=None,
-           trainable=True,
-           dtype=core.float32,
-           collections=None,
-           summary='histogram',
-           reuse=False,
-           name=None,
-           scope=None):
-    """ primary capsule convolutional
-        Attributes
-        ==========
-        input_shape : list / tuple
-                      should have form of:
-                      [batch-size, neurons, incaps, incaps_dim]
-                      where `neurons` denotes the hidden layer units
-                      `incaps_dim` denotes the vector size of each capsule
-                      (as depth channels)
-                      `incaps` means the number of capsules
-        nouts : int
-                number of output capsules
-        caps_dims : int
-                    output capsule vector size (aka. outcapdim)
-        kshape : int / list / tuple
-                 kernel shape for convolving operation
-        mode : string
-               in conv1d, mode must be `capsulewise`
-               due to tensorflow having not depthwise_conv1d
-               function
-    """
-    if len(input_shape) != 4:
-        raise ValueError('capsule conv1d require input shape {}[batch-size, '
-                         'rows, cols, incaps, incapdim]{}, given {}'
-                         .format(colors.fg.green, colors.reset,
-                                 colors.red(input_shape)))
-    if mode != 'capsulewise':
-        raise ValueError('`mode` for conv1d must be `capsulewise`. '
-                         'given {}'.format(colors.red(mode)))
-    kshape = helper.norm_input_1d(kshape)
-    stride = helper.norm_input_1d(stride)
-
-    input_nshape = input_shape[:]
-    #  [batch-size, neurons, incaps, incapdim]
-    #=>[batch-size, neurons, incpas * incapdim]
-    # //FUTURE: remove hard-coding of number of `-2`
-    input_nshape[core.axis] *= input_nshape[-2]
-    input_nshape.pop(-2)
-    # output shape may be not right
-    output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
-                                           kshape, stride, padding)
-    output_shape = output_shape[:-1] + [nouts, caps_dims]
-    incaps, incapdim = input_shape[-2:]
-    logits_shape = output_shape[:2] + [incaps, nouts, 1]
-    bias_shape = [nouts, caps_dims]
-    # kernel shape:
-    # [k, incaps, incapdims, outcaps * outcapdims]
-    kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
-    kernels = mm.malloc('kernel',
-                        name,
-                        kernel_shape,
-                        dtype,
-                        weight_initializer,
-                        weight_regularizer,
-                        trainable,
-                        collections,
-                        summary,
-                        reuse,
-                        scope)
-
-    def _body(idx, x, array):
-        # kernels shape : [k, incaps, incapdims, outcaps * outcapdims]
-        # kernel shape  : [k, incapdims, outcaps * outcapdims]
-        kernel = core.gather(kernels, idx, axis=-3)
-        # x shape    : [batch-size, neurons, incaps, incapdim]
-        # subx shape : [batch-size, neurons, incapdim]
-        subx = core.gather(x, idx, axis=-2)
-        conv1d_output = core.conv2d(subx,
-                                    kernel,
-                                    stride,
-                                    padding.upper())
-        array = array.write(idx, conv1d_output)
-        return [idx + 1, x, array]
-
-    def _conv1d(x):
-        """ capsule wise convolution in 1d
-            that is, convolve along `incaps` dimension
-        """
-        # x shape:
-        #     [batch-size, neurons, incaps, incapdim]
-        iterations = input_shape[-2] # <- incaps
-        idx = core.constant(0, core.int32)
-        array = core.TensorArray(dtype=core.float32,
-                                 size=iterations,
-                                 clear_after_read=False)
-        _, x, array = core.while_loop(
-            lambda idx, x, array : idx < iterations,
-            _body,
-            loop_vars = [idx, x, array],
-            parallel_iterations=iterations,
-        )
-        # array should have the shape of:
-        # incaps * [batch-size, nneurons, outcaps * outcapdims]
-        # stack to
-        # [incaps, batch-size, nneurons, outcaps * outcapdims]
-        array = array.stack()
-        #print('array after stack:', array)
-        # then reshape to
-        # [incaps, batch-size, nneurons, outcaps, outcapdims]
-        newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
-        array = core.reshape(array, newshape)
-        # then transpose to
-        # [batch-size, nneurons, incaps, outcaps, caps_dims]
-        array = core.transpose(array, (1, 2, 0, 3, 4))
-        return array
-    return conv(_conv1d,
-                bias_shape,
-                logits_shape,
-                iterations,
-                leaky,
-                bias_initializer,
-                bias_regularizer,
-                act,
-                trainable,
-                dtype,
-                collections,
-                summary,
-                reuse,
-                name,
-                scope), output_shape
-
+# def conv1d(input_shape, nouts, caps_dims, kshape,
+#            iterations=3,
+#            leaky=False,
+#            stride=1,
+#            padding='valid',
+#            share_weights=True,
+#            weight_initializer='glorot_uniform',
+#            weight_regularizer=None,
+#            bias_initializer='zeros',
+#            bias_regularizer=None,
+#            act=None,
+#            trainable=True,
+#            dtype=core.float32,
+#            collections=None,
+#            summary='histogram',
+#            reuse=False,
+#            name=None,
+#            scope=None):
+#     """ primary capsule convolutional
+#         Attributes
+#         ==========
+#         input_shape : list / tuple
+#                       should have form of:
+#                       [batch-size, neurons, incaps, incaps_dim]
+#                       where `neurons` denotes the hidden layer units
+#                       `incaps_dim` denotes the vector size of each capsule
+#                       (as depth channels)
+#                       `incaps` means the number of capsules
+#         nouts : int
+#                 number of output capsules
+#         caps_dims : int
+#                     output capsule vector size (aka. outcapdim)
+#         kshape : int / list / tuple
+#                  kernel shape for convolving operation
+#     """
+#     if len(input_shape) != 4:
+#         raise ValueError('capsule conv1d require input shape {}[batch-size, '
+#                          'rows, cols, incaps, incapdim]{}, given {}'
+#                          .format(colors.fg.green, colors.reset,
+#                                  colors.red(input_shape)))
+#     kshape = helper.norm_input_1d(kshape)
+#     stride = helper.norm_input_1d(stride)
+#
+#     input_nshape = input_shape[:]
+#     #  [batch-size, neurons, incaps, incapdim]
+#     #=>[batch-size, neurons, incpas * incapdim]
+#     # //FUTURE: remove hard-coding of number of `-2`
+#     input_nshape[core.axis] *= input_nshape[-2]
+#     input_nshape.pop(-2)
+#     # output shape may be not right
+#     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
+#                                            kshape, stride, padding)
+#     output_shape = output_shape[:-1] + [nouts, caps_dims]
+#     incaps, incapdim = input_shape[-2:]
+#     logits_shape = output_shape[:2] + [incaps, nouts, 1]
+#     bias_shape = [nouts, caps_dims]
+#     # kernel shape:
+#     # [k, incaps, incapdims, outcaps * outcapdims]
+#     if share_weights:
+#         kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
+#     else:
+#         kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
+#     kernels = mm.malloc('kernel',
+#                         name,
+#                         kernel_shape,
+#                         dtype,
+#                         weight_initializer,
+#                         weight_regularizer,
+#                         trainable,
+#                         collections,
+#                         summary,
+#                         reuse,
+#                         scope)
+#
+#     def _body(idx, x, array):
+#         # kernels shape : [k, incaps, incapdims, outcaps * outcapdims]
+#         # kernel shape  : [k, incapdims, outcaps * outcapdims]
+#         kernel = core.gather(kernels, idx, axis=-3)
+#         # x shape    : [batch-size, neurons, incaps, incapdim]
+#         # subx shape : [batch-size, neurons, incapdim]
+#         subx = core.gather(x, idx, axis=-2)
+#         conv1d_output = core.conv1d(subx,
+#                                     kernel,
+#                                     stride,
+#                                     padding.upper())
+#         array = array.write(idx, conv1d_output)
+#         return [idx + 1, x, array]
+#
+#     def _conv1d(x):
+#         """ capsule wise convolution in 1d
+#             that is, convolve along `incaps` dimension
+#         """
+#         # x shape:
+#         #     [batch-size, neurons, incaps, incapdim]
+#         iterations = input_shape[-2] # <- incaps
+#         idx = core.constant(0, core.int32)
+#         array = core.TensorArray(dtype=core.float32,
+#                                  size=iterations,
+#                                  clear_after_read=False)
+#         _, x, array = core.while_loop(
+#             lambda idx, x, array : idx < iterations,
+#             _body,
+#             loop_vars = [idx, x, array],
+#             parallel_iterations=iterations,
+#         )
+#         # array should have the shape of:
+#         # incaps * [batch-size, nneurons, outcaps * outcapdims]
+#         # stack to
+#         # [incaps, batch-size, nneurons, outcaps * outcapdims]
+#         array = array.stack()
+#         # then reshape to
+#         # [incaps, batch-size, nneurons, outcaps, outcapdims]
+#         newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
+#         array = core.reshape(array, newshape)
+#         # then transpose to
+#         # [batch-size, nneurons, incaps, outcaps, caps_dims]
+#         array = core.transpose(array, (1, 2, 0, 3, 4))
+#         return array
+#
+#     return conv(_conv1d,
+#                 bias_shape,
+#                 logits_shape,
+#                 iterations,
+#                 leaky,
+#                 bias_initializer,
+#                 bias_regularizer,
+#                 act,
+#                 trainable,
+#                 dtype,
+#                 collections,
+#                 summary,
+#                 reuse,
+#                 name,
+#                 scope), output_shape
 
 
 def conv2d(input_shape, nouts, caps_dims, kshape,
@@ -437,7 +458,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
            leaky=False,
            stride=1,
            padding='valid',
-           mode='capsulewise',
+           share_weights=True,
            weight_initializer='glorot_uniform',
            weight_regularizer=None,
            bias_initializer='zeros',
@@ -466,60 +487,36 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                     output capsule vector size (aka. outcapdim)
         kshape : int / list / tuple
                  kernel shape for convolving operation
-        mode : string
-               must be one of `depthwise` and `capsulewise`
-               If using multi-GPUs, it seems `capsulewise`
-               will be faster then `depthwise`, while using
-               single GPU, `depthwise` seems to be faster
     """
     if len(input_shape) != 5:
         raise ValueError('capsule conv2d require input shape {}[batch-size, '
                          'rows, cols, incaps, incapdim]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
-    if mode not in ['depthwise', 'capsulewise']:
-        raise ValueError('`mode` must be `depthwise` or `capsulewise`. '
-                         'given {}'.format(colors.red(mode)))
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
-
     input_nshape = input_shape[:]
     #  [batch-size, rows, cols, incaps, incapdim]
     #=>[batch-size, rows, cols, incpas * incapdim]
     input_nshape[core.axis] *= input_nshape[-2]
     input_nshape.pop(-2)
-    # output shape may be not right
+    # output shape [batch-size, nrows, ncols, nouts, caps_dims]
     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
                                            kshape, stride, padding)
     output_shape = output_shape[:-1] + [nouts, caps_dims]
-    incaps, incapdim = input_shape[-2:]
+    batch_size, rows, cols, incaps, incapdim = input_shape
     logits_shape = output_shape[:3] + [incaps, nouts, 1]
     bias_shape = [nouts, caps_dims]
-    # kernel shape:
-    # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-    if mode == 'depthwise':
-        # if run in fast mode, apply depthwise_conv2d
-        kernel_shape = kshape[1:-1] + \
-                       [input_shape[-2] * input_shape[core.axis], 1]
-        weight_shape = [incaps, incapdim, nouts * caps_dims]
-        weight = mm.malloc('weight',
-                           name,
-                           weight_shape,
-                           dtype,
-                           weight_initializer,
-                           weight_regularizer,
-                           trainable,
-                           collections,
-                           summary,
-                           reuse,
-                           scope)
+    if share_weights:
+        # share filter for capsules along incaps
+        # kernel shape:
+        # [krow, kcol, incapdims, outcaps * outcapdims]
+        kernel_shape = kshape[1:-1] + [incapdim, nouts * caps_dims]
     else:
-        # else run in slow mode, apply capsulewise_conv2d
-        # that is, for each `capsule version of feature map`
-        # apply conv2d
+        # kernel shape:
+        # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
         kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
-    #print('kernel shape in conv2d:', kernel_shape)
-    kernels = mm.malloc('kernel',
+    weights = mm.malloc('weights',
                         name,
                         kernel_shape,
                         dtype,
@@ -530,84 +527,65 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                         summary,
                         reuse,
                         scope)
-
-    def _body(idx, x, array):
-        # kernels shape : [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-        # kernel shape  : [krow, kcol, incapdims, outcaps * outcapdims]
-        kernel = core.gather(kernels, idx, axis=-3)
-        # x shape    : [batch-size, rows, cols, incaps, incapdim]
-        # subx shape : [batch-size, rows, cols, incapdim]
-        subx = core.gather(x, idx, axis=-2)
-        conv2d_output = core.conv2d(subx,
-                                    kernel,
-                                    stride,
-                                    padding.upper())
-        array = array.write(idx, conv2d_output)
-        return [idx + 1, x, array]
-
-    def _capsulewise_conv2d(x):
-        """ capsule wise convolution in 2d
-            that is, convolve along `incaps` dimension
-        """
-        # x shape:
-        #     [batch-size, rows, cols, incaps, incapdim]
-        iterations = input_shape[-2] # <- incaps
-        idx = core.constant(0, core.int32)
-        array = core.TensorArray(dtype=core.float32,
-                                 size=iterations,
-                                 clear_after_read=False)
-        _, x, array = core.while_loop(
-            lambda idx, x, array : idx < iterations,
-            _body,
-            loop_vars = [idx, x, array],
-            parallel_iterations=iterations,
-        )
-        # array should have the shape of:
-        # incaps * [batch-size, nrows, ncols, outcaps * outcapdims]
-        # stack to
-        # [incaps, batch-size, nrows, ncols, outcaps * outcapdims]
-        array = array.stack()
-        #print('array after stack:', array)
-        # then reshape to
-        # [incaps, batch-size, nrows, ncols, outcaps, outcapdims]
-        newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
-        #print('new shape:', newshape)
-        array = core.reshape(array, newshape)
-        # then transpose to
-        # [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
-        array = core.transpose(array, (1, 2, 3, 0, 4, 5))
-        return array
-
-    def _depthwise_conv2d(x):
-        # x shape :
-        #    [batch-size, rows, cols, incaps, incapdims]
-        # to shape
-        #    [batch-size, rows, cols, incaps * incapdims]
-        x = core.reshape(x, input_nshape)
-        # x shape :
-        #    [batch-size, rows, cols, incaps * incapdims]
-        x = core.depthwise_conv2d(x, kernels, stride, padding)
-        xshape = input_shape[:]
-        xshape[1:3] = core.shape(x)[1:3]
-        # x shape :
-        #    [batch-size, nrows, ncols, incaps, incapdims]
-        x = core.reshape(x, xshape)
-        # x to shape :
-        #    [batch-size, nrows, ncols, incaps, incapdims, nouts * caps_dims]
-        x = core.tile(core.expand_dims(x, -1),
-                      [1, 1, 1, 1, 1, nouts * caps_dims])
-        # [batch-size, nrows, ncols, incaps, incapdims, nouts * caps_dims]
-        # then sum along with incapdims to get
-        # [batch-size, nrows, ncols, incaps, nouts * caps_dims]
-        # then reshape to
-        # [batch-size, nrows, ncols, incaps, nouts, caps_dims]
-        return core.reshape(core.sum(x * weight, 4),
-                            xshape[:3] + [incaps, nouts, caps_dims])
-
-    if mode == 'depthwise':
-        _conv2d = _depthwise_conv2d
+    if share_weights:
+        def _conv2d(x):
+            #  [batch-size, rows, cols, incaps, incapdim]
+            #=>[batch-size, incaps, rows, cols, incapdim]
+            xt = core.transpose(x, (0, 4, 1, 2, 3))
+            #  [batch-size, incaps, rows, cols, incapdim]
+            #=>[batch-size * incaps, rows, cols, incapdim]
+            xr = core.reshape(x, (-1, rows, cols, incapdim))
+            x = core.conv2d(xr, weights, stride, padding)
+            #  [batch-size * incaps, nrows, ncols, outcaps * caps_dims]
+            #=>[batch-size, incaps, nrows, ncols, outcaps, caps_dims]
+            x = core.reshape(x, [batch_size, incaps] + output_shape[1:])
+            #  [batch-size, incaps, nrows, ncols, outcaps, caps_dims]
+            #=>[batch-size, nrows, ncols, incaps, outcaps, caps_dims]
+            return core.transpose(x, (0, 2, 3, 1, 4, 5))
     else:
-        _conv2d = _capsulewise_conv2d
+        def _body(idx, x, array):
+            # kernels shape : [krow, kcol, incaps, incapdims, outcaps * outcapdims]
+            # kernel shape  : [krow, kcol, incapdims, outcaps * outcapdims]
+            weight = core.gather(weights, idx, axis=-3)
+            # x shape    : [batch-size, rows, cols, incaps, incapdim]
+            # subx shape : [batch-size, rows, cols, incapdim]
+            subx = core.gather(x, idx, axis=-2)
+            conv2d_output = core.conv2d(subx,
+                                        weight,
+                                        stride,
+                                        padding.upper())
+            array = array.write(idx, conv2d_output)
+            return [idx + 1, x, array]
+
+        def _conv2d(x):
+            """ capsule wise convolution in 2d
+                that is, convolve along `incaps` dimension
+            """
+            # x shape:
+            #     [batch-size, rows, cols, incaps, incapdim]
+            iterations = input_shape[-2] # <- incaps
+            idx = core.constant(0, core.int32)
+            array = core.TensorArray(dtype=core.float32,
+                                     size=iterations)
+            _, x, array = core.while_loop(
+                lambda idx, x, array : idx < iterations,
+                _body,
+                loop_vars = [idx, x, array],
+                parallel_iterations=iterations
+            )
+            # array should have the shape of:
+            # incaps * [batch-size, nrows, ncols, outcaps * outcapdims]
+            # stack to
+            # [incaps, batch-size, nrows, ncols, outcaps * outcapdims]
+            array = array.stack()
+            # then reshape to
+            # [incaps, batch-size, nrows, ncols, outcaps, outcapdims]
+            newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
+            array = core.reshape(array, newshape)
+            # then transpose to
+            # [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
+            array = core.transpose(array, (1, 2, 3, 0, 4, 5))
+            return array
 
     return conv(_conv2d,
                 bias_shape,

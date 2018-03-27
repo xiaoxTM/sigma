@@ -47,10 +47,10 @@ def concat(inputs_shape,
                                      colors.red(output_shape),
                                      colors.green(ip)))
         output_shape[axis] += ip[axis]
-    ops_scope, _, name = helper.assign_scope(name, scope, 'concat', reuse)
+    ops_scope, _, _ = helper.assign_scope(name, scope, 'concat', reuse)
     def _concat(x):
         with ops_scope:
-            return core.concat(x, axis, name)
+            return core.concat(x, axis)
     return _concat, output_shape
 
 
@@ -81,11 +81,11 @@ def add(inputs_shape,
                                      colors.green(ip)))
     if weights is None:
         weights = [1] * len(inputs_shape)
-    ops_scope, _, name = helper.assign_scope(name, scope, 'add', reuse)
+    ops_scope, _, _ = helper.assign_scope(name, scope, 'add', reuse)
     def _add(x):
         with ops_scope:
             x = [e * w for e, w in zip(x, weights)]
-            return core.add(x, name)
+            return core.add(x)
     return _add, output_shape
 
 
@@ -107,8 +107,8 @@ def mul(inputs_shape, reuse=False, name=None, scope=None):
                              .format(colors.red(idx+1),
                                      colors.red(output_shape),
                                      colors.green(ip)))
-    ops_scope, _, name = helper.assign_scope(name, scope, 'mul', reuse)
+    ops_scope, _, _ = helper.assign_scope(name, scope, 'mul', reuse)
     def _mul(x):
         with ops_scope:
-            return core.multiply(inputs, name)
+            return core.multiply(inputs)
     return _mul

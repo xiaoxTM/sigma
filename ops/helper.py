@@ -22,7 +22,7 @@ import numpy as np
 import copy
 import collections
 import os.path
-
+from contextlib import contextmanager
 
 def name_space():
     name_maps = collections.OrderedDict()
@@ -76,6 +76,15 @@ def assign_scope(name, scope, ltype, reuse=False):
         ops_scope = core.name_scope('{}/{}'
                                   .format(scope, name_with_ltype))
     return ops_scope, name_with_ltype, name
+
+
+@contextmanager
+def maybe_layer(aslayer=False, name=None, scope=None, ltype=None, reuse=False):
+    if aslayer:
+        ops_scope = assign_scope(name, scope, ltype, reuse)
+        yield ops_scope
+    else:
+        yield
 
 
 def is_tensor(x):
