@@ -110,7 +110,6 @@ def line(iterable,
          nprompts=10,
          feedbacks=False,
          timeit=False,
-         show_total_time=False,
          accuracy=5,
          message=None,
          nc='x',
@@ -219,6 +218,11 @@ def line(iterable,
                                                    nprompts,
                                                    accuracy,
                                                    colors.red('$'))
+            def format_message(epoch, prompt, iteration, iterations,
+                               percentage, retvalue, elapsed_time):
+                return spec.format(epoch, prompt, percentage,
+                                   retvalue, elapsed_time)
+
         else:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:3}}%] {{}}{}' \
                    .format(epochsize,
@@ -226,6 +230,9 @@ def line(iterable,
                            epochs,
                            nprompts,
                            colors.red('$'))
+            def format_message(epoch, prompt, iteration, iterations,
+                               percentage, retvalue, elapsed_time):
+                return spec.format(epoch, prompt, percentage,retvalue)
     else:
         if timeit:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
@@ -237,6 +244,10 @@ def line(iterable,
                                                     itersize,
                                                     accuracy,
                                                     colors.red('$'))
+            def format_message(epoch, prompt, iteration, iterations,
+                               percentage, retvalue, elapsed_time):
+                return spec.format(epoch, prompt, iteration, iterations,
+                                   percentage,retvalue, elapsed_time)
         else:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
                    ' {{}}{}'.format(epochsize,
@@ -246,6 +257,10 @@ def line(iterable,
                                     itersize,
                                     itersize,
                                     colors.red('$'))
+            def format_message(epoch, prompt, iteration, iterations,
+                               percentage, retvalue, elapsed_time):
+                return spec.format(epoch, prompt, iteration, iterations,
+                                   percentage,retvalue)
     def _line():
         totaltime = 0
         prev = 0
@@ -279,27 +294,15 @@ def line(iterable,
                 _prompt[block_beg:block_end] = nc
             prev = block_beg
             prompt = _prompt[:block_end].tostring().decode('utf-8')
-            if brief:
-                if timeit:
-                    message = spec.format(epoch+1, prompt, percentage,
-                                          ret, elapsed)
-                else:
-                    message = spec.format(epoch+1, prompt, percentage, ret)
-            else:
-                if timeit:
-                    message = spec.format(epoch+1, prompt, iteration, iterations,
-                                          percentage, ret, elapsed)
-                else:
-                    message = spec.format(epoch+1, prompt, iteration, iterations,
-                                          percentage, ret)
             end_flag = ''
             if percentage == 100:
                 # start new epoch
                 end_flag = '\n'
+                elapsed = totaltime
+                totaltime = 0
+            message = format_message(epoch+1, prompt, iteration, iterations,
+                                     percentage, ret, elapsed)
             print(message, end=end_flag, flush=True)
             idx += 1
-        if show_total_time and timeit:
-            print('\nTotal time elapsed:{}(s)'.format(totaltime))
-        else:
-            print()
+        print()
     return _line, iterable_size
