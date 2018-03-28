@@ -1,5 +1,5 @@
 from .. import helpers, colors, dbs, ops, layers
-import tensorflow as tf
+import os
 import sigma
 
 def predict_op(input_shape,
@@ -154,6 +154,10 @@ def session(target='',
     sess = ops.core.session(target, graph, config, initializers)
     ans = {'session': sess}
     if checkpoints is not None:
+        parent_dir = checkpoints
+        if checkpoints[-1] != '/':
+            parent_dir = checkpoints.rsplit('/', 1)[0]
+        os.makedirs(parent_dir, exist_ok=True)
         sess, saver = helpers.load(sess, checkpoints, verbose=verbose)
         ans['session'] = sess
         ans['saver'] = saver
@@ -186,9 +190,9 @@ def run(x, xtensor, optimizer, loss,
         ==========
             x : np.ndarray or list / tuple
                 samples to train
-            xtensor : tf.placeholder
+            xtensor : placeholder
                       input placeholder of the network
-            optimizer : tf.optimizer
+            optimizer : optimizer
                         optimizer to update network parameter
             loss : Tensor
                    objectives network tries to minimize / maximize
@@ -196,7 +200,7 @@ def run(x, xtensor, optimizer, loss,
                       measurement of result accuracy
             y : np.ndarray or list / tuple / None
                 ground truth for x.
-            ytensor : tf.placeholder / None
+            ytensor : placeholder / None
                       y placeholder of the network
             nclass : int / None
                      number of class for classification
@@ -210,8 +214,10 @@ def run(x, xtensor, optimizer, loss,
                       whether should shuffle dataset after each epoch
             valids : np.ndarray or list / tuple
                      validation dataset for evaluation
-            graph : tf.Graph / None
-            config : tf.ProtoConfig / None
+            graph : Graph / None
+                    may for tensorflow backend ONLY
+            config : ProtoConfig / None
+                     may for tensorflow backend ONLY
             checkpoints : string
                           checkpoints for restoring / saving parameters
             logs : string
@@ -330,7 +336,6 @@ def run(x, xtensor, optimizer, loss,
                 helpers.save(sess, checkpoints, saver,
                              write_meta_graph=False,
                              verbose=False)
-#        print('loss:', trainloss, '- acc:', trainacc)
         trainmessage = encodeop(trainloss, trainacc)
         (global_idx, _, epoch, iteration) = progressor.send(
             '{{{}{}}}'.format(trainmessage,
@@ -339,6 +344,7 @@ def run(x, xtensor, optimizer, loss,
             helpers.sendmail(emc)
     ops.core.close_summary_writer(writer)
     ops.core.close_session(sess)
+
 
 def train(x, xtensor, optimizer, loss,
           metric=None,

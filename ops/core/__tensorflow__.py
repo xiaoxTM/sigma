@@ -1276,6 +1276,8 @@ def save(session, checkpoints,
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(session))))
+    if not os.path.exists(checkpoints):
+        print('`{}` not exists'.format(colors.red(checkpoints)))
     if verbose:
         print('{}saving check point to {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
