@@ -222,7 +222,7 @@ def conv2d(input_shape, nouts, kshape,
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    kernel_shape = [*kshape[1:-1], input_shape[core.axis], nouts]
+    kernel_shape = kshape[1:-1] + [input_shape[core.axis], nouts]
     def _conv2d(x, weight):
         return core.conv2d(x, weight, stride, padding.upper())
     return conv(_conv2d,
@@ -268,7 +268,7 @@ def conv3d(input_shape, nouts,
     stride = helper.norm_input_3d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
+    kernel_shape = kshape[1:-1] +[input_shape[-1], nouts]
     def _conv3d(x, weight):
         return core.conv3d(x, weight, stride, padding)
     return conv(_conv3d,
@@ -321,7 +321,7 @@ def deconv2d(input_shape, output_shape, nout,
                          .format(colors.fg.red, input_shape, colors.reset))
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
-    kernel_shape = [*kshape[1:-1], nout, input_shape[-1]]
+    kernel_shape = kshape[1:-1] +[nout, input_shape[-1]]
     out_shape = output_shape
     if out_shape is None:
         out_shape = input_shape
@@ -398,7 +398,7 @@ def soft_conv(input_shape,
         dim_shape[idx] = input_shape[dim]
         dim_stride[idx] = stride[dim]
         dim_strided_shape[idx] = int(
-                        np.ceil(float(input_shape[dim]) / float(stride[dim])))
+          np.ceil(float(input_shape[dim]) / float(stride[dim])))
     nkernels = np.prod(kshape[:dimlen])
     ndims = np.prod([int(sh / st) for sh, st in zip(dim_shape, dim_stride)])
     # offsets_shape = [-1] + dim_shape + [nkernels, dimlen]
@@ -710,7 +710,7 @@ def soft_conv2d(input_shape, nouts,
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    kernel_shape = [*kshape[1:-1], input_shape[-1], nouts]
+    kernel_shape = kshape[1:-1] + [input_shape[-1], nouts]
     return soft_conv(input_shape,
                      kernel_shape,
                      stride,
@@ -921,7 +921,8 @@ def sepconv2d(input_shape, nouts,
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    depthwise_kernel = [*kshape[1:-1], input_shape[core.axis], channel_multiplier]
+    depthwise_kernel = kshape[1:-1] + [input_shape[core.axis],
+                                       channel_multiplier]
     pointwise_kernel = [1, 1,
                         input_shape[core.axis]*channel_multiplier,
                         nouts]

@@ -320,9 +320,8 @@ def range(start, limit=None, delta=1, dtype=None, name='range'):
     if limit is None:
         # treat `start` as `limit`
         return tf.range(start, delta=delta, dtype=dtype, name=name)
-    else:
-        return tf.range(start, limit=limit, delta=delta, dtype=dtype,
-                        name=name)
+    return tf.range(start, limit=limit, delta=delta, dtype=dtype,
+                    name=name)
 
 
 def dtype(x):
@@ -416,8 +415,7 @@ def max(x,
         name=None):
     if y is None:
         return tf.reduce_max(x, axis, keepdims, name)
-    else:
-        return tf.maximum(x, y, name)
+    return tf.maximum(x, y, name)
 
 
 def min(x,
@@ -427,8 +425,7 @@ def min(x,
         name=None):
     if y is None:
         return tf.reduce_min(x, axis, keepdims, name)
-    else:
-        return tf.minimum(x, y, name)
+    return tf.minimum(x, y, name)
 
 
 def prod(x,
@@ -614,7 +611,7 @@ def selu(x,
 def leaky_relu(x, alpha=0.2, name=None):
     if tf.__version__ >= '1.4.0':
         return tf.nn.leaky_relu(x, alpha, name)
-    return tf.nn.maximum(x, x * alpha, name)
+    return tf.maximum(x, x * alpha, name)
 
 
 def softmax(x, axis=-1, name=None):
@@ -629,7 +626,9 @@ def softsign(x, name=None):
     return  tf.nn.softplus(x, name)
 
 
-def sigmoid(x, name=None):
+def sigmoid(x, log=False, name=None):
+    if log:
+        return tf.log_sigmoid(x, name)
     return tf.sigmoid(x, name)
 
 
@@ -722,14 +721,13 @@ def conv2d(x, filters, strides, padding,
                             data_format,
                             dilations,
                             name)
-    else:
-        return tf.nn.conv2d(x,
-                            filters,
-                            strides,
-                            padding,
-                            use_cudnn_on_gpu,
-                            data_format,
-                            name)
+    return tf.nn.conv2d(x,
+                        filters,
+                        strides,
+                        padding,
+                        use_cudnn_on_gpu,
+                        data_format,
+                        name)
 
 
 @padnorm
@@ -747,14 +745,13 @@ def conv3d(x, filters, strides, padding,
                             data_format,
                             dilations,
                             name)
-    else:
-        return tf.nn.conv3d(x,
-                    filters,
-                    strides,
-                    padding,
-                    use_cudnn_on_gpu,
-                    data_format,
-                    name)
+    return tf.nn.conv3d(x,
+                filters,
+                strides,
+                padding,
+                use_cudnn_on_gpu,
+                data_format,
+                name)
 
 
 @padnorm

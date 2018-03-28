@@ -317,140 +317,156 @@ def fully_connected(input_shape, nouts, caps_dims,
                 scope), output_shape
 
 
-# def conv1d(input_shape, nouts, caps_dims, kshape,
-#            iterations=3,
-#            leaky=False,
-#            stride=1,
-#            padding='valid',
-#            share_weights=True,
-#            weight_initializer='glorot_uniform',
-#            weight_regularizer=None,
-#            bias_initializer='zeros',
-#            bias_regularizer=None,
-#            act=None,
-#            trainable=True,
-#            dtype=core.float32,
-#            collections=None,
-#            summary='histogram',
-#            reuse=False,
-#            name=None,
-#            scope=None):
-#     """ primary capsule convolutional
-#         Attributes
-#         ==========
-#         input_shape : list / tuple
-#                       should have form of:
-#                       [batch-size, neurons, incaps, incaps_dim]
-#                       where `neurons` denotes the hidden layer units
-#                       `incaps_dim` denotes the vector size of each capsule
-#                       (as depth channels)
-#                       `incaps` means the number of capsules
-#         nouts : int
-#                 number of output capsules
-#         caps_dims : int
-#                     output capsule vector size (aka. outcapdim)
-#         kshape : int / list / tuple
-#                  kernel shape for convolving operation
-#     """
-#     if len(input_shape) != 4:
-#         raise ValueError('capsule conv1d require input shape {}[batch-size, '
-#                          'rows, cols, incaps, incapdim]{}, given {}'
-#                          .format(colors.fg.green, colors.reset,
-#                                  colors.red(input_shape)))
-#     kshape = helper.norm_input_1d(kshape)
-#     stride = helper.norm_input_1d(stride)
-#
-#     input_nshape = input_shape[:]
-#     #  [batch-size, neurons, incaps, incapdim]
-#     #=>[batch-size, neurons, incpas * incapdim]
-#     # //FUTURE: remove hard-coding of number of `-2`
-#     input_nshape[core.axis] *= input_nshape[-2]
-#     input_nshape.pop(-2)
-#     # output shape may be not right
-#     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
-#                                            kshape, stride, padding)
-#     output_shape = output_shape[:-1] + [nouts, caps_dims]
-#     incaps, incapdim = input_shape[-2:]
-#     logits_shape = output_shape[:2] + [incaps, nouts, 1]
-#     bias_shape = [nouts, caps_dims]
-#     # kernel shape:
-#     # [k, incaps, incapdims, outcaps * outcapdims]
-#     if share_weights:
-#         kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
-#     else:
-#         kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
-#     kernels = mm.malloc('kernel',
-#                         name,
-#                         kernel_shape,
-#                         dtype,
-#                         weight_initializer,
-#                         weight_regularizer,
-#                         trainable,
-#                         collections,
-#                         summary,
-#                         reuse,
-#                         scope)
-#
-#     def _body(idx, x, array):
-#         # kernels shape : [k, incaps, incapdims, outcaps * outcapdims]
-#         # kernel shape  : [k, incapdims, outcaps * outcapdims]
-#         kernel = core.gather(kernels, idx, axis=-3)
-#         # x shape    : [batch-size, neurons, incaps, incapdim]
-#         # subx shape : [batch-size, neurons, incapdim]
-#         subx = core.gather(x, idx, axis=-2)
-#         conv1d_output = core.conv1d(subx,
-#                                     kernel,
-#                                     stride,
-#                                     padding.upper())
-#         array = array.write(idx, conv1d_output)
-#         return [idx + 1, x, array]
-#
-#     def _conv1d(x):
-#         """ capsule wise convolution in 1d
-#             that is, convolve along `incaps` dimension
-#         """
-#         # x shape:
-#         #     [batch-size, neurons, incaps, incapdim]
-#         iterations = input_shape[-2] # <- incaps
-#         idx = core.constant(0, core.int32)
-#         array = core.TensorArray(dtype=core.float32,
-#                                  size=iterations,
-#                                  clear_after_read=False)
-#         _, x, array = core.while_loop(
-#             lambda idx, x, array : idx < iterations,
-#             _body,
-#             loop_vars = [idx, x, array],
-#             parallel_iterations=iterations,
-#         )
-#         # array should have the shape of:
-#         # incaps * [batch-size, nneurons, outcaps * outcapdims]
-#         # stack to
-#         # [incaps, batch-size, nneurons, outcaps * outcapdims]
-#         array = array.stack()
-#         # then reshape to
-#         # [incaps, batch-size, nneurons, outcaps, outcapdims]
-#         newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
-#         array = core.reshape(array, newshape)
-#         # then transpose to
-#         # [batch-size, nneurons, incaps, outcaps, caps_dims]
-#         array = core.transpose(array, (1, 2, 0, 3, 4))
-#         return array
-#
-#     return conv(_conv1d,
-#                 bias_shape,
-#                 logits_shape,
-#                 iterations,
-#                 leaky,
-#                 bias_initializer,
-#                 bias_regularizer,
-#                 act,
-#                 trainable,
-#                 dtype,
-#                 collections,
-#                 summary,
-#                 reuse,
-#                 name,
-#                 scope), output_shape
+def conv1d(input_shape, nouts, caps_dims, kshape,
+           iterations=3,
+           leaky=False,
+           stride=1,
+           padding='valid',
+           share_weights=True,
+           weight_initializer='glorot_uniform',
+           weight_regularizer=None,
+           bias_initializer='zeros',
+           bias_regularizer=None,
+           act=None,
+           trainable=True,
+           dtype=core.float32,
+           collections=None,
+           summary='histogram',
+           reuse=False,
+           name=None,
+           scope=None):
+    """ primary capsule convolutional
+        Attributes
+        ==========
+        input_shape : list / tuple
+                      should have form of:
+                      [batch-size, neurons, incaps, incaps_dim]
+                      where `neurons` denotes the hidden layer units
+                      `incaps_dim` denotes the vector size of each capsule
+                      (as depth channels)
+                      `incaps` means the number of capsules
+        nouts : int
+                number of output capsules
+        caps_dims : int
+                    output capsule vector size (aka. outcapdim)
+        kshape : int / list / tuple
+                 kernel shape for convolving operation
+    """
+    if len(input_shape) != 4:
+        raise ValueError('capsule conv1d require input shape {}[batch-size, '
+                         'rows, cols, incaps, incapdim]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
+    kshape = helper.norm_input_1d(kshape)
+    stride = helper.norm_input_1d(stride)
+
+    input_nshape = input_shape[:]
+    #  [batch-size, neurons, incaps, incapdim]
+    #=>[batch-size, neurons, incpas * incapdim]
+    # //FUTURE: remove hard-coding of number of `-2`
+    input_nshape[core.axis] *= input_nshape[-2]
+    input_nshape.pop(-2)
+    # output shape may be not right
+    output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
+                                           kshape, stride, padding)
+    output_shape = output_shape[:-1] + [nouts, caps_dims]
+    batch_size, neurons, incaps, incapdim = input_shape
+    logits_shape = output_shape[:2] + [incaps, nouts, 1]
+    bias_shape = [nouts, caps_dims]
+    if share_weights:
+        # kernel shape:
+        # [k, incapdims, outcaps * outcapdims]
+        kernel_shape = [kshape[1] + input_shape[-1] + nouts * caps_dims]
+    else:
+        # kernel shape:
+        # [k, incaps, incapdims, outcaps * outcapdims]
+        kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
+    weights = mm.malloc('weights',
+                        name,
+                        kernel_shape,
+                        dtype,
+                        weight_initializer,
+                        weight_regularizer,
+                        trainable,
+                        collections,
+                        summary,
+                        reuse,
+                        scope)
+    if share_weights:
+        def _conv1d(x):
+            #  [batch-size, neurons, incaps, incapdim]
+            #=>[batch-size, incaps, neurons, incapdim]
+            xt = core.transpose(x, (0, 2, 1, 3))
+            #  [batch-size, incaps, neurons, incapdim]
+            #=>[batch-size * incaps, neurons, incapdim]
+            xr = core.reshape(xt, (-1, neurons, incapdim))
+            x = core.conv1d(xr, weights, stride, padding)
+            #  [batch-size * incaps, nneurons, outcaps * caps_dims]
+            #=>[batch-size, incaps, nneurons, outcaps, caps_dims]
+            x = core.reshape(x, [batch_size, incaps] + output_shape[1:])
+            #  [batch-size, incaps, nneurons, outcaps, caps_dims]
+            #=>[batch-size, incaps, nneurons, outcaps, caps_dims]
+            return core.transpose(x, (0, 2, 1, 3, 4))
+    else:
+        def _body(idx, x, array):
+            # kernels shape : [k, incaps, incapdims, outcaps * outcapdims]
+            # kernel shape  : [k, incapdims, outcaps * outcapdims]
+            weight = core.gather(weights, idx, axis=-3)
+            # x shape    : [batch-size, neurons, incaps, incapdim]
+            # subx shape : [batch-size, neurons, incapdim]
+            subx = core.gather(x, idx, axis=-2)
+            conv1d_output = core.conv1d(subx,
+                                        weight,
+                                        stride,
+                                        padding.upper())
+            array = array.write(idx, conv1d_output)
+            return [idx + 1, x, array]
+
+        def _conv1d(x):
+            """ capsule wise convolution in 1d
+                that is, convolve along `incaps` dimension
+            """
+            # x shape:
+            #     [batch-size, neurons, incaps, incapdim]
+            iterations = input_shape[-2] # <- incaps
+            idx = core.constant(0, core.int32)
+            array = core.TensorArray(dtype=core.float32,
+                                     size=iterations)
+            _, x, array = core.while_loop(
+                lambda idx, x, array : idx < iterations,
+                _body,
+                loop_vars = [idx, x, array],
+                parallel_iterations=iterations,
+            )
+            # array should have the shape of:
+            # incaps * [batch-size, nneurons, outcaps * outcapdims]
+            # stack to
+            # [incaps, batch-size, nneurons, outcaps * outcapdims]
+            array = array.stack()
+            # then reshape to
+            # [incaps, batch-size, nneurons, outcaps, outcapdims]
+            newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
+            array = core.reshape(array, newshape)
+            # then transpose to
+            # [batch-size, nneurons, incaps, outcaps, caps_dims]
+            array = core.transpose(array, (1, 2, 0, 3, 4))
+            return array
+
+    return conv(_conv1d,
+                bias_shape,
+                logits_shape,
+                iterations,
+                leaky,
+                bias_initializer,
+                bias_regularizer,
+                act,
+                trainable,
+                dtype,
+                collections,
+                summary,
+                reuse,
+                name,
+                scope), output_shape
 
 
 def conv2d(input_shape, nouts, caps_dims, kshape,
@@ -534,7 +550,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
             xt = core.transpose(x, (0, 4, 1, 2, 3))
             #  [batch-size, incaps, rows, cols, incapdim]
             #=>[batch-size * incaps, rows, cols, incapdim]
-            xr = core.reshape(x, (-1, rows, cols, incapdim))
+            xr = core.reshape(xt, (-1, rows, cols, incapdim))
             x = core.conv2d(xr, weights, stride, padding)
             #  [batch-size * incaps, nrows, ncols, outcaps * caps_dims]
             #=>[batch-size, incaps, nrows, ncols, outcaps, caps_dims]
