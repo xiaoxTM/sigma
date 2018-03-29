@@ -100,13 +100,13 @@ def _agreement_routing(prediction,
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
                                    clear_after_read=False)
-    # print('logits shape:', logits_shape)
     logits = core.zeros(logits_shape, dtype=core.float32)
     act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
     # softmax along with `outcaps` axis
     outcaps_axis = helper.normalize_axes(core.shape(logits), -2)
-    # print('outcaps axis:', outcaps_axis)
+    # for doing experiment, we also try to softmax along incaps
+    #incaps_axis = helper.normalize_axes(core.shape(logits), -3)
 
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
@@ -118,29 +118,24 @@ def _agreement_routing(prediction,
             # softmax along `outcaps` axis
             # that is, `agree` on some capsule
             # a.k.a., which capsule in higher layer to activate
+            # //FIXME: experimenting on softmax along incaps_axis
             coefficients = core.softmax(logits, axis=outcaps_axis)
+            #coefficients = core.softmax(coefficients, axis=incaps_axis)
         # average all lower capsules's prediction to higher capsule
         # that is, agreements from all capsules in lower layer
-        # print('coefficients shape:', core.shape(coefficients))
-        # print('prediction shape:', core.shape(prediction))
         preactivate = core.sum(coefficients * prediction,
                                axis=-3,
                                keepdims=True)
-        # print('preactivate shape:', core.shape(preactivate))
         if bias:
             preactivate += bias
         # typically, squash
-        # print('biased preactivate:', core.shape(preactivate))
         activation = act(preactivate)
         activations = activations.write(i, activation)
         # sum up along outcapdim dimension
-        # print('activation shape:', core.shape(activation))
         distance = core.sum(prediction * activation,
                             axis=core.axis,
                             keepdims=True)
-        # print('distance shape:', core.shape(distance))
         logits += distance
-        # print('logits shape after routing:', core.shape(logits))
         return (i+1, logits, activations)
 
     _, logits, activations = core.while_loop(

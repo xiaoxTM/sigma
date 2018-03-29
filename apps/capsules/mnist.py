@@ -27,7 +27,7 @@ def build_func(inputs, labels):
                                          stride=2,
                                          # activation for pre-predictions
                                          # that is, u^{hat}_{j|i}
-                                         #act='leaky_relu',
+                                         act='leaky_relu',
                                          return_shape=True)
     ops.core.summarize('conv2d-1', x)
     #x, outshape = layers.capsules.conv2d(x, 64, 32, 5, 1,

@@ -23,7 +23,7 @@ import numpy as np
 import math
 
 
-def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S'):
+def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S', split='-'):
     """ time stamp function
         Attributes
         ==========
@@ -33,6 +33,12 @@ def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S'):
                   datetime format to parse `date` or to format current time
                   see https://docs.python.org/3.6/library/datetime.html/strftime-strptime-behavior
                   for more description on format
+            split : char / string
+                    char or string to replace whitespace and ':' in datetime string
+                    For example
+                    > split = '-'
+                    > now = 2018-03-29 12:00:00
+                    > output: 2018-03-29-12-00-00
 
         Returns
         ==========
@@ -44,7 +50,9 @@ def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S'):
     """
     if date is None:
         now = datetime.now()
-        fmt = '{{0:{}}}'.format(fmt.replace(' ','-').replace(':', '-'))
+        if split is not None:
+            fmt = fmt.replace(' ', split).replace(':', split)
+        fmt = '{{0:{}}}'.format(fmt)
         return fmt.format(now)
     else:
         return datetime.strptime(date, fmt)
@@ -60,6 +68,13 @@ def intsize(x, cminus=False):
             return int(np.log10(-x)) + 2
         else:
             return int(np.log10(-x)) + 1
+
+
+def arg2dict(args):
+    kwargs = {}
+    for arg in vars(args):
+        kwargs[arg] = getattr(args, arg)
+    return kwargs
 
 
 def print_args(args, argcolor='green', valuecolor='red'):

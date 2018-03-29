@@ -1,6 +1,7 @@
 from .. import helpers, colors, dbs, ops, layers
-import os
 import sigma
+import os
+import argparse
 
 def predict_op(input_shape,
                predop=None,
@@ -500,3 +501,103 @@ def build(input_shape,
                             ' tensor / list / tuple / dict. given {}'
                             .format(type(x)))
         return ([inputs, labels], [loss, metric])
+
+
+def build_experiment(build_model_fun,
+                     build_reader_fun,
+                     optimizer,
+                     model_config,
+                     reader_config,
+                     optimizer_config=None,
+                     gpu_config=None,
+                     batch_size=64):
+    """ build experiment
+        this will automatically add timestamp to checkpoints and logs
+
+        Attributes
+        ==========
+            build_model_fun : callable
+                              function to build network structure
+                              this will be passed to sigma.build
+            build_reader_fun : callable
+                               function to load dataset
+                               this is supposed to return train&valid dataset
+                               [xtrain, ytrain], [xvalid, yvalid]
+            optimizer : string / sigma.ops.core.Optimizer
+                        optimizer to optimize loss and train parameters
+            model_config : dict
+                           parameters passed to build_model_fun
+            reader_config : dict
+                            parameters passed to build_reader_fun
+            optimizer_config : dict
+                               parameters passed to ops.optimizer.get
+            gpu_config : dict:
+                         gpu configuration
+            batch_size : int
+                         batch size
+    """
+    #----- read the dataset -----#
+    (xtrain, ytrain), (xvlid, yvalid) = build_reader_fun(**reader_config)
+    valids = None
+    if xvalid is not None and yvalid is not None:
+        valids = [xvalid, yvalid]
+    #----- build networks -----#
+    input_shape = list(xtrain.shape)
+    input_shape[0] = batch_size
+    nclass = ytrain.shape[-1]
+    [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
+                                                     build_model_fun,
+                                                     **model_config)
+    #----- train configuration -----#
+    optimizer = ops.optimizer.get(optimizer, optimizer_config)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--checkpints', type=str, default=None)
+    parser.add_argument('--logs', type=str, default=None)
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--shuffle', type=bool, default=True)
+
+    def _experiment(parser, verbose=True):
+        # the process of training networks
+        args = parser.parse_args()
+        if verbose:
+            helpers.print_args(args)
+
+        #----- re-configurations -----#
+        train_config = helpers.arg2dict(args)
+        train_config['checkpints'] = train_config.get('checkpints', None)
+        timestamp = helpers.timestamp()
+        if train_config['checkpints'] is None:
+            train_config['checkpints'] = timestamp
+        train_config['logs'] = train_config.get('logs', None)
+        timestamp = helpers.timestamp()
+        if train_config['logs'] is None:
+            train_config['logs'] = timestamp
+        #----- re-configurations -----#
+
+        #----- get rid of some parameters in dictionary -----#
+        train_config_keys = train_config.keys()
+        for key in ['xtrain', 'xtensor', 'optimizer', 'loss', 'metric', \
+                    'ytrain', 'ytensor', 'nclass', 'valids', 'config']:
+            if key in train_config_keys:
+                print('`{}` in parser not allowed. will be removed'
+                      .format(colors.red(key)))
+                del train_config[key]
+        #----- check parameters not allowed for sigma.train
+        for key in train_config_keys:
+            if key not in ['epochs', 'batch_size', 'shuffle', 'graph',\
+                           'savemode', 'modetarget']:
+                print('sigma.train contains no parameter `{}`. will be removed'
+                      .format(colors.red(key)))
+                del train_config[key]
+
+        sigma.train(xtrain, xtensor,
+                    optimizer,
+                    loss,
+                    metric,
+                    ytrain, ytensor,
+                    nclass=nclass,
+                    valids=valids,
+                    config=gpu_config,
+                    **train_config)
+    return _experiment, parser
