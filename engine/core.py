@@ -586,9 +586,12 @@ def build_experiment(build_model_fun,
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoints', type=str, default=None)
     parser.add_argument('--logs', type=str, default=None)
+    parser.add_argument('--eid', type=str, default=None)
+
     parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--shuffle', type=bool, default=True)
     parser.add_argument('--batch-size', type=int, default=64)
+
+    parser.add_argument('--shuffle', type=bool, default=True)
 
     def _experiment(parser, verbose=True):
         # the process of training networks
@@ -600,25 +603,28 @@ def build_experiment(build_model_fun,
         train_config = helpers.arg2dict(args)
         train_config['checkpoints'] = train_config.get('checkpoints', None)
         timestamp = helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None)
+        expid = train_config.get('eid', None)
+        if expid is None:
+            eid = timestamp
+        else:
+            eid = '{}-{}'.format(eid, timestamp)
         if train_config['checkpoints'] is None:
-            train_config['checkpoints'] = '{}/ckpts/main'.format(timestamp)
+            train_config['checkpoints'] = '{}/ckpts/main'.format(eid)
         else:
             train_config['checkpoints'] = '{}/{}/ckpts/main'.format(
-                train_config['checkpoints'], timestamp
-            )
+                                            train_config['checkpoints'],eid)
         train_config['logs'] = train_config.get('logs', None)
         if train_config['logs'] is None:
-            train_config['logs'] = '{}/logs'.format(timestamp)
+            train_config['logs'] = '{}/logs'.format(eid)
         else:
             train_config['logs'] = '{}/{}/logs'.format(
-                train_config['logs'], timestamp
-            )
+                                     train_config['logs'], eid)
         #----- end re-configurations -----#
 
         #----- get rid of some parameters in dictionary -----#
         train_config_keys = train_config.keys()
         for key in ['xtrain', 'xtensor', 'optimizer', 'loss', 'metric', \
-                    'ytrain', 'ytensor', 'nclass', 'valids', 'config']:
+                    'ytrain', 'ytensor', 'nclass', 'valids', 'config', 'eid']:
             if key in train_config_keys:
                 print('`{}` in parser not allowed. will be removed'
                       .format(colors.red(key)))

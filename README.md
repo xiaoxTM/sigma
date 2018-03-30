@@ -73,14 +73,16 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] max_pool2d_global
 
 # useful functions
-  - [ ] session
+  - [x] session
     - build Session object with all setup done (e.g., checkpoints, logs)
   - [x] build
     - build workflow given build_fun to build networks
-  - [ ] train
+  - [x] train
   - [x] run
     - run train progress
   - [ ] predict
+  - [x] build_experiment
+    - experiment-level function to pack functions to do experiment
 
 # Advantages
   - seamless with original tensorflow library
@@ -105,7 +107,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - model
       - [ ] import_model / export_model
   - progress display
-      - [x] sigma.engine.run
+      - [x] sigma.helpers.line
 
 # Version explanation
 `sigma` version consists of three parts:
