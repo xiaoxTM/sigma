@@ -105,6 +105,6 @@ apps/gan/exp
 test/mnist_keras.py
 test
 
-clean.sh
+clean
 
 cache

@@ -35,7 +35,7 @@ def norm(inputs,
     """ norm of vector
         input vector output scalar
     """
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.norm(input_shape,
                                     axis,
                                     keepdims,
@@ -77,7 +77,7 @@ def fully_connected(inputs, nouts, caps_dims,
                     scope=None):
     """ fully_connected operation between capsules
     """
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.fully_connected(input_shape,
                                                nouts,
                                                caps_dims,
@@ -122,7 +122,7 @@ def conv1d(inputs, nouts, caps_dims, kshape,
            reuse=False,
            name=None,
            scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.conv1d(input_shape,
                                       nouts,
                                       caps_dims,
@@ -168,7 +168,7 @@ def conv2d(inputs, nouts, caps_dims, kshape,
            reuse=False,
            name=None,
            scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.conv2d(input_shape,
                                       nouts,
                                       caps_dims,

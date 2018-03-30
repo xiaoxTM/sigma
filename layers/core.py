@@ -309,6 +309,8 @@ def layer(fun):
         if isinstance(x, (list, tuple)):
             outputs = x[0]
         inputs = kwargs.pop('inputs')
+        # if ops.helper.is_tensor(inputs):
+        #     inputs = ops.core.shape(inputs)
         kwargs.pop('reuse')
         kwargs.pop('name')
         scope = kwargs.pop('scope')

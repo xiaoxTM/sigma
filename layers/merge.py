@@ -23,7 +23,7 @@ from . import core
 def _merge(fun, inputs, output, typename, return_shape):
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if output != xshape:
+    if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(colors.green(output),
@@ -40,7 +40,7 @@ def concat(inputs,
            reuse=False,
            name=None,
            scope=None):
-    inputs_shape = [ops.core.shape(ip) for ip in inputs]
+    inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.merge.concat(inputs_shape, axis, reuse, name, scope)
     return _merge(fun, inputs, output, 'concat', return_shape)
 
@@ -52,7 +52,7 @@ def add(inputs,
         reuse=False,
         name=None,
         scope=None):
-    input_shape = [ops.core.shape(ip) for ip in inputs]
+    input_shape = [ops.helper.norm_input_shape(ip)  for ip in inputs]
     fun, output = ops.merge.add(input_shape, weights, reuse, name, scope)
     return _merge(fun, inputs, output, 'add', return_shape)
 
@@ -63,6 +63,6 @@ def mul(inputs,
         reuse=False,
         name=None,
         scope=None):
-    input_shape = [ops.core.shape(ip) for ip in inputs]
+    input_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.merge.mul(input_shape, reuse, name, scope)
     return _merge(fun, inputs, output, 'mul', return_shape)

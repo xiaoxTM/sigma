@@ -60,6 +60,7 @@ def flatten(input_shape,
             reuse=False,
             name=None,
             scope=None):
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'flatten', reuse)
     output_shape = [-1, np.prod(input_shape[1:])]
     def _flatten(x):
@@ -84,6 +85,7 @@ def expand_dims(input_shape,
                 reuse=False,
                 name=None,
                 scope=None):
+    helper.check_input_shape(input_shape)
     ops_scope, _, _ = helper.assign_scope(name,
                                           scope,
                                           'expand_dims',
@@ -107,12 +109,13 @@ def maskout(input_shape,
     """ typical input_shape form:
         [batch-size, nclass, depth]
     """
+    helper.check_input_shape(input_shape)
     ops_scope, name_with_ltype, _ = helper.assign_scope(name,
                                                         scope,
                                                         'maskout',
                                                         reuse)
     output_shape = input_shape[:]
-    index_shape = input_shape[:]
+    index_shape = output_shape[:]
     ones = [1] * len(input_shape)
     axis = helper.normalize_axes(input_shape, axis)
     if drop:
@@ -140,7 +143,8 @@ def maskout(input_shape,
                 multiples = [int(x / y) for x, y in zip(index_shape, shape)]
                 index = core.reshape(core.tile(index, multiples), (-1,1))
                 return index
-            indexlist = [_index(i) for i in range(len(input_shape)) if i != axis]
+            indexlist = [_index(i) for i in range(len(input_shape)) \
+                         if i != axis]
 
         def _maskout(x, elements=None):
             with ops_scope:
@@ -153,7 +157,8 @@ def maskout(input_shape,
                 positions.insert(axis, elements)
                 positions = core.concat(positions, axis=1)
                 x = core.gather_nd(x, positions)
-                return core.reshape(x, output_shape)
+                reshape_target = [-1] + output_shape[1:]
+                return core.reshape(x, reshape_target)
     else:
         tiles = ones
         tiles[core.axis] = input_shape[core.axis]

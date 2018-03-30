@@ -19,14 +19,14 @@
 from . import status, ops, layers, helpers, engine, dbs, colors
 from .layers import defaults
 from .ops.core import placeholder
-from .engine import train, run, session, predict, build
+from .engine import train, run, session, predict, build, build_experiment
 import os
 import os.path
 import json
 import logging
 
 
-__version__ = '0.1.2.2'
+__version__ = '0.1.3.1'
 
 
 __packages__ = {'sigma.status' : status,

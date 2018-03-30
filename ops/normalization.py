@@ -32,6 +32,9 @@ def instance_norm(input_shape,
                   reuse=False,
                   name=None,
                   scope=None):
+    helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'instance_norm',
@@ -84,8 +87,6 @@ def instance_norm(input_shape,
     return _instance_norm
 
 
-layer_norm = instance_norm
-
 """ code inspired by (borrowed from):
         https://github.com/tensorflow/magenta/blob/master
               /magenta/models/image_stylization/ops.py
@@ -104,6 +105,9 @@ def conditional_instance_norm(input_shape,
                               reuse=False,
                               name=None,
                               scope=None):
+    helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'conditional_instance_norm',
@@ -209,7 +213,9 @@ def batch_norm(input_shape,
         fused : bool
                 use fused_batch_normal if true
     """
-
+    helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'batch_norm',
@@ -304,7 +310,7 @@ def batch_norm(input_shape,
 
     def _infer(x):
         if fused:
-            x_shape = core.shape(x)
+            x_shape = [-1] + core.shape(x)[1:]
             for _ in range(4 - x.get_shape().ndims):
                 x = core.expand_dims(x, 1)
             x, mean, variance = core.fused_batch_norm(x, scale,

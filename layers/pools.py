@@ -33,7 +33,7 @@ def _pool(inputs,
                      stride, padding, reuse, name, scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if output != xshape:
+    if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(output, xshape))
@@ -48,10 +48,10 @@ def _pool_global(inputs,
                  reuse,
                  name,
                  scope):
-    fun, output = op(ops.core.shape(inputs), reuse, name, scope)
+    fun, output = op(ops.helper.norm_input_shape(inputs), reuse, name, scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if output != xshape:
+    if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(output, xshape))

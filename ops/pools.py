@@ -21,6 +21,7 @@ from . import core
 
 def base_pool2d(input_shape, fun, pshape, stride,
                 padding, reuse, name, scope):
+    helper.check_input_shape(input_shape)
     if stride is None:
         stride = pshape
     stride = helper.norm_input_2d(stride)
@@ -48,6 +49,7 @@ def base_pool2d(input_shape, fun, pshape, stride,
 def base_pool2d_global(input_shape, fun, reuse, name, scope):
     # if none and e.g., fun.__name__ == 'max_pool'
     #    name = max_pool
+    helper.check_input_shape(input_shape)
     ltype = fun.__name__.rsplit('.', 1)
     if len(ltype) > 1:
         ltype = ltype[1]
@@ -109,6 +111,7 @@ def resize(input_shape,
            reuse=False,
            name=None,
            scope=None):
+    helper.check_input_shape(input_shape)
     if output_shape is None:
         if factor is None:
             raise ValueError('cannot feed bilinear with both '

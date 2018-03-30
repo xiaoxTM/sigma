@@ -80,6 +80,7 @@ def local_variable(name,
                   scope,
                   **kwargs)
 
+
 def global_variable(name,
                     layername,
                     shape,

@@ -94,8 +94,9 @@ def _agreement_routing(prediction,
         [batch-size, nrows, ncols, incaps, outcaps, outcapdim]
         for conv2d
     """
-    shape = core.shape(prediction)
-    shape.pop(-3) # get rid of `incaps` axis
+    shape = helper.norm_input_shape(prediction)
+    # get rid of `incaps` axis
+    shape.pop(-3)
     # restore v_j
     activations = core.TensorArray(dtype=core.float32,
                                    size=iterations,
@@ -163,6 +164,8 @@ def norm(input_shape,
         this function calculates the norm of each capsule
         along capsdims dimension
     """
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     ops_scope, _, _ = helper.assign_scope(name, scope, 'caps_norm', reuse)
     if axis is None:
         axis = core.axis
@@ -262,14 +265,18 @@ def fully_connected(input_shape, nouts, caps_dims,
         caps_dims : int
                     output capsule dimension
     """
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 3:
         raise ValueError('capsule fully_connected require input shape {}[batch-size,'
                          ' incaps, incapdim]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
-    output_shape = [input_shape[0], nouts, caps_dims]
+    output_shape = [batch_size, nouts, caps_dims]
     incaps, incapdim = input_shape[-2:]
-    logits_shape = [input_shape[0], incaps, nouts, 1]
+    logits_shape = [batch_size, incaps, nouts, 1]
     weight_shape = [incaps, incapdim, nouts * caps_dims]
     bias_shape = [nouts, caps_dims]
     weight = mm.malloc('weight',
@@ -347,6 +354,10 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 4:
         raise ValueError('capsule conv1d require input shape {}[batch-size, '
                          'rows, cols, incaps, incapdim]{}, given {}'
@@ -356,6 +367,7 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
     stride = helper.norm_input_1d(stride)
 
     input_nshape = input_shape[:]
+    input_nshape[0] = batch_size
     #  [batch-size, neurons, incaps, incapdim]
     #=>[batch-size, neurons, incpas * incapdim]
     # //FUTURE: remove hard-coding of number of `-2`
@@ -364,6 +376,7 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
     # output shape may be not right
     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
                                            kshape, stride, padding)
+    output_shape[0] = batch_size
     output_shape = output_shape[:-1] + [nouts, caps_dims]
     batch_size, neurons, incaps, incapdim = input_shape
     logits_shape = output_shape[:2] + [incaps, nouts, 1]
@@ -391,14 +404,14 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
         def _conv1d(x):
             #  [batch-size, neurons, incaps, incapdim]
             #=>[batch-size, incaps, neurons, incapdim]
-            xt = core.transpose(x, (0, 2, 1, 3))
+            x = core.transpose(x, (0, 2, 1, 3))
             #  [batch-size, incaps, neurons, incapdim]
             #=>[batch-size * incaps, neurons, incapdim]
-            xr = core.reshape(xt, (-1, neurons, incapdim))
-            x = core.conv1d(xr, weights, stride, padding)
+            x = core.reshape(x, (-1, neurons, incapdim))
+            x = core.conv1d(x, weights, stride, padding)
             #  [batch-size * incaps, nneurons, outcaps * caps_dims]
             #=>[batch-size, incaps, nneurons, outcaps, caps_dims]
-            x = core.reshape(x, [batch_size, incaps] + output_shape[1:])
+            x = core.reshape(x, [-1, incaps] + output_shape[1:])
             #  [batch-size, incaps, nneurons, outcaps, caps_dims]
             #=>[batch-size, incaps, nneurons, outcaps, caps_dims]
             return core.transpose(x, (0, 2, 1, 3, 4))
@@ -499,6 +512,10 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 5:
         raise ValueError('capsule conv2d require input shape {}[batch-size, '
                          'rows, cols, incaps, incapdim]{}, given {}'
@@ -507,6 +524,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
     input_nshape = input_shape[:]
+    input_nshape[0] = batch_size
     #  [batch-size, rows, cols, incaps, incapdim]
     #=>[batch-size, rows, cols, incpas * incapdim]
     input_nshape[core.axis] *= input_nshape[-2]
@@ -514,6 +532,7 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
     # output shape [batch-size, nrows, ncols, nouts, caps_dims]
     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
                                            kshape, stride, padding)
+    output_shape[0] = batch_size
     output_shape = output_shape[:-1] + [nouts, caps_dims]
     batch_size, rows, cols, incaps, incapdim = input_shape
     logits_shape = output_shape[:3] + [incaps, nouts, 1]
@@ -542,14 +561,14 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         def _conv2d(x):
             #  [batch-size, rows, cols, incaps, incapdim]
             #=>[batch-size, incaps, rows, cols, incapdim]
-            xt = core.transpose(x, (0, 4, 1, 2, 3))
+            x = core.transpose(x, (0, 4, 1, 2, 3))
             #  [batch-size, incaps, rows, cols, incapdim]
             #=>[batch-size * incaps, rows, cols, incapdim]
-            xr = core.reshape(xt, (-1, rows, cols, incapdim))
-            x = core.conv2d(xr, weights, stride, padding)
+            x = core.reshape(x, (-1, rows, cols, incapdim))
+            x = core.conv2d(x, weights, stride, padding)
             #  [batch-size * incaps, nrows, ncols, outcaps * caps_dims]
             #=>[batch-size, incaps, nrows, ncols, outcaps, caps_dims]
-            x = core.reshape(x, [batch_size, incaps] + output_shape[1:])
+            x = core.reshape(x, [-1, incaps] + output_shape[1:])
             #  [batch-size, incaps, nrows, ncols, outcaps, caps_dims]
             #=>[batch-size, nrows, ncols, incaps, outcaps, caps_dims]
             return core.transpose(x, (0, 2, 3, 1, 4, 5))

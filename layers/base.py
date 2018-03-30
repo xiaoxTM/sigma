@@ -53,7 +53,7 @@ def flatten(inputs,
             reuse=False,
             name=None,
             scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.flatten(input_shape, reuse, name, scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
@@ -73,6 +73,7 @@ def reshape(inputs, output_shape,
             reuse=False,
             name=None,
             scope=None):
+    # input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.reshape(output_shape, reuse, name, scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
@@ -93,7 +94,7 @@ def expand_dims(inputs,
                 reuse=False,
                 name=None,
                 scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.expand_dims(input_shape, axis, reuse, name, scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
@@ -124,7 +125,7 @@ def maskout(inputs,
           have more than one indices
         > outputs: [batch-size, depth] if indices have only one indices
     """
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.maskout(input_shape,
                                    indices,
                                    axis,
@@ -156,6 +157,7 @@ def input_spec(inputs,
         parameter must be `inputs`.
         therefore use `inputs` instead of `input_shape`
     """
+    ops.helper.check_input_shape(inputs)
     ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
                                                                scope,
                                                                'inputs',
@@ -174,6 +176,7 @@ def label_spec(inputs,
         parameter must be `inputs`.
         therefore use `inputs` instead of `input_shape`
     """
+    ops.helper.check_input_shape(inputs)
     ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
                                                                scope,
                                                                'labels',

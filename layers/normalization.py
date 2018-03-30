@@ -32,7 +32,7 @@ def instance_norm(inputs,
                   reuse=False,
                   name=None,
                   scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun = ops.norms.instance_norm(input_shape,
                                   offset_initializer,
                                   scale_initializer,
@@ -47,7 +47,7 @@ def instance_norm(inputs,
                                   scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if input_shape != xshape:
+    if input_shape[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(colors.green(input_shape),
@@ -69,7 +69,7 @@ def conditional_instance_norm(inputs,
                               reuse=False,
                               name=None,
                               scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun = ops.norms.conditional_instance_norm(input_shape,
                                               bank_size,
                                               offset_initializer,
@@ -85,7 +85,7 @@ def conditional_instance_norm(inputs,
                                               scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if input_shape != xshape:
+    if input_shape[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(colors.green(input_shape),
@@ -110,7 +110,7 @@ def batch_norm(inputs,
                reuse=False,
                name=None,
                scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun = ops.norms.batch_norm(input_shape,
                                momentum,
                                offset_initializer,
@@ -129,7 +129,7 @@ def batch_norm(inputs,
                                scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if input_shape != xshape:
+    if input_shape[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(colors.green(input_shape),

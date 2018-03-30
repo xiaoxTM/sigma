@@ -119,6 +119,10 @@ def fully_connected(input_shape, nouts,
                     reuse=False,
                     name=None,
                     scope=None):
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 2:
         raise ValueError('fully_conv require input shape {}[batch-size,'
                          'channels]{}, given {}'
@@ -162,6 +166,10 @@ def conv1d(input_shape, nouts, kshape,
            reuse=False,
            name=None,
            scope=None):
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 3:
         raise ValueError('conv1d require input shape '
                          '{}[batch-size, cols, channels]{}, given {}'
@@ -213,6 +221,10 @@ def conv2d(input_shape, nouts, kshape,
            reuse=False,
            name=None,
            scope=None):
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
                          'cols, channels]{}, given {}'
@@ -260,6 +272,10 @@ def conv3d(input_shape, nouts,
            reuse=False,
            name=None,
            scope=None):
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 4:
         raise ValueError('{}conv2d require input shape [batch-size, rows,'
                          'cols, channels], given {}{}'
@@ -315,6 +331,10 @@ def deconv2d(input_shape, output_shape, nout,
     #           [batch-size, ceil((output_shape[1:-1] - kshape[1:-1] + 1) / stride[1:-1])]
     #       else:
     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 4:
         raise ValueError('{}deconv2d require input shape [batch-size,'
                          'rows, cols, channels], given {}{}'
@@ -325,14 +345,15 @@ def deconv2d(input_shape, output_shape, nout,
     out_shape = output_shape
     if out_shape is None:
         out_shape = input_shape
+        out_shape[0] = batch_size
         out_shape[1] *= stride[1]
         out_shape[2] *= stride[2]
         out_shape[3] = nout
     elif isinstance(out_shape, (list, tuple)):
         if len(out_shape) == 2:
-            out_shape = [input_shape[0], *out_shape, nout]
+            out_shape = [batch_size] + out_shape + [nout]
         elif len(out_shape) == 4 and \
-             (out_shape[0] != input_shape[0] or out_shape[-1] != nout):
+             (out_shape[0] != batch_size or out_shape[-1] != nout):
             raise ValueError('output shape{} not match'
                              ' input_shape{} or hidden units{}'
                              .format(output_shape, input_shape, nout))
@@ -380,6 +401,11 @@ def soft_conv(input_shape,
               reuse=False,
               name=None,
               scope=None):
+    # //NOTE : soft_conv may not support dynamic batch-size
+    # batch_size = input_shape[0]
+    # if helper.is_tensor(input_shape):
+    #     input_shape = input_shape.as_list()
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'soft_conv',
@@ -700,6 +726,10 @@ def soft_conv2d(input_shape, nouts,
                 reuse=False,
                 name=None,
                 scope=None):
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
                          'cols, channels]{}, given {}'
@@ -911,6 +941,10 @@ def sepconv2d(input_shape, nouts,
               reuse=False,
               name=None,
               scope=None):
+    helper.check_input_shape(input_shape)
+    batch_size = input_shape[0]
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
     if len(input_shape) != 4:
         raise ValueError('conv2d require input shape {}[batch-size, rows,'
                          'cols, channels]{}, given {}'

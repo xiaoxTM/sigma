@@ -22,11 +22,12 @@ from . import core
 
 def _layers(fun, inputs, output, return_shape, typename, reuse, name):
     x = fun(inputs)
-    if output != ops.core.shape(x):
+    xshape = ops.core.shape(x)
+    if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {} vs {}'
                          .format(colors.green(output),
-                                 colors.red(ops.core.shape(x))))
+                                 colors.red(xshape)))
     if return_shape:
         x = [x, output]
     return x
@@ -91,7 +92,7 @@ def fully_connected(inputs, nouts,
                     reuse=False,
                     name=None,
                     scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.fully_connected(input_shape,
                                             nouts,
                                             weight_initializer,
@@ -132,7 +133,7 @@ def conv1d(inputs, nouts,
            reuse=False,
            name=None,
            scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.conv1d(input_shape,
                                    nouts,
                                    kshape,
@@ -201,7 +202,7 @@ def conv2d(inputs, nouts,
            reuse=False,
            name=None,
            scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.conv2d(input_shape,
                                    nouts,
                                    kshape,
@@ -267,7 +268,7 @@ def soft_conv2d(inputs, nouts,
                 reuse=False,
                 name=None,
                 scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.soft_conv2d(input_shape,
                                         nouts,
                                         kshape,
@@ -292,7 +293,7 @@ def soft_conv2d(inputs, nouts,
                                         scope)
     x, offsets = fun(inputs)
     xshape = ops.core.shape(x)
-    if output != xshape:
+    if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the real'
                          ' output shape not match. {} vs {}'
                          .format(colors.green(output),
@@ -328,7 +329,7 @@ def conv3d(inputs, nouts,
            name=None,
            scope=None):
     # TODO: atruous_convxd
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.conv3d(input_shape,
                                    nouts,
                                    kshape,
@@ -371,7 +372,7 @@ def deconv2d(inputs, output_shape, nouts,
              reuse=False,
              name=None,
              scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.deconv2d(input_shape,
                                      output_shape,
                                      nouts, kshape,
@@ -413,7 +414,7 @@ def sepconv2d(inputs, nouts,
               reuse=False,
               name=None,
               scope=None):
-    input_shape = ops.core.shape(inputs)
+    input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.sepconv2d(input_shape,
                                       nouts,
                                       kshape,

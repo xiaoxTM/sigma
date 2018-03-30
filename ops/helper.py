@@ -185,7 +185,7 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
                          .format(colors.fg.green, colors.reset,
                                  colors.fg.green ,colors.reset,
                                  colors.red(padding)))
-    out_shape = copy.deepcopy(input_shape)
+    out_shape = input_shape[:]
     index = range(len(input_shape))
     if padding == 'SAME':
         for idx in index[1:-1]:
@@ -203,6 +203,35 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
             ))
     out_shape[-1] = nouts
     return out_shape
+
+
+def norm_input_shape(input_tensor):
+    """ get the input shape
+        if the first axis is None,
+        will be assigned to Tensor as batch_size
+    """
+    input_shape = core.shape(input_tensor)
+    if input_shape[0] is None:
+        input_shape[0] = core.tshape(input_tensor)[0]
+    return input_shape
+
+
+def check_input_shape(input_shape):
+    """ check input shape
+        input shape can have one -1 or one None
+        or scalar tensor in batch-size axis
+    """
+    stat = core.shape_statistics(input_shape)
+    if len(stat['nones']) > 1:
+        raise ValueError('input shape `{}` contains more than one None'
+                         .format(colors.red(input_shape)))
+    elif len(stat['-1']) > 1:
+        raise ValueError('input shape `{}` contains more than one -1'
+                         .format(colors.red(input_shape)))
+    elif len(stat['nones']) == 1 and len(stat['-1']) == 1:
+        raise ValueError('input shape `{}` contains both None and -1'
+                         .format(colors.red(input_shape)))
+
 
 
 def norm_input_1d(shape):

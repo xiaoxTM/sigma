@@ -466,7 +466,6 @@ def build(input_shape,
     else:
         raise TypeError('`name` must be str / list / dict. given {}'
                         .format(type(name)))
-
     with sigma.defaults(reuse=reuse, scope=scope):
         inputs = layers.base.input_spec(input_shape, dtype=xdtype, name=xname)
         if label_shape is not None:
@@ -506,11 +505,11 @@ def build(input_shape,
 def build_experiment(build_model_fun,
                      build_reader_fun,
                      optimizer,
-                     model_config,
-                     reader_config,
+                     nclass=None,
+                     model_config=None,
+                     reader_config=None,
                      optimizer_config=None,
-                     gpu_config=None,
-                     batch_size=64):
+                     gpu_config=None):
     """ build experiment
         this will automatically add timestamp to checkpoints and logs
 
@@ -523,8 +522,22 @@ def build_experiment(build_model_fun,
                                function to load dataset
                                this is supposed to return train&valid dataset
                                [xtrain, ytrain], [xvalid, yvalid]
+                               where xtrain / xvalid should have the same shape
+                               as input layer, ytrain / yvalid should have the
+                               same shape as ground truth (label layer)
             optimizer : string / sigma.ops.core.Optimizer
                         optimizer to optimize loss and train parameters
+            nclass : int / None
+                     number of classes to be classified / segmentated
+                     NOTE if nclass is not None, it will be extended to ytrain.shape
+                     > nclass = 10
+                     > ytrain.shape = [None, 20, 20]
+                     > output : [None, 20, 20, 10] if data_format = 'NHWC' or
+                     >          [NOne, 10, 20, 20] if data_format = 'NCHW'
+                     in case nclass is None, it will be determined by ytrain.shape
+                     > ytrain.shape = [10000, 20, 20, 10]
+                     > nclass = 10 if data_format = 'NHWC' or
+                     > nclass = 20 if data_format = 'NCHW'
             model_config : dict
                            parameters passed to build_model_fun
             reader_config : dict
@@ -536,26 +549,46 @@ def build_experiment(build_model_fun,
             batch_size : int
                          batch size
     """
+    if model_config is None:
+        model_config = {}
+    if reader_config is None:
+        reader_config = {}
+    if optimizer_config is None:
+        optimizer_config = {}
     #----- read the dataset -----#
-    (xtrain, ytrain), (xvlid, yvalid) = build_reader_fun(**reader_config)
+    (xtrain, ytrain), (xvalid, yvalid) = build_reader_fun(**reader_config)
     valids = None
     if xvalid is not None and yvalid is not None:
         valids = [xvalid, yvalid]
     #----- build networks -----#
     input_shape = list(xtrain.shape)
-    input_shape[0] = batch_size
-    nclass = ytrain.shape[-1]
+    input_shape[0] = None
+    label_shape = None
+    if 'label_shape' in model_config.keys():
+        label_shape = model_config['label_shape']
+    elif ytrain is not None:
+        label_shape = [None] + list(ytrain.shape[1:])
+    if label_shape is not None:
+        if nclass is None:
+            nclass = label_shape[ops.core.axis]
+        elif nclass is not None:
+            normed_axis = ops.helper.normalize_axes(label_shape)
+            if ops.core.axis < 0:
+                normed_axis += 1
+            label_shape.insert(normed_axis, nclass)
+    model_config['label_shape'] = label_shape
     [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
                                                      build_model_fun,
                                                      **model_config)
     #----- train configuration -----#
-    optimizer = ops.optimizer.get(optimizer, optimizer_config)
+    optimizer = ops.optimizers.get(optimizer, **optimizer_config)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpints', type=str, default=None)
+    parser.add_argument('--checkpoints', type=str, default=None)
     parser.add_argument('--logs', type=str, default=None)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--shuffle', type=bool, default=True)
+    parser.add_argument('--batch-size', type=int, default=64)
 
     def _experiment(parser, verbose=True):
         # the process of training networks
@@ -563,17 +596,24 @@ def build_experiment(build_model_fun,
         if verbose:
             helpers.print_args(args)
 
-        #----- re-configurations -----#
+        #----- beg re-configurations -----#
         train_config = helpers.arg2dict(args)
-        train_config['checkpints'] = train_config.get('checkpints', None)
-        timestamp = helpers.timestamp()
-        if train_config['checkpints'] is None:
-            train_config['checkpints'] = timestamp
+        train_config['checkpoints'] = train_config.get('checkpoints', None)
+        timestamp = helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None)
+        if train_config['checkpoints'] is None:
+            train_config['checkpoints'] = '{}/ckpts/main'.format(timestamp)
+        else:
+            train_config['checkpoints'] = '{}/{}/ckpts/main'.format(
+                train_config['checkpoints'], timestamp
+            )
         train_config['logs'] = train_config.get('logs', None)
-        timestamp = helpers.timestamp()
         if train_config['logs'] is None:
-            train_config['logs'] = timestamp
-        #----- re-configurations -----#
+            train_config['logs'] = '{}/logs'.format(timestamp)
+        else:
+            train_config['logs'] = '{}/{}/logs'.format(
+                train_config['logs'], timestamp
+            )
+        #----- end re-configurations -----#
 
         #----- get rid of some parameters in dictionary -----#
         train_config_keys = train_config.keys()
@@ -584,9 +624,9 @@ def build_experiment(build_model_fun,
                       .format(colors.red(key)))
                 del train_config[key]
         #----- check parameters not allowed for sigma.train
-        for key in train_config_keys:
-            if key not in ['epochs', 'batch_size', 'shuffle', 'graph',\
-                           'savemode', 'modetarget']:
+        for key in list(train_config_keys):
+            if key not in ['checkpoints', 'logs', 'epochs', 'shuffle', 'graph',\
+                           'batch_size', 'savemode', 'modetarget']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]

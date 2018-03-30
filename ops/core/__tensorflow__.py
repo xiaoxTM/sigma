@@ -134,6 +134,13 @@ def is_tensor(x):
     return tf.contrib.framework.is_tensor(x)
 
 
+def to_tensor(x,
+              dtype=None,
+              name=None,
+              preferred_dtype=None):
+    return tf.convert_to_tensor(x, dtype, name, preferred_dtype)
+
+
 def padnorm(fun):
     def _padnorm(*args, **kwargs):
         signature = inspect.signature(fun)
@@ -336,8 +343,11 @@ def placeholder(dtype, shape=None, name=None):
     return tf.placeholder(dtype, shape, name)
 
 
-def shape(x):
-    return x.get_shape().as_list()
+def shape(x, aslist=True):
+    x = x.get_shape()
+    if aslist:
+        return x.as_list()
+    return x
 
 
 def tshape(x, name=None, out_type=int32):
