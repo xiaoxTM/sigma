@@ -506,6 +506,7 @@ def build_experiment(build_model_fun,
                      build_reader_fun,
                      optimizer,
                      nclass=None,
+                     filename=False,
                      model_config=None,
                      reader_config=None,
                      optimizer_config=None,
@@ -538,6 +539,10 @@ def build_experiment(build_model_fun,
                      > ytrain.shape = [10000, 20, 20, 10]
                      > nclass = 10 if data_format = 'NHWC' or
                      > nclass = 20 if data_format = 'NCHW'
+            filename : string / bool / None
+                       if None, will print no network structure information
+                       if False, print to terminal
+                       if string, print to file
             model_config : dict
                            parameters passed to build_model_fun
             reader_config : dict
@@ -555,6 +560,7 @@ def build_experiment(build_model_fun,
         reader_config = {}
     if optimizer_config is None:
         optimizer_config = {}
+
     #----- read the dataset -----#
     (xtrain, ytrain), (xvalid, yvalid) = build_reader_fun(**reader_config)
     valids = None
@@ -580,6 +586,13 @@ def build_experiment(build_model_fun,
     [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
                                                      build_model_fun,
                                                      **model_config)
+    if isinstance(filename, str):
+        if layers.core.__graph__ is not None and \
+          layers.core.__graph__ is not False:
+            layers.core.export_graph(filename)
+        else:
+            print('WARNING: cannot save graph to file {}.'
+                  'To do that, run sigma.engine.set_print(True) first')
     #----- train configuration -----#
     optimizer = ops.optimizers.get(optimizer, **optimizer_config)
 

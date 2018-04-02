@@ -59,79 +59,12 @@ def build_func(inputs, labels):
     metric = layers.metrics.accuracy([classification, labels])
     return [loss, metric]
 
-
-# def train(xtrain, ytrain,
-#           xvalid, yvalid,
-#           checkpoints,
-#           nclass=10,
-#           epochs=30,
-#           batch_size=64,
-#           expid=None,
-#           shuffle=True):
-#     input_shape = list(xtrain.shape)
-#     # sigma.engine.set_print(True)
-#     input_shape[0] = batch_size
-#     [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
-#                                                      build_func,
-#                                                      [batch_size, nclass])
-#     tf.summary.scalar('loss', loss)
-#     tf.summary.scalar('metric', metric[0])
-#     # sigma.engine.export_graph('cache/network-architecture.png')
-#
-#     #----- log optimizer gradients -----
-#     #optimizer = tf.train.AdamOptimizer(0.05)
-#     #grads_and_vars = optimizer.compute_gradients(loss)
-#     #for (grad, var) in grads_and_vars:
-#     #    if grad is not None:
-#     #        tf.summary.histogram(grad.name, grad)
-#     #optimizer = optimizer.apply_gradients(grads_and_vars)
-#     #----------
-#
-#     if expid is None:
-#         expid = helpers.timestamp()
-#     else:
-#         expid = '{}-{}'.format(helpers.timestamp(), expid)
-#
-#     optimizer = tf.train.AdamOptimizer()
-#
-#     config = tf.ConfigProto()
-#     config.gpu_options.allow_growth = True
-#     config.gpu_options.per_process_gpu_memory_fraction = 0.8
-#     config.gpu_options.visible_device_list = '0, 1'
-#     config.intra_op_parallelism_threads = 1
-#
-#     logs = 'cache/logs/capsule/{}'.format(expid)
-#     checkpoints = '{}/{}/main.ckpt'.format(checkpoints, expid)
-#     sigma.train(xtrain,
-#                 xtensor,
-#                 optimizer,
-#                 loss,
-#                 metric,
-#                 ytrain,
-#                 ytensor,
-#                 nclass=10,
-#                 epochs=epochs,
-#                 batch_size=batch_size,
-#                 shuffle=shuffle,
-#                 valids=[xvalid, yvalid],
-#                 config=config,
-#                 checkpoints=checkpoints,
-#                 logs=logs,
-#                 savemode='min')
-#
-#
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--checkpoints', type=str,
-#                     default='cache/checkpoints/capsule')
-# parser.add_argument('--epochs', type=int, default=100)
-# parser.add_argument('--batch_size', type=int, default=100)
-# parser.add_argument('--shuffle', type=bool, default=True)
-# parser.add_argument('--expid', type=str, default=None)
-
+sigma.engine.set_print(True, True)
 experiment, parser = sigma.build_experiment(
     build_func,
     dbs.images.mnist.load,
     'AdamOptimizer',
+    filename='mnist-networks.png',
     nclass=10,
     reader_config={'dirs':'/home/xiaox/studio/db/mnist',
                    'to_tensor':False,
@@ -140,4 +73,5 @@ experiment, parser = sigma.build_experiment(
 
 if __name__=='__main__':
     # args = parser.parse_args()
-    experiment(parser)
+    # experiment(parser)
+    print('done')

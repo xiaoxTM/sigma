@@ -81,6 +81,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
   - [x] run
     - run train progress
   - [ ] predict
+  - [ ] validate
   - [x] build_experiment
     - experiment-level function to pack functions to do experiment
 

@@ -31,6 +31,7 @@ from .core import defaults
 
 def get():
     return {'graph' : core.__graph__,
+            'details' : core.__details__,
             'defaults' : core.__defaults__,
             'colormaps' : core.__colormaps__
             }
@@ -39,6 +40,7 @@ def get():
 def set(config):
     if config is not None:
         core.__graph__ = config.get('graph', False)
+        core.__details__ = config.get('details', False)
         value = config.get('defaults', None)
         if value is not None:
             core.__defaults__ = value
