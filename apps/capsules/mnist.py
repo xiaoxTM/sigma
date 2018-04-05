@@ -8,6 +8,9 @@ import numpy as np
 
 import tensorflow as tf
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def build_func(inputs, labels):
     # inputs shape :
@@ -57,21 +60,29 @@ def build_func(inputs, labels):
     #tf.summary.scalar('reconstruction-loss', recon_loss)
     #loss = layers.merge.add([class_loss, recon_loss], [1, 0.005])
     metric = layers.metrics.accuracy([classification, labels])
+    ops.core.summarize('loss', loss, 'scalar')
+    ops.core.summarize('acc', metric[0], 'scalar')
     return [loss, metric]
 
+gpu_config = tf.ConfigProto()
+gpu_config.gpu_options.allow_growth = True
+gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
+gpu_config.gpu_options.visible_device_list = '0,1'
+gpu_config.intra_op_parallelism_threads = 1
+
 sigma.engine.set_print(True, True)
+nclass = 10
 experiment, parser = sigma.build_experiment(
     build_func,
-    dbs.images.mnist.load,
+    engine.io.mnist('/home/xiaox/studio/db/mnist', False, False, nclass),
     'AdamOptimizer',
     filename='mnist-networks.png',
-    nclass=10,
-    reader_config={'dirs':'/home/xiaox/studio/db/mnist',
-                   'to_tensor':False,
-                   'onehot':False})
+    gpu_config=gpu_config,
+    generator_config={'nclass':nclass})
 
 
 if __name__=='__main__':
-    # args = parser.parse_args()
-    # experiment(parser)
-    print('done')
+    args = parser.parse_args()
+    args.checkpoint='cache'
+    args.log='cache'
+    experiment(args, False)

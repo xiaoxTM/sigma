@@ -17,8 +17,9 @@
 """
 
 from .core import session, run, build, train, predict, build_experiment
+from .io import mnist, cifar
 from ..ops.core import __backend__
-from ..layers.core import set_print, export_graph
+from ..layers.core import set_print, set_defaults, export_graph
 
 
 def get():

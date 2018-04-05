@@ -25,6 +25,7 @@ import os.path
 
 import tensorflow as tf
 from tensorflow.examples.tutorials import mnist
+from tensorflow.python import debug as tf_debug
 
 from . import commons
 from sigma import colors
@@ -541,11 +542,14 @@ def less(x, y, name=None):
 def leq(x, y, name=None):
     return tf.less_equal(x, y, name)
 
+
 def all(x, axis=None, keepdims=None, name=None):
     return tf.reduce_all(x, axis, keepdims, name)
 
+
 def any(x, axis=None, keepdims=None, name=None):
     return tf.reduce_any(x, axis, keepdims, name)
+
 
 def clip(x, minv, maxv, name=None):
     return tf.clip_by_value(x, minv, maxv, name)
@@ -589,7 +593,6 @@ def constant(value,
 
 def fill(shape, values, name=None):
     return tf.fill(shape, values, name)
-
 
 
 #===========================================================
@@ -674,7 +677,6 @@ def random_uniform(shape,
                              name)
 
 
-
 def truncated_normal(shape,
                      mean=0.0,
                      stddev=1.0,
@@ -702,6 +704,8 @@ def embedding(params,
                                   name,
                                   validate_indices,
                                   max_norm)
+
+
 @padnorm
 def conv1d(x, filters, stride, padding,
            use_cudnn_on_gpu=None,
@@ -866,7 +870,6 @@ def summarize(name, tensor, mode='histogram', **kwargs):
                          .format(mode))
 
 
-
 #----- tensorflow log gradients -----#
 def optimize_with_summarize(optimizer, loss, exclusion=None):
     """ summary gradients for given loss
@@ -985,6 +988,7 @@ def metrics_false_positives_at_threshold(labels,
                                                    updates_collections,
                                                    name)
 
+
 def metrics_true_negatives(labels,
                            predictions,
                            weights=None,
@@ -1059,6 +1063,7 @@ def metrics_mean_iou(labels,
                                metrics_collections,
                                updates_collections,
                                name)
+
 
 def metrics_precision(labels,
                       predictions,
@@ -1137,6 +1142,7 @@ def resize_nearest_neighbor(images,
                                             align_corners,
                                             name)
 
+
 def resize_bilinear(images,
                     size,
                     align_corners=False,
@@ -1184,6 +1190,7 @@ def dropout(x,
                          seed,
                          name)
 
+
 #----- tensorflow moments -----#
 def moments(x,
             axes,
@@ -1217,6 +1224,7 @@ def fused_batch_norm(x,
                                   is_training,
                                   name)
 
+
 def batch_norm(x,
                mean,
                variance,
@@ -1232,12 +1240,13 @@ def batch_norm(x,
                             variance_epsilon,
                             name)
 
+
 #----- tensorflow save model / weights -----#
 def load_mnist(path, one_hot):
     return mnist.input_data.read_data_set(path, one_hot)
 
 
-def load(session, checkpoints,
+def load(session, checkpoint,
          saver=None,
          verbose=True):
     if saver is None:
@@ -1254,7 +1263,7 @@ def load(session, checkpoints,
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.fg.red(type(session))))
-    ckpt = tf.train.get_checkpoint_state(os.path.dirname(checkpoints))
+    ckpt = tf.train.get_checkpoint_state(os.path.dirname(checkpoint))
     if ckpt and ckpt.model_checkpoint_path:
         if verbose:
             print('{}load check point from {}{}{}'
@@ -1268,7 +1277,7 @@ def load(session, checkpoints,
     return session, saver
 
 
-def save(session, checkpoints,
+def save(session, checkpoint,
          saver=None,
          verbose=True,
          **kwargs):
@@ -1290,7 +1299,7 @@ def save(session, checkpoints,
         print('{}saving check point to {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
                        checkpoints, colors.reset))
-    saver.save(session, checkpoints, **kwargs)
+    saver.save(session, checkpoint, **kwargs)
     return session, saver
 
 
@@ -1400,6 +1409,7 @@ def export_model(filename, session,
         pkl.dummy([meta, data])
     pkl.close()
 
+
 #----- tensorflow session run -----#
 def run(session, operations,
         feed_dict=None,
@@ -1416,10 +1426,10 @@ def session(target='',
             graph=None,
             config=None,
             initializers=None,
-            checkpoints=None,
-            logs=None,
-            verbose=True):
+            address=None):
     sess = tf.Session(target, graph, config)
+    if address is not None:
+        sess = tf_debug.TensorBoardDebugWrapperSession(sess, address)
     sess.run([tf.global_variables_initializer(),
               tf.local_variables_initializer()])
     if initializers is not None:

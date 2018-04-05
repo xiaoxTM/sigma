@@ -39,6 +39,7 @@ setup(name='sigma',
           'email',
           'subprocess',
           'functools',
-          'json'
+          'json',
+          'pydot'
       ],
       zip_safe=False)

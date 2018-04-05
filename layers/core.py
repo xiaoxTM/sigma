@@ -153,6 +153,20 @@ def set_print(mode=True, details=None):
                             .format(type(details)))
 
 
+def set_defaults(key_values):
+    if key_values is not None:
+        if not isinstance(key_values, dict):
+            raise TypeError('`key_values` for set_defaults must be dict type.'
+                            'given {}'.format(type(key_values)))
+        global __defaults__
+        keys = __defaults__.keys()
+        for key, value in key_values.items():
+            if key not in keys:
+                raise KeyError('key `{}` not in __defaults__'.format(key))
+            __defaults__[key] = value
+
+
+
 def _layer2color(lname):
     for k,v in __layers__.items():
         if lname in v:

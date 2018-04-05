@@ -233,7 +233,6 @@ def check_input_shape(input_shape):
                          .format(colors.red(input_shape)))
 
 
-
 def norm_input_1d(shape):
     """ norm input for 1d convolving operation
         generally called by norm kernel-shape and stride

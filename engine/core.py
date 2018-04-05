@@ -3,6 +3,26 @@ import sigma
 import os
 import argparse
 
+def phase(mode='train'):
+    if mode not in ['train', 'predict']:
+        raise ValueError('`phase` mode only support `train/predict`. given {}'
+                         .format(mode))
+    def _phase(fun):
+        def _wrap(*args, **kwargs):
+            if mode == 'train':
+                sigma.status.is_training = True
+            else:
+                sigma.status.is_training = False
+            x = fun(*args, **kwargs)
+            if mode == 'train':
+                sigma.status.is_training = False
+            else:
+                sigma.status.is_training = True
+            return x
+        return _wrap
+    return _phase
+
+
 def predict_op(input_shape,
                predop=None,
                axis=None,
@@ -38,6 +58,7 @@ def predict_op(input_shape,
     return _predict_op
 
 
+@phase('predict')
 def predict(session, x, xtensor, ypred,
             predop=None,
             batch_size=32,
@@ -72,7 +93,6 @@ def predict(session, x, xtensor, ypred,
                              iterations=iterations,
                              timeit=True)[0]()
     preds = []
-    sigma.status.is_training = False
     (global_idx, _, epoch, iteration) = next(progressor)
     while epoch < 1:
         samples, step = next(generator)
@@ -86,33 +106,32 @@ def predict(session, x, xtensor, ypred,
                                       helpers.stack(images, interval=10,
                                                     value=[0, 0, 0]))
         (global_idx, _, epoch, iteration) = next(progressor)
-    sigma.status.is_training = True
     if len(preds) > 0:
         return preds[0] if len(preds) == 1 else preds
 
 
+@phase('predict')
 def validate(session, validop, generator, iterations):
     acc = None
     if 'metric' in validop.keys():
         acc = 0
     loss = 0
-    sigma.status.is_training = False
     for iteration in range(iterations):
         samples, step = next(generator)
         rdict = ops.core.run(session, validop, feed_dict=samples)
         accuracy = rdict.get('metric', None)
         if accuracy is not None:
             if isinstance(accuracy, (list, tuple)):
-                # if metric are built from metrics.*
+                # if metric are built from tf.metrics.*
                 # it will include
                 # [accuracy, update_op]
                 accuracy = accuracy[0]
             acc += accuracy
+        # print('loss:{} - acc:{}'.format(rdict['loss'], accuracy))
         loss += rdict['loss']
     if acc is not None:
         acc = acc / iterations
     loss = loss / iterations
-    sigma.status.is_training = True
     return (loss, acc)
 
 
@@ -147,42 +166,42 @@ def session(target='',
             graph=None,
             config=None,
             initializers=None,
-            checkpoints=None,
-            logs=None,
+            checkpoint=None,
+            log=None,
+            address=None,
             verbose=True):
     """ get session and setup Graph, GPU, checkpoints, logs
     """
-    sess = ops.core.session(target, graph, config, initializers)
+    sess = ops.core.session(target, graph, config, initializers, address)
     ans = {'session': sess}
-    if checkpoints is not None:
-        parent_dir = checkpoints
-        if checkpoints[-1] != '/':
-            parent_dir = checkpoints.rsplit('/', 1)[0]
+    if checkpoint is not None:
+        parent_dir = checkpoint
+        if checkpoint[-1] != '/':
+            parent_dir = checkpoint.rsplit('/', 1)[0]
         os.makedirs(parent_dir, exist_ok=True)
-        sess, saver = helpers.load(sess, checkpoints, verbose=verbose)
+        sess, saver = helpers.load(sess, checkpoint, verbose=verbose)
         ans['session'] = sess
         ans['saver'] = saver
-    if logs is not None:
+    if log is not None:
         summarize = ops.core.summary_merge()
-        writer = ops.core.summary_writer(logs, sess.graph)
+        writer = ops.core.summary_writer(log, sess.graph)
         ans['summarize'] = summarize
         ans['writer'] = writer
     return ans
 
 
-def run(x, xtensor, optimizer, loss,
-        metric=None,
-        y=None,
-        ytensor=None,
-        nclass=None,
+def run(trainop,
+        generator,
+        iterations,
+        validop=None,
+        valid_gen=None,
+        valid_iters=None,
         epochs=1000,
-        batch_size=32,
-        shuffle=True,
-        valids=None,
         graph=None,
         config=None,
-        checkpoints=None,
-        logs=None,
+        checkpoint=None,
+        log=None,
+        address=None,
         savemode='all',
         modetarget='loss',
         emc=None):
@@ -244,60 +263,33 @@ def run(x, xtensor, optimizer, loss,
                          .format(colors.red(modetarget)))
     ans = session(graph=graph,
                   config=config,
-                  checkpoints=checkpoints,
-                  logs=logs)
+                  checkpoint=checkpoint,
+                  log=log,
+                  address=address)
     sess = ans['session']
     saver = ans.get('saver', None)
     summarize = ans.get('summarize', None)
     writer = ans.get('writer', None)
-    # make dataset generator
-    generator, nsamples, iterations = dbs.images.make_generator(x, y,
-                                                                xtensor,
-                                                                ytensor,
-                                                                batch_size,
-                                                                shuffle,
-                                                                nclass)
-    valid_gen = None
-    valid_iters = 0
-    if valids is not None:
-        if isinstance(valids, dict):
-            vx = valids['x']
-            vy = valids['y']
-        elif isinstance(valids, (list, tuple)):
-            vx, vy = valids
-        else:
-            raise TypeError('`valids` for run must have type of '
-                            '{}. given {}'.format(
-                                colors.blue(
-                                    'dict / list / tuple'),
-                                colors.red(type(valids))))
-        valid_gen, _, valid_iters = dbs.images.make_generator(vx, vy,
-                                                              xtensor,
-                                                              ytensor,
-                                                              batch_size,
-                                                              False,
-                                                              nclass)
     progressor = helpers.line(None,
                               epochs=epochs,
                               iterations=iterations,
-                              feedbacks=True, # use `send` to get next data instead of `next`
+                              # use `send` to get next data instead of `next`
+                              feedbacks=True,
                               timeit=True,
                               nprompts=10)[0]()
-    # tensors to be calculated
-    trainop = {'optimizer':optimizer, 'loss':loss}
-    validop = {'loss': loss}
     def _encode_loss_and_acc(loss, acc):
         return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
                                 colors.green(round(acc, 6), '{: >.6f}'))
     def _encode_loss(loss, acc):
         return '{}'.format(colors.blue(round(loss, 6), '{:<.6}'))
     def _get_acc(result):
+        acc = result.get('metric', None)
+        if acc is None:
+            return 0
         return result['metric'][0]
     get_acc = lambda x: None
     encodeop = _encode_loss
-    if metric is not None:
-        trainop['metric'] = metric
-        validop['metric'] = metric
+    if 'metric' in trainop.keys():
         encodeop = _encode_loss_and_acc
         get_acc = _get_acc
     if summarize is not None:
@@ -322,19 +314,23 @@ def run(x, xtensor, optimizer, loss,
 
         # begin of evaluation
         if (iteration + 1) == iterations and \
-          valid_gen is not None:
-            validloss, validacc = validate(sess, validop, valid_gen, valid_iters)
+          validop is not None and valid_gen is not None \
+          and valid_iters is not None:
+            validloss, validacc = validate(sess,
+                                           validop,
+                                           valid_gen,
+                                           valid_iters)
             validmessage = ' => {}'.format(encodeop(validloss, validacc))
         # end of evaluation
         current = trainloss
-        if modetarget == 'metric' and metric is not None:
+        if modetarget == 'metric' and 'metric' in trainop.keys():
             current = trainacc
         if saverop(current, best_result):
             # if current loss is better than best result
             # save it to best_result
             best_result = current
             if saver is not None:
-                helpers.save(sess, checkpoints, saver,
+                helpers.save(sess, checkpoint, saver,
                              write_meta_graph=False,
                              verbose=False)
         trainmessage = encodeop(trainloss, trainacc)
@@ -347,47 +343,49 @@ def run(x, xtensor, optimizer, loss,
     ops.core.close_session(sess)
 
 
-def train(x, xtensor, optimizer, loss,
+@phase('train')
+def train(generator,
+          iterations,
+          optimizer,
+          loss,
           metric=None,
-          y=None,
-          ytensor=None,
-          nclass=None,
+          valid_gen=None,
+          valid_iters=None,
           epochs=1000,
-          batch_size=32,
-          shuffle=True,
-          valids=None,
           graph=None,
           config=None,
-          checkpoints=None,
-          logs=None,
+          checkpoint=None,
+          log=None,
+          address=None,
           savemode='all',
           modetarget='loss'):
     loss_op = ops.losses.get(loss)
-    optimization_op = ops.optimizers.get(optimizer).minimize(loss_op)
+    optimization_op = optimizer.minimize(loss_op)
+    trainop = {'optimizer':optimization_op, 'loss':loss_op}
+    validop = {'loss':loss_op}
     metric_op = ops.metrics.get(metric)
-    sigma.status.is_training = True
-    run(x, xtensor,
-        optimization_op,
-        loss_op,
-        metric_op,
-        y, ytensor,
-        nclass,
+    if metric_op is not None:
+        trainop['metric'] = metric_op
+        validop['metric'] = metric_op
+    run(trainop,
+        generator,
+        iterations,
+        validop,
+        valid_gen,
+        valid_iters,
         epochs,
-        batch_size,
-        shuffle,
-        valids,
         graph,
         config,
-        checkpoints,
-        logs,
+        checkpoint,
+        log,
+        address,
         savemode,
         modetarget)
-    sigma.status.is_training = False
 
 
-def build(input_shape,
+def build(inputs,
           build_fun,
-          label_shape=None,
+          labels=None,
           dtype='float32',
           name=None,
           reuse=False,
@@ -396,10 +394,10 @@ def build(input_shape,
     """ build network architecture
         Attributes
         ==========
-        input_shape : list / tuple
-                      input shape for network entrance
-        label_shape : list / tuple
-                      label shape for network entrance
+        inputs : tensor
+                 input for network entrance
+        labels : tensor
+                 label shape for network entrance
         build_fun : callable
                     callable function receives only one
                     parameter. should have signature of:
@@ -432,55 +430,8 @@ def build(input_shape,
             metric : tensor
                      metric to measure the performance
     """
-    if isinstance(dtype, str):
-        xdtype, ydtype = dtype, dtype
-    elif isinstance(dtype, list):
-        if len(dtype) == 1: # e.g., ['float32']
-            xdtype, ydtype = dtype[0], dtype[0]
-        elif len(dtype) == 2: # e.g., ['float32', int32]
-            xdtype, ydtype = dtype
-        else:
-            raise ValueError('`dtype` as list must has length of 1 or 2. '
-                             'given {}'.format(len(dtype)))
-    elif isinstance(dtype, dict):
-        xdtype = dtype['inputs']
-        ydtype = dtype['labels']
-    else:
-        raise TypeError('`dtype` must be str / list / dict. given {}'
-                        .format(type(dtype)))
-    if  name is None:
-        xname, yname = name, name
-    elif isinstance(name, str):
-        xname, yname = 'input-{}'.format(name), 'label-{}'.format(name)
-    elif isinstance(name, list):
-        if len(name) == 1:
-            xname, yname = name[0], name[0]
-        elif len(name) == 2:
-            xname, yname = name
-        else:
-            raise ValueError('`name` as list must has length of 1 or 2. '
-                             'given {}'.format(len(name)))
-    elif isinstance(name, dict):
-        xname = name['inputs']
-        yname = name['labels']
-    else:
-        raise TypeError('`name` must be str / list / dict. given {}'
-                        .format(type(name)))
     with sigma.defaults(reuse=reuse, scope=scope):
-        inputs = layers.base.input_spec(input_shape, dtype=xdtype, name=xname)
-        if label_shape is not None:
-            labels = layers.base.label_spec(label_shape,
-                                            dtype=ydtype,
-                                            name=yname)
-            # build_fun should returns `loss`, `metrics`
-            # that is, `x` in the form of:
-            #    [loss, metric]
-            # or (loss, metric)
-            # or {'loss': loss, 'metric': metric}
-            x = build_fun(inputs, labels, **kwargs)
-        else:
-            labels = None
-            x = build_fun(inputs, **kwargs)
+        x = build_fun(inputs, labels, **kwargs)
         if ops.helper.is_tensor(x):
             loss, metric = x, None
         elif isinstance(x, (list, tuple)):
@@ -499,16 +450,17 @@ def build(input_shape,
             raise TypeError('The return value type of `build_fun` must be'
                             ' tensor / list / tuple / dict. given {}'
                             .format(type(x)))
-        return ([inputs, labels], [loss, metric])
+        return [loss, metric]
 
 
 def build_experiment(build_model_fun,
                      build_reader_fun,
                      optimizer,
-                     nclass=None,
+                     batch_size=32,
+                     shuffle=True,
                      filename=False,
                      model_config=None,
-                     reader_config=None,
+                     generator_config=None,
                      optimizer_config=None,
                      gpu_config=None):
     """ build experiment
@@ -556,107 +508,105 @@ def build_experiment(build_model_fun,
     """
     if model_config is None:
         model_config = {}
-    if reader_config is None:
-        reader_config = {}
+    if generator_config is None:
+        generator_config = {}
+    generator_config['batch_size'] = batch_size
+    generator_config['shuffle'] = shuffle
     if optimizer_config is None:
         optimizer_config = {}
 
     #----- read the dataset -----#
-    (xtrain, ytrain), (xvalid, yvalid) = build_reader_fun(**reader_config)
-    valids = None
-    if xvalid is not None and yvalid is not None:
-        valids = [xvalid, yvalid]
+    (inputs, labels), \
+    (generator, iterations), \
+    (valid_gen, valid_iters) = build_reader_fun(**generator_config)
+
     #----- build networks -----#
-    input_shape = list(xtrain.shape)
-    input_shape[0] = None
-    label_shape = None
-    if 'label_shape' in model_config.keys():
-        label_shape = model_config['label_shape']
-    elif ytrain is not None:
-        label_shape = [None] + list(ytrain.shape[1:])
-    if label_shape is not None:
-        if nclass is None:
-            nclass = label_shape[ops.core.axis]
-        elif nclass is not None:
-            normed_axis = ops.helper.normalize_axes(label_shape)
-            if ops.core.axis < 0:
-                normed_axis += 1
-            label_shape.insert(normed_axis, nclass)
-    model_config['label_shape'] = label_shape
-    [xtensor, ytensor], [loss, metric] = sigma.build(input_shape,
-                                                     build_model_fun,
-                                                     **model_config)
+    [loss, metric] = sigma.build(inputs,
+                                 build_model_fun,
+                                 labels,
+                                 **model_config)
     if isinstance(filename, str):
         if layers.core.__graph__ is not None and \
           layers.core.__graph__ is not False:
             layers.core.export_graph(filename)
         else:
             print('WARNING: cannot save graph to file {}.'
-                  'To do that, run sigma.engine.set_print(True) first')
+                  'To do that, run {} first'.format(filename,
+                          colors.red('sigma.engine.set_print(True)')))
     #----- train configuration -----#
     optimizer = ops.optimizers.get(optimizer, **optimizer_config)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoints', type=str, default=None)
-    parser.add_argument('--logs', type=str, default=None)
+    parser.add_argument('--checkpoint', type=str, default=None)
+    parser.add_argument('--log', type=str, default=None)
     parser.add_argument('--eid', type=str, default=None)
+    parser.add_argument('--address', type=str, default=None)
 
     parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--batch-size', type=int, default=64)
 
-    parser.add_argument('--shuffle', type=bool, default=True)
-
-    def _experiment(parser, verbose=True):
+    def _experiment(args, auto_timestamp=True, verbose=True):
         # the process of training networks
-        args = parser.parse_args()
         if verbose:
             helpers.print_args(args)
 
         #----- beg re-configurations -----#
         train_config = helpers.arg2dict(args)
-        train_config['checkpoints'] = train_config.get('checkpoints', None)
-        timestamp = helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None)
+        train_config['checkpoint'] = train_config.get('checkpoint', None)
         expid = train_config.get('eid', None)
-        if expid is None:
-            eid = timestamp
+        if auto_timestamp:
+            timestamp = helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None)
+            if expid is None:
+                expid = timestamp
+            else:
+                expid = '{}-{}'.format(expid, timestamp)
+        if expid is not None:
+            if train_config['checkpoint'] is None:
+                train_config['checkpoint'] = '{}/ckpt/main'.format(expid)
+            else:
+                train_config['checkpoint'] = '{}/{}/ckpt/main'.format(
+                    train_config['checkpoint'], expid)
+            train_config['log'] = train_config.get('log', None)
+            if train_config['log'] is None:
+                train_config['log'] = '{}/log'.format(expid)
+            else:
+                train_config['log'] = '{}/{}/log'.format(
+                                         train_config['log'], expid)
         else:
-            eid = '{}-{}'.format(eid, timestamp)
-        if train_config['checkpoints'] is None:
-            train_config['checkpoints'] = '{}/ckpts/main'.format(eid)
-        else:
-            train_config['checkpoints'] = '{}/{}/ckpts/main'.format(
-                                            train_config['checkpoints'],eid)
-        train_config['logs'] = train_config.get('logs', None)
-        if train_config['logs'] is None:
-            train_config['logs'] = '{}/logs'.format(eid)
-        else:
-            train_config['logs'] = '{}/{}/logs'.format(
-                                     train_config['logs'], eid)
+            if train_config['checkpoint'] is not None:
+                train_config['checkpoint'] = '{}/ckpt/main'.format(
+                    train_config['checkpoint']
+                )
+            if train_config['log'] is not None:
+                train_config['log'] = '{}/log'.format(
+                    train_config['log']
+                )
+        del train_config['eid']
         #----- end re-configurations -----#
 
         #----- get rid of some parameters in dictionary -----#
         train_config_keys = train_config.keys()
-        for key in ['xtrain', 'xtensor', 'optimizer', 'loss', 'metric', \
-                    'ytrain', 'ytensor', 'nclass', 'valids', 'config', 'eid']:
+        for key in ['generator', 'iterations',
+                    'optimizer', 'loss', 'metric',
+                    'valid_gen', 'valid_iters']:
             if key in train_config_keys:
                 print('`{}` in parser not allowed. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
-            if key not in ['checkpoints', 'logs', 'epochs', 'shuffle', 'graph',\
-                           'batch_size', 'savemode', 'modetarget']:
+            if key not in ['checkpoint', 'log', 'epochs', 'graph',\
+                           'savemode', 'modetarget', 'address']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
 
-        sigma.train(xtrain, xtensor,
+        sigma.train(generator,
+                    iterations,
                     optimizer,
                     loss,
                     metric,
-                    ytrain, ytensor,
-                    nclass=nclass,
-                    valids=valids,
+                    valid_gen,
+                    valid_iters,
                     config=gpu_config,
                     **train_config)
     return _experiment, parser

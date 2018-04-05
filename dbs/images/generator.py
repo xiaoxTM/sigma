@@ -484,11 +484,10 @@ def segment_data_generator(self, nclass, filelist, batch_size,
 
 
 def generator(imagepath, batch_size,
-              xtensor=None,
-              ytensor=None,
               gtpath=None,
               gtext=None,
               size=None,
+              shuffle=True,
               asarray=True,
               scale=1.0,
               center=True,
@@ -566,30 +565,29 @@ def generator(imagepath, batch_size,
     length = len(filelist)
     index = np.arange(length, dtype=np.int32)
     iterations = max(int(length / batch_size), 1)
-    if xtensor is None:
-        xtensor = 'xtensor'
-    if ytensor is None:
-        ytensor = 'ytensor'
-    def _generate():
-        while True:
-            np.random.shuffle(index)
-            # get the previous `batch-size` samples
-            for iteration in range(iterations):
-                beg = iteration * batch_size
-                end = min(beg + batch_size, length)
-                x_list = filelist[index[beg:end]]
-                y_list = None
-                if gtlist is not None:
-                    y_list = gtlist[index[beg:end]]
-                x, y = load_from_list(x_list, y_list, size,
-                                      asarray, scale, center,
-                                      strides, mode, spi,
-                                      void_label, multiprocess, color_mode)
-                if onehot:
-                    if y is not None:
-                        y = one_hot(y, nclass)
-                yield {xtensor:x, ytensor:y}, iteration
-    return _generate(), length, iterations
+    def _generate(inputs, labels=None):
+        def _next():
+            while True:
+                if shuffle:
+                    np.random.shuffle(index)
+                # get the previous `batch-size` samples
+                for iteration in range(iterations):
+                    beg = iteration * batch_size
+                    end = min(beg + batch_size, length)
+                    x_list = filelist[index[beg:end]]
+                    y_list = None
+                    if gtlist is not None:
+                        y_list = gtlist[index[beg:end]]
+                    x, y = load_from_list(x_list, y_list, size,
+                                          asarray, scale, center,
+                                          strides, mode, spi,
+                                          void_label, multiprocess, color_mode)
+                    if onehot:
+                        if y is not None:
+                            y = one_hot(y, nclass)
+                    yield {inputs:x, labels:y}, iteration
+        return _next()
+    return _generate, length, iterations
 
 
 def next_batch(dataset, iteration, batch_size, shuffle=True):
@@ -629,8 +627,6 @@ def next_batch(dataset, iteration, batch_size, shuffle=True):
 
 def make_generator(x,
                    y=None,
-                   xtensor=None,
-                   ytensor=None,
                    batch_size=32,
                    shuffle=True,
                    nclass=None):
@@ -647,24 +643,24 @@ def make_generator(x,
                                                      colors.green(len(y))))
         if nclass is not None:
             y = one_hot(y, nclass)
+    # input_shape = x.shape[1:]
+    # label_shape = y.shape[1:]
     length = len(x)
     idx = np.arange(length, dtype=np.int32)
     iterations = max(int(length / batch_size), 1)
-    if xtensor is None:
-        xtensor = 'xtensor'
-    if ytensor is None:
-        ytensor = 'ytensor'
-    def _generate():
-        while True:
-            if shuffle:
-                np.random.shuffle(idx)
-            for iteration in range(iterations):
-                beg = iteration * batch_size
-                if beg > length:
-                    beg = length - batch_size
-                end = max(min(beg + batch_size, length), beg)
-                if y is not None:
-                    yield {xtensor:x[idx[beg:end]], ytensor:y[idx[beg:end]]}, iteration
-                else:
-                    yield {xtensor:x[idx[beg:end]]}, iteration
-    return _generate(), length, iterations
+    def _generate(inputs, labels):
+        def _next():
+            while True:
+                if shuffle:
+                    np.random.shuffle(idx)
+                for iteration in range(iterations):
+                    beg = iteration * batch_size
+                    if beg > length:
+                        beg = length - batch_size
+                    end = max(min(beg + batch_size, length), beg)
+                    if y is not None:
+                        yield {inputs:x[idx[beg:end]], labels:y[idx[beg:end]]}, iteration
+                    else:
+                        yield {inputs:x[idx[beg:end]]}, iteration
+        return _next()
+    return _generate, length, iterations
