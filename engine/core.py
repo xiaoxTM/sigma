@@ -110,29 +110,31 @@ def predict(session, x, xtensor, ypred,
         return preds[0] if len(preds) == 1 else preds
 
 
-@phase('predict')
-def validate(session, validop, generator, iterations):
-    acc = None
-    if 'metric' in validop.keys():
-        acc = 0
-    loss = 0
-    for iteration in range(iterations):
-        samples, step = next(generator)
-        rdict = ops.core.run(session, validop, feed_dict=samples)
-        accuracy = rdict.get('metric', None)
-        if accuracy is not None:
-            if isinstance(accuracy, (list, tuple)):
-                # if metric are built from tf.metrics.*
-                # it will include
-                # [accuracy, update_op]
-                accuracy = accuracy[0]
-            acc += accuracy
-        # print('loss:{} - acc:{}'.format(rdict['loss'], accuracy))
-        loss += rdict['loss']
-    if acc is not None:
-        acc = acc / iterations
-    loss = loss / iterations
-    return (loss, acc)
+def validate(validop, generator, iterations):
+    @phase('predict')
+    def _validate(session):
+        acc = None
+        if 'metric' in validop.keys():
+            acc = 0
+        loss = 0
+        for iteration in range(iterations):
+            samples, step = next(generator)
+            rdict = ops.core.run(session, validop, feed_dict=samples)
+            accuracy = rdict.get('metric', None)
+            if accuracy is not None:
+                if isinstance(accuracy, (list, tuple)):
+                    # if metric are built from tf.metrics.*
+                    # it will include
+                    # [accuracy, update_op]
+                    accuracy = accuracy[0]
+                acc += accuracy
+            # print('loss:{} - acc:{}'.format(rdict['loss'], accuracy))
+            loss += rdict['loss']
+        if acc is not None:
+            acc = acc / iterations
+        loss = loss / iterations
+        return (loss, acc)
+    return _validate
 
 
 def _save_op(savemode='all', modetarget='loss'):
@@ -193,9 +195,7 @@ def session(target='',
 def run(trainop,
         generator,
         iterations,
-        validop=None,
-        valid_gen=None,
-        valid_iters=None,
+        validation=None,
         epochs=1000,
         graph=None,
         config=None,
@@ -208,32 +208,24 @@ def run(trainop,
     """ run to train networks
         Attributes
         ==========
-            x : np.ndarray or list / tuple
-                samples to train
-            xtensor : placeholder
-                      input placeholder of the network
-            optimizer : optimizer
-                        optimizer to update network parameter
-            loss : Tensor
-                   objectives network tries to minimize / maximize
-            metrics : Tensor / None
-                      measurement of result accuracy
-            y : np.ndarray or list / tuple / None
-                ground truth for x.
-            ytensor : placeholder / None
-                      y placeholder of the network
-            nclass : int / None
-                     number of class for classification
-                     Note, None indicates no one_hot op when generate
-                     (sample, label) pairs
+            trainop : dict
+                      operations to be run to train networks
+                      for example:
+                          trainop = {'loss':loss, 'optimizer':optimizer}
+            generator : generator
+                        generate samples for training networks
+            iterations : int
+                         total iterations for each epoch for training networks
+            validation : callable
+                         function for validating networks
+                         should have signature of
+                         `
+                            def validation(session):
+                                # tons of thousand of codes here
+                                return {'loss': loss, 'metric': metric}
+                         `
             epochs : int
                      `epochs` times to run optimization
-            batch_size : int
-                         batch size for SGD-based optimizer
-            shuffle : bool
-                      whether should shuffle dataset after each epoch
-            valids : np.ndarray or list / tuple
-                     validation dataset for evaluation
             graph : Graph / None
                     may for tensorflow backend ONLY
             config : ProtoConfig / None
@@ -273,10 +265,11 @@ def run(trainop,
     progressor = helpers.line(None,
                               epochs=epochs,
                               iterations=iterations,
+                              brief=False,
                               # use `send` to get next data instead of `next`
                               feedbacks=True,
                               timeit=True,
-                              nprompts=10)[0]()
+                              nprompts=20)[0]()
     def _encode_loss_and_acc(loss, acc):
         return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
                                 colors.green(round(acc, 6), '{: >.6f}'))
@@ -313,13 +306,8 @@ def run(trainop,
         trainacc = get_acc(rdict)
 
         # begin of evaluation
-        if (iteration + 1) == iterations and \
-          validop is not None and valid_gen is not None \
-          and valid_iters is not None:
-            validloss, validacc = validate(sess,
-                                           validop,
-                                           valid_gen,
-                                           valid_iters)
+        if (iteration + 1) == iterations and validation is not None:
+            validloss, validacc = validation(sess)
             validmessage = ' => {}'.format(encodeop(validloss, validacc))
         # end of evaluation
         current = trainloss
@@ -359,6 +347,44 @@ def train(generator,
           address=None,
           savemode='all',
           modetarget='loss'):
+    """ train networks with samples (may also validate samples)
+        Attributes
+        ==========
+            generator : generator
+                        generator to generate sample-label pairs for train
+            iterations : total iterations for each epoch for train dataset
+            optimizer : str / Optimizer
+                        optimizer to minimize / maximize loss
+            loss : str / tensor
+                   objective loss to be optimized by optimizer
+            metric : None / str / tensor
+                     metric to measure the performance after each epoch if available
+            valid_gen : generator
+                        generator to generate sample-label pairs for validate
+            valid_iters : int
+                          total iterations for validation
+            epochs : int
+                     epochs to train throughout the train-dataset
+            graph : Graph
+            config : dict
+                     gpu configuration
+            checkpoint : str
+                         checkpoint to store median train result
+            log : str
+                  log directory for tensorboard visualization
+            address : str
+                      address for tfdebug and tensorboard debugging
+                      should in the form of:
+                        hostname:port
+            savemode : str
+                       `all` for saving all results to checkpoint
+                       `min` for saving minimal value of current and global results
+                       `max` for saving maximal value of current and global results
+            modetarget : string
+                         which to save
+                         `loss` for saving loss
+                         `metric` for saving metric
+    """
     loss_op = ops.losses.get(loss)
     optimization_op = optimizer.minimize(loss_op)
     trainop = {'optimizer':optimization_op, 'loss':loss_op}
@@ -367,12 +393,13 @@ def train(generator,
     if metric_op is not None:
         trainop['metric'] = metric_op
         validop['metric'] = metric_op
+    validation = None
+    if valid_gen is not None and valid_iters is not None:
+        validation = validate(validop, valid_gen, valid_iters)
     run(trainop,
         generator,
         iterations,
-        validop,
-        valid_gen,
-        valid_iters,
+        validation,
         epochs,
         graph,
         config,
@@ -386,8 +413,6 @@ def train(generator,
 def build(inputs,
           build_fun,
           labels=None,
-          dtype='float32',
-          name=None,
           reuse=False,
           scope=None,
           **kwargs):
@@ -396,18 +421,14 @@ def build(inputs,
         ==========
         inputs : tensor
                  input for network entrance
-        labels : tensor
-                 label shape for network entrance
         build_fun : callable
                     callable function receives only one
                     parameter. should have signature of:
                     `def build_fun(x) --> (tensor, tensor):`
                     where the first tensor is loss and the
                     second tensor is metric (can be None)
-        dtype : string / list / dict
-                data type of input / label layer
-        name : string / list / dict
-               name of input / label layer
+        labels : tensor
+                 label shape for network entrance
         reuse : bool
         scope : string
         kwargs : None or dict
@@ -471,34 +492,47 @@ def build_experiment(build_model_fun,
             build_model_fun : callable
                               function to build network structure
                               this will be passed to sigma.build
+                              and should have signature of
+                              `
+                                  def build_network(inputs, labels, **kwargs):
+                                      # tons of codes here
+                                      return [loss, metric]
+                              `
+                              see sigma.apps.capsules.[cifar|mnist].build_func
+                              for examples
             build_reader_fun : callable
                                function to load dataset
-                               this is supposed to return train&valid dataset
-                               [xtrain, ytrain], [xvalid, yvalid]
-                               where xtrain / xvalid should have the same shape
-                               as input layer, ytrain / yvalid should have the
-                               same shape as ground truth (label layer)
+                               this function should return another function
+                               that return
+                               (input_shape, label_shape), ([x, y], (vx, vy))
+                               or
+                               (input_shape, label_shape), (train-filelist, valid-filelist)
+                               where x is the samples, y is the labels corresponding to x
+                               vx is the samples from valid dataset, vy is the labels
+                               corresponding to vy
+                               should have signature of
+                               `
+                                   def build_reader(#necessary parameters here):
+                                       @sigma.engine.io.imageio
+                                       def _build_reader(**kwargs):
+                                           # loading dataset from files here
+                                           return (input_shape, label_shape), \
+                                                  ([x, y], [vx, vy])
+                                       return _build_reader
+                               `
+                               see sigma.engine.io.[mnist|cifar] for examples
             optimizer : string / sigma.ops.core.Optimizer
                         optimizer to optimize loss and train parameters
-            nclass : int / None
-                     number of classes to be classified / segmentated
-                     NOTE if nclass is not None, it will be extended to ytrain.shape
-                     > nclass = 10
-                     > ytrain.shape = [None, 20, 20]
-                     > output : [None, 20, 20, 10] if data_format = 'NHWC' or
-                     >          [NOne, 10, 20, 20] if data_format = 'NCHW'
-                     in case nclass is None, it will be determined by ytrain.shape
-                     > ytrain.shape = [10000, 20, 20, 10]
-                     > nclass = 10 if data_format = 'NHWC' or
-                     > nclass = 20 if data_format = 'NCHW'
+            batch_size : int
+                         `batch-size` samples of data to read
             filename : string / bool / None
                        if None, will print no network structure information
                        if False, print to terminal
                        if string, print to file
             model_config : dict
                            parameters passed to build_model_fun
-            reader_config : dict
-                            parameters passed to build_reader_fun
+            generator_config : dict
+                               parameters passed to build_reader_fun
             optimizer_config : dict
                                parameters passed to ops.optimizer.get
             gpu_config : dict:

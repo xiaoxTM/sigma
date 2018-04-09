@@ -16,6 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from timeit import default_timer as timer
+
 import numpy as np
 import os.path
 import logging
@@ -643,8 +645,6 @@ def make_generator(x,
                                                      colors.green(len(y))))
         if nclass is not None:
             y = one_hot(y, nclass)
-    # input_shape = x.shape[1:]
-    # label_shape = y.shape[1:]
     length = len(x)
     idx = np.arange(length, dtype=np.int32)
     iterations = max(int(length / batch_size), 1)
@@ -654,6 +654,7 @@ def make_generator(x,
                 if shuffle:
                     np.random.shuffle(idx)
                 for iteration in range(iterations):
+                    begit = timer()
                     beg = iteration * batch_size
                     if beg > length:
                         beg = length - batch_size

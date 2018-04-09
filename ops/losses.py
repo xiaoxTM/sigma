@@ -149,7 +149,7 @@ def margin_loss(axis,
                 scope=None,
                 positive_margin=0.9,
                 negative_margin=0.1,
-                downweighting=0.5):
+                downweight=0.5):
     if axis is None:
         axis = core.axis
     def _margin_loss(x, labels):
@@ -157,15 +157,12 @@ def margin_loss(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
-            pmask = core.cast(core.less(x, positive_margin), core.float32)
-            ploss = pmask * core.pow(positive_margin - x, 2)
-            ploss = core.sum(core.cast(labels, core.float32) * ploss,
+            # L_k = T_k * max(0, m+ - |x|)^2 + (1-T_k) * max(0.0, |x| - m-)^2
+            ploss = core.sum(labels * core.max(0.0, positive_margin - x)**2,
                              axis=axis)
-            nmask = core.cast(core.less(negative_margin, x), core.float32)
-            nloss = nmask * core.pow(negative_margin - x, 2)
-            nloss = core.sum(core.cast(1 - labels, core.float32) * nloss,
+            nloss = core.sum((1-labels) * core.max(0.0, x - negative_margin)**2,
                              axis=axis)
-            return core.mean(ploss + downweighting * nloss)
+            return core.mean(ploss + downweight * nloss)
     return _margin_loss
 
 

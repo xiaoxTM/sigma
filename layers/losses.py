@@ -127,7 +127,7 @@ def margin_loss(inputs,
                 axis=None,
                 positive_margin=0.9,
                 negative_margin=0.1,
-                downweighting=0.5,
+                downweight=0.5,
                 from_logits=True,
                 onehot=True,
                 reuse=False,
@@ -147,7 +147,7 @@ def margin_loss(inputs,
                                   scope,
                                   positive_margin,
                                   negative_margin,
-                                  downweighting)(inputs, labels)
+                                  downweight)(inputs, labels)
 
 
 # short alias for each losses

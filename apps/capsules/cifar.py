@@ -75,6 +75,7 @@ experiment, parser = sigma.build_experiment(build_func,
                                                             False,
                                                             nclass=nclass),
                                             'AdamOptimizer',
+                                            batch_size=100,
                                             # filename='cifar-100-capsules.png',
                                             generator_config=generator_config,
                                             gpu_config=gpu_config)

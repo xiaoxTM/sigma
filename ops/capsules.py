@@ -105,7 +105,7 @@ def _agreement_routing(prediction,
     act = actives.squash()
     idx = core.constant(0, dtype=core.int32)
     # softmax along with `outcaps` axis
-    outcaps_axis = helper.normalize_axes(core.shape(logits), -2)
+    outcaps_axis = helper.normalize_axes(logits_shape, -2)
     # for doing experiment, we also try to softmax along incaps
     #incaps_axis = helper.normalize_axes(core.shape(logits), -3)
 

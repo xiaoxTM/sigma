@@ -839,9 +839,9 @@ def tensordot(a, b, axes, name=None):
 #----- tensorflow losses -----#
 def softmax_cross_entropy_with_logits(labels=None,
                                       logits=None,
-                                      axis=-1,
+                                      axis=commons.axis,
                                       name=None):
-    return tf.nn.softmax_cross_entropy_with_logits(_sentine=None,
+    return tf.nn.softmax_cross_entropy_with_logits(_sentinel=None,
                                                    labels=labels,
                                                    logits=logits,
                                                    dim=axis,
