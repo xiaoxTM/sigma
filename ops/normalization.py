@@ -17,7 +17,7 @@
 """
 
 from . import mm, helper, actives, core
-from .. import status
+from .. import status, helpers
 
 def instance_norm(input_shape,
                   offset_initializer='zeros',
@@ -168,6 +168,15 @@ def conditional_instance_norm(input_shape,
     return _conditional_instance_norm
 
 
+@helpers.typecheck(input_shape=list,
+                   momentum=float,
+                   trainable=bool,
+                   fused=bool,
+                   collections=str,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def batch_norm(input_shape,
                momentum=0.99,
                offset_initializer='zeros',
@@ -333,6 +342,12 @@ def batch_norm(input_shape,
     return _batch_norm
 
 
+@helpers.typecheck(kpeep=float,
+                   noise_shape=list,
+                   aslayer=bool,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def dropout(pkeep,
             noise_shape=None,
             seed=None,

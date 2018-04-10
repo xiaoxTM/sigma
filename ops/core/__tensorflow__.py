@@ -1277,7 +1277,8 @@ def load(session, checkpoint,
     return session, saver
 
 
-def save(session, checkpoint,
+def save(session,
+         checkpoint,
          saver=None,
          verbose=True,
          **kwargs):

@@ -110,16 +110,18 @@ def predict(session, x, xtensor, ypred,
         return preds[0] if len(preds) == 1 else preds
 
 
-def validate(validop, generator, iterations):
+def validate(validop, generator, iterations, summarize_op):
     @phase('predict')
-    def _validate(session):
+    def _validate(session, global_step):
         acc = None
         if 'metric' in validop.keys():
             acc = 0
         loss = 0
         for iteration in range(iterations):
+            global_step += iteration
             samples, step = next(generator)
             rdict = ops.core.run(session, validop, feed_dict=samples)
+            summarize_op(rdict['summarize'], global_step)
             accuracy = rdict.get('metric', None)
             if accuracy is not None:
                 if isinstance(accuracy, (list, tuple)):
@@ -128,7 +130,6 @@ def validate(validop, generator, iterations):
                     # [accuracy, update_op]
                     accuracy = accuracy[0]
                 acc += accuracy
-            # print('loss:{} - acc:{}'.format(rdict['loss'], accuracy))
             loss += rdict['loss']
         if acc is not None:
             acc = acc / iterations
@@ -164,6 +165,22 @@ def _save_op(savemode='all', modetarget='loss'):
                          .format(savemode))
 
 
+def checkpoint_save(checkpoint, saver, **kwargs):
+    if saver is None:
+        return lambda x:x
+    def _checkpoint_save(session):
+        helpers.save(session, checkpoint, saver, **kwargs)
+    return _checkpoint_save
+
+
+def log_summarize(writer):
+    if writer is None:
+        return lambda summary, global_step=None:summary
+    def _log_summarize(summary, global_step=None):
+        ops.core.add_summary(writer, summary, global_step=global_step)
+    return _log_summarize
+
+
 def session(target='',
             graph=None,
             config=None,
@@ -192,18 +209,16 @@ def session(target='',
     return ans
 
 
-def run(trainop,
+def run(session,
+        trainop,
         generator,
         iterations,
+        checkpoint_save_op,
+        summarize_op,
         validation=None,
         epochs=1000,
-        graph=None,
-        config=None,
-        checkpoint=None,
-        log=None,
-        address=None,
-        savemode='all',
-        modetarget='loss',
+        save_mode='all',
+        save_target='loss',
         emc=None):
     """ run to train networks
         Attributes
@@ -225,15 +240,6 @@ def run(trainop,
                                 return {'loss': loss, 'metric': metric}
                          `
             epochs : int
-                     `epochs` times to run optimization
-            graph : Graph / None
-                    may for tensorflow backend ONLY
-            config : ProtoConfig / None
-                     may for tensorflow backend ONLY
-            checkpoints : string
-                          checkpoints for restoring / saving parameters
-            logs : string
-                   logs directory for tensorboard
             savemode : string, `all` / `max` / `min`
                        saving parameter policy.
                        `all` : save each iteration of all epochs
@@ -250,18 +256,9 @@ def run(trainop,
                   - other parameters see @helpers.mail.sendmail
     """
     # //FIXME: remove validating time from final iteration of train time
-    if modetarget not in ['loss', 'metric']:
-        raise ValueError('modetarget must be `loss` or `metric`. given {}'
+    if save_target not in ['loss', 'metric']:
+        raise ValueError('save_target must be `loss` or `metric`. given {}'
                          .format(colors.red(modetarget)))
-    ans = session(graph=graph,
-                  config=config,
-                  checkpoint=checkpoint,
-                  log=log,
-                  address=address)
-    sess = ans['session']
-    saver = ans.get('saver', None)
-    summarize = ans.get('summarize', None)
-    writer = ans.get('writer', None)
     progressor = helpers.line(None,
                               epochs=epochs,
                               iterations=iterations,
@@ -285,9 +282,7 @@ def run(trainop,
     if 'metric' in trainop.keys():
         encodeop = _encode_loss_and_acc
         get_acc = _get_acc
-    if summarize is not None:
-        trainop['summarize'] = summarize
-    saverop = _save_op(savemode, modetarget)
+    saverop = _save_op(save_mode, save_target)
     best_result = None
     epm = -1
     if emc is not None:
@@ -298,37 +293,30 @@ def run(trainop,
     while epoch < epochs:
         validmessage = ''
         samples, step = next(generator)
-        rdict = ops.core.run(sess, trainop, feed_dict=samples)
-        if writer is not None:
-            ops.core.add_summary(writer, rdict['summarize'],
-                                 global_step=global_idx)
+        rdict = ops.core.run(session, trainop, feed_dict=samples)
+        summarize_op(rdict['summarize'], global_step=global_idx)
         trainloss = rdict['loss']
         trainacc = get_acc(rdict)
 
         # begin of evaluation
         if (iteration + 1) == iterations and validation is not None:
-            validloss, validacc = validation(sess)
+            validloss, validacc = validation(session, global_idx)
             validmessage = ' => {}'.format(encodeop(validloss, validacc))
         # end of evaluation
         current = trainloss
-        if modetarget == 'metric' and 'metric' in trainop.keys():
+        if save_target == 'metric' and 'metric' in trainop.keys():
             current = trainacc
         if saverop(current, best_result):
             # if current loss is better than best result
             # save it to best_result
             best_result = current
-            if saver is not None:
-                helpers.save(sess, checkpoint, saver,
-                             write_meta_graph=False,
-                             verbose=False)
+            checkpoint_save_op(session)
         trainmessage = encodeop(trainloss, trainacc)
         (global_idx, _, epoch, iteration) = progressor.send(
             '{{{}{}}}'.format(trainmessage,
                               validmessage))
         if epm > 0 and (epoch + 1) % epm == 0:
             helpers.sendmail(emc)
-    ops.core.close_summary_writer(writer)
-    ops.core.close_session(sess)
 
 
 @phase('train')
@@ -345,8 +333,8 @@ def train(generator,
           checkpoint=None,
           log=None,
           address=None,
-          savemode='all',
-          modetarget='loss'):
+          save_mode='all',
+          save_target='loss'):
     """ train networks with samples (may also validate samples)
         Attributes
         ==========
@@ -393,21 +381,46 @@ def train(generator,
     if metric_op is not None:
         trainop['metric'] = metric_op
         validop['metric'] = metric_op
+    # run after optimization construction
+    # to get rid of `Attempting to use uninitialized value beta1_power` ERROR
+    ans = session(graph=graph,
+                  config=config,
+                  checkpoint=checkpoint,
+                  log=log,
+                  address=address)
+    sess = ans['session']
+    saver = ans.get('saver', None)
+    summarize = ans.get('summarize', None)
+    writer = ans.get('writer', None)
+
+    checkpoint_save_op = checkpoint_save(checkpoint,
+                                         saver,
+                                         write_meta_graph=False,
+                                         verbose=False)
+    summarize_op = log_summarize(writer)
+
+    valid_writer = ops.core.summary_writer(log+'valid', sess.graph)
+    valid_summarize_op = log_summarize(valid_writer)
+
+    if summarize is not None:
+        # trainop => validop
+        trainop['summarize'] = summarize
+        validop['summarize'] = summarize
     validation = None
     if valid_gen is not None and valid_iters is not None:
-        validation = validate(validop, valid_gen, valid_iters)
-    run(trainop,
+        validation = validate(validop, valid_gen, valid_iters, valid_summarize_op)
+    run(sess,
+        trainop,
         generator,
         iterations,
+        checkpoint_save_op,
+        summarize_op,
         validation,
         epochs,
-        graph,
-        config,
-        checkpoint,
-        log,
-        address,
-        savemode,
-        modetarget)
+        save_mode,
+        save_target)
+    ops.core.close_summary_writer(writer)
+    ops.core.close_session(sess)
 
 
 def build(inputs,
@@ -575,6 +588,9 @@ def build_experiment(build_model_fun,
     parser.add_argument('--log', type=str, default=None)
     parser.add_argument('--eid', type=str, default=None)
     parser.add_argument('--address', type=str, default=None)
+    #or typically : parser.address='localhost:6064'
+    parser.add_argument('--save-mode', type=str, default='all')
+    parser.add_argument('--save-target', type=str, default='loss')
 
     parser.add_argument('--epochs', type=int, default=100)
 
@@ -629,7 +645,7 @@ def build_experiment(build_model_fun,
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
             if key not in ['checkpoint', 'log', 'epochs', 'graph',\
-                           'savemode', 'modetarget', 'address']:
+                           'save_mode', 'save_target', 'address']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]

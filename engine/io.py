@@ -87,6 +87,7 @@ def cifar(dirs, to_tensor=True, onehot=False, nclass=None, coarse=True):
         input_shape = list(xtrain.shape)
         input_shape[0] = None
         label_shape = [None] + list(ytrain.shape[1:])
+        
         if nclass is not None:
             normed_axis = ops.helper.normalize_axes(label_shape)
             if ops.core.axis < 0:

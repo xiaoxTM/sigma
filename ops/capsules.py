@@ -20,6 +20,8 @@ from .. import colors
 from . import core, actives, helper, mm
 import logging
 
+from .. import helpers
+
 def _leaky_routing(logits):
     """ leaky routing
         This enables active capsules to be routed to the added
@@ -149,6 +151,15 @@ def _agreement_routing(prediction,
     return core.reshape(activations.read(iterations-1), shape)
 
 
+@helpers.typecheck(input_shape=list,
+                   axis=int,
+                   keepdims=bool,
+                   ord=str,
+                   epsilon=float,
+                   safe=bool,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def norm(input_shape,
          axis=None,
          keepdims=False,
@@ -239,6 +250,17 @@ def conv(convop, bias_shape, logits_shape, iterations,
     return _conv
 
 
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   caps_dims=int,
+                   iterations=int,
+                   leaky=bool,
+                   keepdims=bool,
+                   collections=str,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def fully_connected(input_shape, nouts, caps_dims,
                     iterations=2,
                     leaky=False,
@@ -319,6 +341,19 @@ def fully_connected(input_shape, nouts, caps_dims,
                 scope), output_shape
 
 
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   caps_dims=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   share_weights=bool,
+                   iterations=int,
+                   collections=str,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def conv1d(input_shape, nouts, caps_dims, kshape,
            iterations=3,
            leaky=False,
@@ -477,6 +512,19 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
                 scope), output_shape
 
 
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   caps_dims=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   share_weights=bool,
+                   iterations=int,
+                   collections=str,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def conv2d(input_shape, nouts, caps_dims, kshape,
            iterations=3,
            leaky=False,

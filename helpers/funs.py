@@ -21,6 +21,36 @@ from datetime import datetime
 from .. import colors
 import numpy as np
 import math
+import inspect
+
+def typecheck(**dwargs):
+    dkeys = dwargs.keys()
+    def _typecheck(fun):
+        def _check(*args, **kwargs):
+            signature = inspect.signature(fun)
+            items = list(signature.parameters.items())
+            for idx, arg in enumerate(args):
+                kwargs[items[idx][0]] = arg
+            for key, value in kwargs.items():
+                if value is not None and key in dkeys:
+                    dvalues = dwargs[key]
+                    if not isinstance(dvalues, list):
+                        dvalues = [dvalues]
+                    matched = False
+                    tvalue = type(value)
+                    for dvalue in dvalues:
+                        if dvalue == tvalue:
+                            matched = True
+                            break
+                    if not matched:
+                        raise TypeError('Type for `{}` not match.'
+                                        '{} required, given {}'
+                                        .format(key,
+                                                colors.blue(dwargs[key]),
+                                                colors.red(type(value))))
+            return fun(**kwargs)
+        return _check
+    return _typecheck
 
 
 def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S', split='-'):
@@ -58,6 +88,7 @@ def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S', split='-'):
         return datetime.strptime(date, fmt)
 
 
+@typecheck(x=int)
 def intsize(x, cminus=False):
     if x > 0:
         return int(np.log10(x)) + 1

@@ -1,7 +1,7 @@
 import pickle
 import os.path
 import numpy as np
-
+from sigma import helpers, ops
 
 def load(dirs, to_tensor=True, onehot=False, nclass=None, coarse=True):
     data = []
@@ -24,4 +24,6 @@ def load(dirs, to_tensor=True, onehot=False, nclass=None, coarse=True):
         return rawdata, np.asarray(labels)
     xtrain, ytrain = _load('train')
     xvalid, yvalid = _load('test')
-    return [xtrain, ytrain], [xvalid, yvalid]
+    #return [xtrain[:100], ytrain[:100]], [xvalid[:100], yvalid[:100]]
+    #return [xtrain, ytrain], [xvalid, yvalid]
+    return [xtrain, ytrain], [xtrain, ytrain]

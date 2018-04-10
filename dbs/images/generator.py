@@ -636,7 +636,10 @@ def make_generator(x,
     """
     if not isinstance(x, np.ndarray):
         x = np.asarray(x)
+
+    send = lambda dx, dy, idx : (dx, idx)
     if y is not None:
+        send = lambda dx, dy, idx : ({**dx, **dy}, idx)
         if not isinstance(y, np.ndarray):
             y = np.asarray(y)
         if len(x) != len(y):
@@ -654,14 +657,12 @@ def make_generator(x,
                 if shuffle:
                     np.random.shuffle(idx)
                 for iteration in range(iterations):
-                    begit = timer()
                     beg = iteration * batch_size
                     if beg > length:
                         beg = length - batch_size
                     end = max(min(beg + batch_size, length), beg)
-                    if y is not None:
-                        yield {inputs:x[idx[beg:end]], labels:y[idx[beg:end]]}, iteration
-                    else:
-                        yield {inputs:x[idx[beg:end]]}, iteration
+                    yield send({inputs:x[idx[beg:end]]},
+                               {labels:y[idx[beg:end]]},
+                               iteration)
         return _next()
     return _generate, length, iterations

@@ -16,13 +16,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .. import colors
+from .. import colors, helpers
 from . import mm
 from . import actives
 from . import helper
 from . import core
 import numpy as np
-
 import logging
 
 """ There are two main scopes for sigma to organize tensorflow graph
@@ -106,6 +105,18 @@ def conv(convop, kernel_shape,
 
 """ fully connected operation
 """
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   trainable=bool,
+                   iterations=int,
+                   collections=str,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def fully_connected(input_shape, nouts,
                     weight_initializer='glorot_uniform',
                     weight_regularizer=None,
@@ -151,6 +162,18 @@ def fully_connected(input_shape, nouts,
 
 """ 1-D convolutional operation
 """
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   iterations=int,
+                   collections=str,
+                   trainable=bool,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def conv1d(input_shape, nouts, kshape,
            stride=1,
            padding='valid',
@@ -206,6 +229,18 @@ def conv1d(input_shape, nouts, kshape,
 
 """ 2-D convolutional operation
 """
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   trainable=bool,
+                   iterations=int,
+                   collections=str,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def conv2d(input_shape, nouts, kshape,
            stride=1,
            padding='valid',
@@ -256,6 +291,18 @@ def conv2d(input_shape, nouts, kshape,
 
 """ 3-D convolutional operation
 """
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   iterations=int,
+                   collections=str,
+                   trainable=bool,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def conv3d(input_shape, nouts,
            kshape=3,
            stride=1,
@@ -306,6 +353,19 @@ def conv3d(input_shape, nouts,
 
 """ 2-D transpose convolutional operation
 """
+@helpers.typecheck(input_shape=list,
+                   output_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   iterations=int,
+                   collections=str,
+                   trainable=bool,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def deconv2d(input_shape, output_shape, nout,
              kshape=3,
              stride=1,
@@ -380,6 +440,19 @@ def deconv2d(input_shape, output_shape, nout,
                 scope), out_shape
 
 
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   mode=str,
+                   padding=str,
+                   iterations=int,
+                   collections=str,
+                   trainable=bool,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def soft_conv(input_shape,
               kshape=3,
               stride=1,
@@ -705,6 +778,19 @@ def soft_conv(input_shape,
 
 """ 2-D convolutional operation
 """
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   mode=str,
+                   iterations=int,
+                   collections=str,
+                   trainable=bool,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def soft_conv2d(input_shape, nouts,
                 kshape=3,
                 stride=1,
@@ -923,6 +1009,19 @@ def sepconv(sepconvop,
     return _sepconv
 
 
+@helpers.typecheck(input_shape=list,
+                   nouts=int,
+                   kshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   channel_multiplier=int,
+                   iterations=int,
+                   collections=str,
+                   trainable=bool,
+                   summary=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def sepconv2d(input_shape, nouts,
               kshape=3,
               stride=1,

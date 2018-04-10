@@ -18,7 +18,7 @@
 
 import numpy as np
 import os.path
-from sigma import helpers, ops, engine
+from sigma import helpers, ops
 
 def load(dirs=None, to_tensor=True, onehot=False, nclass=None):
     """ load mnist data from directory

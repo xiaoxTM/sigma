@@ -31,6 +31,7 @@ def histogram_multiprocess_worker(params):
         distributes[nc] += np.sum(label == nc)
     return distributes
 
+
 def histogram_from_list_multiprocess(listname, nclass, basepath):
     assert isinstance(listname, (list, tuple))
     distributes = np.zeros(nclass)

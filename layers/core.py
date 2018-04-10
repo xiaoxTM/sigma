@@ -166,7 +166,6 @@ def set_defaults(key_values):
             __defaults__[key] = value
 
 
-
 def _layer2color(lname):
     for k,v in __layers__.items():
         if lname in v:

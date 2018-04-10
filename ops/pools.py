@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+from .. import helpers
 from . import helper
 from . import core
 
@@ -65,6 +65,13 @@ def base_pool2d_global(input_shape, fun, reuse, name, scope):
     return _base_pool2d_global, [input_shape[0], input_shape[core.axis]]
 
 
+@helpers.typecheck(input_shape=list,
+                   pshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def avg_pool2d(input_shape,
                pshape=2,
                stride=None,
@@ -76,6 +83,10 @@ def avg_pool2d(input_shape,
                        stride, padding, reuse, name, scope)
 
 
+@helpers.typecheck(input_shape=list,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def avg_pool2d_global(input_shape,
                       reuse=False,
                       name=None,
@@ -84,6 +95,13 @@ def avg_pool2d_global(input_shape,
                               reuse, name, scope)
 
 
+@helpers.typecheck(input_shape=list,
+                   pshape=[int, list],
+                   stride=[int, list],
+                   padding=str,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def max_pool2d(input_shape,
                pshape=2,
                stride=None,
@@ -95,6 +113,10 @@ def max_pool2d(input_shape,
                        stride, padding, reuse, name, scope)
 
 
+@helpers.typecheck(input_shape=list,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def max_pool2d_global(inputs,
                       reuse=False,
                       name=None,
@@ -103,6 +125,14 @@ def max_pool2d_global(inputs,
                               reuse, name, scope)
 
 
+@helpers.typecheck(input_shape=list,
+                   output_shape=list,
+                   factor=[int, float],
+                   mode=str,
+                   align_corners=bool,
+                   reuse=bool,
+                   name=str,
+                   scope=str)
 def resize(input_shape,
            output_shape=None,
            factor=None,
