@@ -236,6 +236,10 @@ def variable_scope(name_or_scope,
                              **kwargs)
 
 
+def variables_initializer(var_list, name='init'):
+    return tf.variables_initializer(var_list, name)
+
+
 def get_variable(name,
                  shape=None,
                  dtype=None,
@@ -272,6 +276,10 @@ def get_variable(name,
 #----- tensorflow collections -----#
 def add_to_collection(name, variable):
     return tf.add_to_collection(name, variable)
+
+
+def get_collection(name, scope=None):
+    return tf.get_collection(name, scope)
 
 
 def assign(x, y,
@@ -841,6 +849,13 @@ def softmax_cross_entropy_with_logits(labels=None,
                                       logits=None,
                                       axis=commons.axis,
                                       name=None):
+
+    if tf.__version__ >= '1.5':
+        return tf.nn.softmax_cross_entropy_with_logits_v2(_sentinel=None,
+                                                          labels=labels,
+                                                          logits=logits,
+                                                          dim=axis,
+                                                          name=name)
     return tf.nn.softmax_cross_entropy_with_logits(_sentinel=None,
                                                    labels=labels,
                                                    logits=logits,

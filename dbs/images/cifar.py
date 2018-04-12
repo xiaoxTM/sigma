@@ -21,9 +21,9 @@ def load(dirs, to_tensor=True, onehot=False, nclass=None, coarse=True):
                 labels = helpers.one_hot(labels, depth)
             if to_tensor:
                 rawdata = ops.core.to_tensor(rawdata, ops.core.float32)
-        return rawdata, np.asarray(labels)
+        return rawdata, np.asarray(labels).astype(np.int32)
     xtrain, ytrain = _load('train')
     xvalid, yvalid = _load('test')
-    #return [xtrain[:100], ytrain[:100]], [xvalid[:100], yvalid[:100]]
-    #return [xtrain, ytrain], [xvalid, yvalid]
-    return [xtrain, ytrain], [xtrain, ytrain]
+    #return [xtrain[:2], ytrain[:2]], [xvalid[:2], yvalid[:2]]
+    return [xtrain, ytrain], [xvalid, yvalid]
+    #return [xvalid, yvalid], [xtrain, ytrain]

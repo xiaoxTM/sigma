@@ -57,7 +57,7 @@ def build_func(inputs, labels):
     # classification = layers.capsules.norm(x)
     classification = layers.convs.dense(x, 20, act='leaky_relu')
     ops.core.summarize('norm', classification)
-    class_loss = layers.losses.get('margin_loss', classification, labels)
+    class_loss = layers.losses.get('cce', classification, labels)
     loss = class_loss
     #tf.summary.scalar('classification-loss', class_loss)
     ## reconstruction
@@ -102,4 +102,4 @@ if __name__=='__main__':
     args = parser.parse_args()
     args.checkpoint = 'cache'
     args.log = 'cache'
-    experiment(args, auto_timestamp=True)
+    experiment(args, auto_timestamp=False)

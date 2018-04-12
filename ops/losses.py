@@ -157,6 +157,7 @@ def margin_loss(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
+            labels = core.cast(labels, core.float32)
             # L_k = T_k * max(0, m+ - |x|)^2 + (1-T_k) * max(0.0, |x| - m-)^2
             ploss = core.sum(labels * core.max(0.0, positive_margin - x)**2,
                              axis=axis)

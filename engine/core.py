@@ -112,29 +112,19 @@ def predict(session, x, xtensor, ypred,
 
 def validate(validop, generator, iterations, summarize_op):
     @phase('predict')
-    def _validate(session, global_step):
-        acc = None
-        if 'metric' in validop.keys():
-            acc = 0
+    def _validate(global_step):
         loss = 0
+        ans = None
         for iteration in range(iterations):
             global_step += iteration
             samples, step = next(generator)
-            rdict = ops.core.run(session, validop, feed_dict=samples)
-            summarize_op(rdict['summarize'], global_step)
-            accuracy = rdict.get('metric', None)
-            if accuracy is not None:
-                if isinstance(accuracy, (list, tuple)):
-                    # if metric are built from tf.metrics.*
-                    # it will include
-                    # [accuracy, update_op]
-                    accuracy = accuracy[0]
-                acc += accuracy
-            loss += rdict['loss']
-        if acc is not None:
-            acc = acc / iterations
+            ans = validop(samples)
+            # begin for debug
+            summarize_op(ans['summarize'], global_step)
+            # end for debug
+            loss += ans['loss']
         loss = loss / iterations
-        return (loss, acc)
+        return (loss, ans.get('metric', None))
     return _validate
 
 
@@ -213,9 +203,10 @@ def run(session,
         trainop,
         generator,
         iterations,
+        encodeop,
         checkpoint_save_op,
         summarize_op,
-        validation=None,
+        validop=None,
         epochs=1000,
         save_mode='all',
         save_target='loss',
@@ -267,21 +258,7 @@ def run(session,
                               feedbacks=True,
                               timeit=True,
                               nprompts=20)[0]()
-    def _encode_loss_and_acc(loss, acc):
-        return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
-                                colors.green(round(acc, 6), '{: >.6f}'))
-    def _encode_loss(loss, acc):
-        return '{}'.format(colors.blue(round(loss, 6), '{:<.6}'))
-    def _get_acc(result):
-        acc = result.get('metric', None)
-        if acc is None:
-            return 0
-        return result['metric'][0]
-    get_acc = lambda x: None
-    encodeop = _encode_loss
-    if 'metric' in trainop.keys():
-        encodeop = _encode_loss_and_acc
-        get_acc = _get_acc
+
     saverop = _save_op(save_mode, save_target)
     best_result = None
     epm = -1
@@ -293,18 +270,18 @@ def run(session,
     while epoch < epochs:
         validmessage = ''
         samples, step = next(generator)
-        rdict = ops.core.run(session, trainop, feed_dict=samples)
+        rdict = trainop(samples)
         summarize_op(rdict['summarize'], global_step=global_idx)
         trainloss = rdict['loss']
-        trainacc = get_acc(rdict)
+        trainacc = rdict.get('metric', None)
 
         # begin of evaluation
-        if (iteration + 1) == iterations and validation is not None:
-            validloss, validacc = validation(session, global_idx)
+        if (iteration + 1) == iterations and validop is not None:
+            validloss, validacc = validop(global_idx)
             validmessage = ' => {}'.format(encodeop(validloss, validacc))
         # end of evaluation
         current = trainloss
-        if save_target == 'metric' and 'metric' in trainop.keys():
+        if save_target == 'metric' and trainacc is not None:
             current = trainacc
         if saverop(current, best_result):
             # if current loss is better than best result
@@ -377,10 +354,7 @@ def train(generator,
     optimization_op = optimizer.minimize(loss_op)
     trainop = {'optimizer':optimization_op, 'loss':loss_op}
     validop = {'loss':loss_op}
-    metric_op = ops.metrics.get(metric)
-    if metric_op is not None:
-        trainop['metric'] = metric_op
-        validop['metric'] = metric_op
+
     # run after optimization construction
     # to get rid of `Attempting to use uninitialized value beta1_power` ERROR
     ans = session(graph=graph,
@@ -392,43 +366,132 @@ def train(generator,
     saver = ans.get('saver', None)
     summarize = ans.get('summarize', None)
     writer = ans.get('writer', None)
-
     checkpoint_save_op = checkpoint_save(checkpoint,
                                          saver,
                                          write_meta_graph=False,
                                          verbose=False)
     summarize_op = log_summarize(writer)
 
-    valid_writer = ops.core.summary_writer(log+'valid', sess.graph)
-    valid_summarize_op = log_summarize(valid_writer)
-
     if summarize is not None:
-        # trainop => validop
         trainop['summarize'] = summarize
-        validop['summarize'] = summarize
-    validation = None
+
+    train_fun = lambda samples:ops.core.run(sess, trainop, feed_dict=samples)
+    valid_fun = None
     if valid_gen is not None and valid_iters is not None:
-        validation = validate(validop, valid_gen, valid_iters, valid_summarize_op)
+        valid_fun = lambda samples:ops.core.run(sess, validop, feed_dict=samples)
+    if metric is not None:
+        if isinstance(metric, (list, tuple)):
+            # in case of using tf.metrics.*, metrics incudes three parts:
+            # metric_measure, metric_update, metric_initializer
+            # where metric_measure op returns metric
+            #       metric_update op returns updating of metric
+            #       metric_initializer op initialize / reset metric_measure
+            metric_measure, metric_update, metric_initializer = metric
+            trainop['update'] = metric_update
+            def _train_fun(samples):
+                # initialize / reset metric
+                ops.core.run(sess, metric_initializer)
+                ans = ops.core.run(sess, trainop, feed_dict=samples)
+                acc = ops.core.run(sess, metric_measure)
+                ans['metric'] = acc
+                return ans
+            train_fun = _train_fun
+            if valid_fun is not None:
+                validop['update'] = metric_update
+                @phase('predict')
+                def _valid_fun(global_step=None):
+                    ops.core.run(sess, metric_initializer)
+                    loss = 0
+                    for iteration in range(iterations):
+                        samples, step = next(valid_gen)
+                        ans = ops.core.run(sess, validop, feed_dict=samples)
+                        loss += ans['loss']
+                    loss = loss / iterations
+                    return (loss, ops.core.run(sess, metric_measure))
+                valid_fun = _valid_fun
+        elif callable(metric):
+            # in case of customized metric
+            # metric should have form of
+            #    def metric_fun(sess, op, samples) -> (loss, metric)
+            def _train_fun(samples):
+                return metric(sess, trainop, samples)
+            train_fun = _train_fun
+            if valid_fun is not None:
+                @phase('predict')
+                def _valid_fun(global_step=None):
+                    loss = 0.0
+                    acc  = 0.0
+                    for iteration in range(iterations):
+                        samples, step = next(valid_gen)
+                        ans = metric(sess, trainop, samples)
+                        loss += ans['loss']
+                        acc  += ans['metric']
+                    return (loss / iterations, acc / iterations)
+                valid_fun = _valid_fun
+
+    if metric is not None:
+        def encodeop(loss, acc):
+            return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
+                                    colors.green(round(acc, 6), '{: >.6f}'))
+    else:
+        def encodop(loss, acc):
+            return '{}'.format(colors.blue(round(loss, 6), '{:<.6}'))
+
     run(sess,
-        trainop,
+        train_fun,
         generator,
         iterations,
+        encodeop,
         checkpoint_save_op,
         summarize_op,
-        validation,
+        valid_fun,
         epochs,
         save_mode,
         save_target)
+
     ops.core.close_summary_writer(writer)
     ops.core.close_session(sess)
 
 
-def build(inputs,
-          build_fun,
-          labels=None,
-          reuse=False,
-          scope=None,
-          **kwargs):
+def build_reader(build_fun, **kwargs):
+    (input_shape, label_shape), (train, valid) = build_fun()
+    print('input shape: {}\nlabel shape: {}'
+          .format(colors.red(input_shape),
+                  colors.red(label_shape)))
+    valid_gen, valid_iters = None, None
+    if isinstance(train, str):
+        generator, _, iterations = dbs.images.generator(train, **kwargs)
+        if valid is not None:
+            kwargs['shuffle'] = False
+            valid_gen, _, valid_iters = dbs.images.generator(valid, **kwargs)
+    elif isinstance(train, (list, tuple)):
+        generator, _, iterations = dbs.images.make_generator(train[0],
+                                                             train[1],
+                                                             **kwargs)
+        if valid is not None:
+            kwargs['shuffle'] = False
+            valid_gen, _, valid_iters = dbs.images.make_generator(valid[0],
+                                                                  valid[1],
+                                                                  **kwargs)
+    inputs = layers.base.input_spec(input_shape,
+                                    dtype=ops.core.float32,
+                                    name='inputs')
+    labels = None
+    if label_shape is not None:
+        labels =layers.base.label_spec(label_shape,
+                                       dtype=ops.core.float32,
+                                       name='labels')
+    return (inputs, labels), \
+           (generator(inputs, labels), iterations), \
+           (valid_gen(inputs, labels), valid_iters)
+
+
+def build_model(inputs,
+                build_fun,
+                labels=None,
+                reuse=False,
+                scope=None,
+                **kwargs):
     """ build network architecture
         Attributes
         ==========
@@ -466,25 +529,25 @@ def build(inputs,
     """
     with sigma.defaults(reuse=reuse, scope=scope):
         x = build_fun(inputs, labels, **kwargs)
-        if ops.helper.is_tensor(x):
+    if ops.helper.is_tensor(x):
+        loss, metric = x, None
+    elif isinstance(x, (list, tuple)):
+        if len(x) == 1:
             loss, metric = x, None
-        elif isinstance(x, (list, tuple)):
-            if len(x) == 1:
-                loss, metric = x, None
-            elif len(x) == 2:
-                loss, metric = x
-            else:
-                raise ValueError('The return value of `build_fun` must have'
-                                 ' length of 1 or 2 in list / tuple. given {}'
-                                 .format(len(x)))
-        elif isinstance(x, dict):
-            loss = x['loss']
-            metric = x.get('metric', None)
+        elif len(x) == 2:
+            loss, metric = x
         else:
-            raise TypeError('The return value type of `build_fun` must be'
-                            ' tensor / list / tuple / dict. given {}'
-                            .format(type(x)))
-        return [loss, metric]
+            raise ValueError('The return value of `build_fun` must have'
+                             ' length of 1 or 2 in list / tuple. given {}'
+                             .format(len(x)))
+    elif isinstance(x, dict):
+        loss = x['loss']
+        metric = x.get('metric', None)
+    else:
+        raise TypeError('The return value type of `build_fun` must be'
+                        ' tensor / list / tuple / dict. given {}'
+                        .format(type(x)))
+    return [loss, metric]
 
 
 def build_experiment(build_model_fun,
@@ -565,10 +628,11 @@ def build_experiment(build_model_fun,
     #----- read the dataset -----#
     (inputs, labels), \
     (generator, iterations), \
-    (valid_gen, valid_iters) = build_reader_fun(**generator_config)
+    (valid_gen, valid_iters) = build_reader(build_reader_fun,
+                                            **generator_config)
 
     #----- build networks -----#
-    [loss, metric] = sigma.build(inputs,
+    [loss, metric] = build_model(inputs,
                                  build_model_fun,
                                  labels,
                                  **model_config)
@@ -644,19 +708,19 @@ def build_experiment(build_model_fun,
                 del train_config[key]
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
-            if key not in ['checkpoint', 'log', 'epochs', 'graph',\
-                           'save_mode', 'save_target', 'address']:
+            if key not in ['checkpoint', 'log', 'epochs', 'save_mode', \
+                           'save_target', 'address']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
 
-        sigma.train(generator,
-                    iterations,
-                    optimizer,
-                    loss,
-                    metric,
-                    valid_gen,
-                    valid_iters,
-                    config=gpu_config,
-                    **train_config)
+        train(generator,
+              iterations,
+              optimizer,
+              loss,
+              metric,
+              valid_gen,
+              valid_iters,
+              config=gpu_config,
+              **train_config)
     return _experiment, parser

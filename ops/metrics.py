@@ -53,15 +53,18 @@ def accuracy(from_logits=True,
              scope=None):
     def _accuracy(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            #if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return core.metrics_accuracy(labels,
-                                         x,
-                                         weights,
-                                         metrics_collections,
-                                         updates_collections,
-                                         name)
+            x = core.metrics_accuracy(labels,
+                                      x,
+                                      weights,
+                                      metrics_collections,
+                                      updates_collections,
+                                      name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _accuracy
 
 
@@ -78,18 +81,21 @@ def auc(from_logits=True,
         summation_method='trapezoidal'):
     def _auc(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            #if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return core.metrics_auc(labels,
-                                    x,
-                                    weights,
-                                    num_thresholds,
-                                    metrics_collections,
-                                    updates_collections,
-                                    curve,
-                                    name,
-                                    summation_method)
+            x = core.metrics_auc(labels,
+                                 x,
+                                 weights,
+                                 num_thresholds,
+                                 metrics_collections,
+                                 updates_collections,
+                                 curve,
+                                 name,
+                                 summation_method)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _auc
 
 
@@ -104,24 +110,27 @@ def false_negatives(from_logits=True,
                     thresholds=None):
     def _false_negatives(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return core.metrics_false_negatives_at_threshold(labels,
-                                                                 x,
-                                                                 thresholds,
-                                                                 weights,
-                                                                 metrics_collections,
-                                                                 updates_collections,
-                                                                 name)
+                x = core.metrics_false_negatives_at_threshold(labels,
+                                                              x,
+                                                              thresholds,
+                                                              weights,
+                                                              metrics_collections,
+                                                              updates_collections,
+                                                              name)
             else:
-                return core.metrics_false_negatives(labels,
-                                                    x,
-                                                    weights,
-                                                    metrics_collections,
-                                                    updates_collections,
-                                                    name)
+                x = core.metrics_false_negatives(labels,
+                                                 x,
+                                                 weights,
+                                                 metrics_collections,
+                                                 updates_collections,
+                                                 name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _false_negatives
 
 
@@ -136,24 +145,27 @@ def false_positives(from_logits=True,
                     thresholds=None):
     def _false_positives(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return core.metrics_false_positives_at_threshold(labels,
-                                                                 x,
-                                                                 thresholds,
-                                                                 weights,
-                                                                 metrics_collections,
-                                                                 updates_collections,
-                                                                 name)
+                x = core.metrics_false_positives_at_threshold(labels,
+                                                              x,
+                                                              thresholds,
+                                                              weights,
+                                                              metrics_collections,
+                                                              updates_collections,
+                                                              name)
             else:
-                return core.metrics_false_positives(labels,
-                                                    x,
-                                                    weights,
-                                                    metrics_collections,
-                                                    updates_collections,
-                                                    name)
+                x = core.metrics_false_positives(labels,
+                                                 x,
+                                                 weights,
+                                                 metrics_collections,
+                                                 updates_collections,
+                                                 name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _false_positives
 
 
@@ -168,24 +180,27 @@ def true_negatives(from_logits=True,
                    thresholds=None):
     def _true_negatives(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return core.metrics_true_negatives_at_threshold(labels,
-                                                                x,
-                                                                thresholds,
-                                                                weights,
-                                                                metrics_collections,
-                                                                updates_collections,
-                                                                name)
+                x = core.metrics_true_negatives_at_threshold(labels,
+                                                             x,
+                                                             thresholds,
+                                                             weights,
+                                                             metrics_collections,
+                                                             updates_collections,
+                                                             name)
             else:
-                return core.metrics_true_negatives(labels,
-                                                   x,
-                                                   weights,
-                                                   metrics_collections,
-                                                   updates_collections,
-                                                   name)
+                x = core.metrics_true_negatives(labels,
+                                                x,
+                                                weights,
+                                                metrics_collections,
+                                                updates_collections,
+                                                name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _true_negatives
 
 
@@ -200,24 +215,27 @@ def true_positives(from_logits=True,
                    thresholds=None):
     def _true_positives(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
             if thresholds is not None:
-                return core.metrics_true_positives_at_threshold(labels,
-                                                                x,
-                                                                thresholds,
-                                                                weights,
-                                                                metrics_collections,
-                                                                updates_collections,
-                                                                name)
+                x = core.metrics_true_positives_at_threshold(labels,
+                                                             x,
+                                                             thresholds,
+                                                             weights,
+                                                             metrics_collections,
+                                                             updates_collections,
+                                                             name)
             else:
-                return core.metrics_true_positives(labels,
-                                                   x,
-                                                   weights,
-                                                   metrics_collections,
-                                                   updates_collections,
-                                                   name)
+                x = core.metrics_true_positives(labels,
+                                                x,
+                                                weights,
+                                                metrics_collections,
+                                                updates_collections,
+                                                name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _true_positives
 
 
@@ -234,16 +252,19 @@ def mean_iou(from_logits=True,
         raise TypeError('`nclass` for `mean_iou` can not be None')
     def _mean_iou(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return core.metrics_mean_iou(labels,
-                                         x,
-                                         nclass,
-                                         weights,
-                                         metrics_collections,
-                                         updates_collections,
-                                         name)
+            x = core.metrics_mean_iou(labels,
+                                      x,
+                                      nclass,
+                                      weights,
+                                      metrics_collections,
+                                      updates_collections,
+                                      name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _mean_iou
 
 
@@ -257,15 +278,18 @@ def precision(from_logits=True,
               scope=None):
     def _precision(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return core.metrics_precision(labels,
-                                          x,
-                                          weights,
-                                          metrics_collections,
-                                          updates_collections,
-                                          name)
+            x = core.metrics_precision(labels,
+                                       x,
+                                       weights,
+                                       metrics_collections,
+                                       updates_collections,
+                                       name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _precision
 
 
@@ -279,15 +303,18 @@ def recall(from_logits=True,
            scope=None):
     def _recall(x, labels):
         with scope:
-            if from_logits:
-                x = core.argmax(x, core.axis)
+            # if from_logits:
+            x = core.argmax(x, core.axis)
             labels = core.argmax(labels, core.axis)
-            return core.metrics_recall(labels,
-                                       x,
-                                       weights,
-                                       metrics_collections,
-                                       updates_collections,
-                                       name)
+            x = core.metrics_recall(labels,
+                                    x,
+                                    weights,
+                                    metrics_collections,
+                                    updates_collections,
+                                    name)
+            variables = core.get_collection('local_variables', name)
+            initializer = core.variables_initializer(var_list=variables)
+            return (*x, initializer)
     return _recall
 
 
