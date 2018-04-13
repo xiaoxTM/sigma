@@ -106,13 +106,14 @@ def name_normalize(names, scope=None):
     """ normalize variable name (or say, remove variable index)
         generally, `names` is a list of :
             [scope/]/{layer-name/layer-type}/[{sub-spaces/}*]variable-name:index
+        return layer-name
     """
     def _normalize(name):
         name = name.rsplit(':', 1)[0]
         if scope is None:
             return name.split('/', 1)[0]
         else:
-            return name.splie('/', 2)[1]
+            return name.split('/', 2)[1]
     if isinstance(names, str):
         return _normalize(names)
     elif isinstance(names, (tuple, list, np.ndarray)):
@@ -126,20 +127,18 @@ def name_normalize(names, scope=None):
     for example: tensor shape [batch size, rows, cols, channels], axis = -1
         return axis=3
 """
-def normalize_axes(tensor_shape, axis=core.axis):
-    if not isinstance(tensor_shape, (list, tuple)):
-        raise TypeError('tensor shape must be list/tuple, given {}[{}]'
-                        .format(colors.red(type(tensor_shape)),
-                                tensor_shape))
-    input_len = len(tensor_shape)
+def normalize_axes(shape, axis=core.axis):
+    if not isinstance(shape, (list, tuple)):
+        raise TypeError('shape must be list/tuple, given {}[{}]'
+                        .format(colors.red(type(shape)), shape))
+    input_len = len(shape)
     if isinstance(axis, int):
         axis = (axis + input_len) % input_len
     elif isinstance(axis, (list, tuple)):
         axis = map(lambda x:(x + input_len) % input_len, axis)
     else:
         raise TypeError('axis must be int or list/tuple, given {}[{}]'
-                        .format(colors.red(type(axis)),
-                                axis))
+                        .format(colors.red(type(axis)), axis))
     return axis
 
 
@@ -151,9 +150,9 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
                           input tensor shape
             nouts : int
                     number of output feature maps
-            kshape : int / list / tuple
+            kshape : list / tuple
                      kernel shape for convolving operation
-            stride : int / list / tuple
+            stride : list / tuple
                      stride for convolving operation
             padding : string
                       padding for convolving operation
@@ -170,7 +169,6 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
                         .format(colors.red(type(input_shape)),
                                 colors.red(type(kshape)),
                                 colors.red(type(stride))))
-
     if len(input_shape) != len(kshape) or \
        len(input_shape) != len(stride):
         raise ValueError('shape of input, kshape, stride not match,'
@@ -185,7 +183,7 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
                          .format(colors.fg.green, colors.reset,
                                  colors.fg.green ,colors.reset,
                                  colors.red(padding)))
-    out_shape = input_shape[:]
+    out_shape = list(input_shape[:])
     index = range(len(input_shape))
     if padding == 'SAME':
         for idx in index[1:-1]:
@@ -260,7 +258,7 @@ def norm_input_1d(shape):
         raise TypeError('shape require {}int/list/tuple{} type, given `{}`'
                         .format(colors.fg.green, colors.reset,
                                 colors.red(type(shape))))
-    return shape
+    return list(shape)
 
 
 def norm_input_2d(shape):
@@ -295,7 +293,7 @@ def norm_input_2d(shape):
         raise TypeError('shape requires {}int/list/tuple{} type, given `{}`'
                         .format(colors.fg.green, colors.reset,
                                 colors.red(type(shape))))
-    return shape
+    return list(shape)
 
 
 def norm_input_3d(shape):
@@ -310,8 +308,9 @@ def norm_input_3d(shape):
             raise ValueError('require input shape {}[batch-size, '
                              'depths, rows, cols, channels]{}, given {}'
                              .format(colors.fg.green, colors.reset,
-                                     colors.red(input_shape)))
+                                     colors.red(shape)))
     else:
         raise TypeError('shape requires {}int/list/tuple{} type, given `{}`'
                         .format(colors.fg.green, colors.reset,
-                                colors.red(type(kshape))))
+                                colors.red(type(shape))))
+    return list(shape)

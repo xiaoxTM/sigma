@@ -16,6 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import numpy as np
+
 epsilon = 1e-5
 data_format = 'NHWC'
 axis = -1

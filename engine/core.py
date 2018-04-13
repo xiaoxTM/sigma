@@ -1,7 +1,9 @@
 from .. import helpers, colors, dbs, ops, layers
 import sigma
 import os
+import os.path
 import argparse
+import numpy as np
 
 def phase(mode='train'):
     if mode not in ['train', 'predict']:
@@ -110,22 +112,22 @@ def predict(session, x, xtensor, ypred,
         return preds[0] if len(preds) == 1 else preds
 
 
-def validate(validop, generator, iterations, summarize_op):
-    @phase('predict')
-    def _validate(global_step):
-        loss = 0
-        ans = None
-        for iteration in range(iterations):
-            global_step += iteration
-            samples, step = next(generator)
-            ans = validop(samples)
-            # begin for debug
-            summarize_op(ans['summarize'], global_step)
-            # end for debug
-            loss += ans['loss']
-        loss = loss / iterations
-        return (loss, ans.get('metric', None))
-    return _validate
+# def validate(validop, generator, iterations, summarize_op):
+#     @phase('predict')
+#     def _validate(global_step):
+#         loss = 0
+#         ans = None
+#         for iteration in range(iterations):
+#             global_step += iteration
+#             samples, step = next(generator)
+#             ans = validop(samples)
+#             # begin for debug
+#             summarize_op(ans['summarize'], global_step)
+#             # end for debug
+#             loss += ans['loss']
+#         loss = loss / iterations
+#         return (loss, ans.get('metric', None))
+#     return _validate
 
 
 def _save_op(savemode='all', modetarget='loss'):
@@ -208,6 +210,7 @@ def run(session,
         summarize_op,
         validop=None,
         epochs=1000,
+        filename=None,
         save_mode='all',
         save_target='loss',
         emc=None):
@@ -258,7 +261,6 @@ def run(session,
                               feedbacks=True,
                               timeit=True,
                               nprompts=20)[0]()
-
     saverop = _save_op(save_mode, save_target)
     best_result = None
     epm = -1
@@ -267,18 +269,27 @@ def run(session,
         if 'epm' in emc.keys():
             emc.pop('epm')
     (global_idx, _, epoch, iteration) = next(progressor)
+    records = []
     while epoch < epochs:
         validmessage = ''
         samples, step = next(generator)
         rdict = trainop(samples)
-        summarize_op(rdict['summarize'], global_step=global_idx)
+        summarize_op(rdict.get('summarize', None), global_step=global_idx)
         trainloss = rdict['loss']
         trainacc = rdict.get('metric', None)
 
         # begin of evaluation
-        if (iteration + 1) == iterations and validop is not None:
-            validloss, validacc = validop(global_idx)
-            validmessage = ' => {}'.format(encodeop(validloss, validacc))
+        if (iteration + 1) == iterations:
+            record = [trainloss]
+            if trainacc is not None:
+                record += [trainacc]
+            if validop is not None:
+                validloss, validacc = validop(global_idx)
+                validmessage = ' => {}'.format(encodeop(validloss, validacc))
+                record += [validloss]
+                if validacc is not None:
+                    record += [validacc]
+            records.append(record)
         # end of evaluation
         current = trainloss
         if save_target == 'metric' and trainacc is not None:
@@ -294,7 +305,8 @@ def run(session,
                               validmessage))
         if epm > 0 and (epoch + 1) % epm == 0:
             helpers.sendmail(emc)
-
+    if filename is not None:
+        np.savetxt(filename, records)
 
 @phase('train')
 def train(generator,
@@ -310,6 +322,7 @@ def train(generator,
           checkpoint=None,
           log=None,
           address=None,
+          filename=None,
           save_mode='all',
           save_target='loss'):
     """ train networks with samples (may also validate samples)
@@ -446,6 +459,7 @@ def train(generator,
         summarize_op,
         valid_fun,
         epochs,
+        filename,
         save_mode,
         save_target)
 
@@ -489,6 +503,8 @@ def build_reader(build_fun, **kwargs):
 def build_model(inputs,
                 build_fun,
                 labels=None,
+                collections=None,
+                summary=None,
                 reuse=False,
                 scope=None,
                 **kwargs):
@@ -527,7 +543,10 @@ def build_model(inputs,
             metric : tensor
                      metric to measure the performance
     """
-    with sigma.defaults(reuse=reuse, scope=scope):
+    with sigma.defaults(collections=collections,
+                        summary=summary,
+                        reuse=reuse,
+                        scope=scope):
         x = build_fun(inputs, labels, **kwargs)
     if ops.helper.is_tensor(x):
         loss, metric = x, None
@@ -556,6 +575,10 @@ def build_experiment(build_model_fun,
                      batch_size=32,
                      shuffle=True,
                      filename=False,
+                     collections=None,
+                     summary=None,
+                     reuse=False,
+                     scope=None,
                      model_config=None,
                      generator_config=None,
                      optimizer_config=None,
@@ -635,6 +658,10 @@ def build_experiment(build_model_fun,
     [loss, metric] = build_model(inputs,
                                  build_model_fun,
                                  labels,
+                                 collections,
+                                 summary,
+                                 reuse,
+                                 scope,
                                  **model_config)
     if isinstance(filename, str):
         if layers.core.__graph__ is not None and \
@@ -652,6 +679,7 @@ def build_experiment(build_model_fun,
     parser.add_argument('--log', type=str, default=None)
     parser.add_argument('--eid', type=str, default=None)
     parser.add_argument('--address', type=str, default=None)
+    parser.add_argument('--filename', type=str, default=None)
     #or typically : parser.address='localhost:6064'
     parser.add_argument('--save-mode', type=str, default='all')
     parser.add_argument('--save-target', type=str, default='loss')
@@ -709,11 +737,32 @@ def build_experiment(build_model_fun,
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
             if key not in ['checkpoint', 'log', 'epochs', 'save_mode', \
-                           'save_target', 'address']:
+                           'save_target', 'address', 'filename']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
-
+        #********** check filename existance if not None **********
+        if args.filename is not None:
+            if os.path.isfile(args.filename):
+                go = input('Filename to record loss / metric exists.'
+                           ' Overwrite? <Y/N>')
+                if go != 'Y':
+                    print('OK, exit program.')
+                    exit(0)
+                else:
+                    print('OK, good luck.')
+            elif os.path.isdir(args.filename):
+                raise ValueError('`{}` is a directory not file'
+                                 .format(colors.red(args.filename)))
+            elif not os.path.exists(os.path.dirname(args.filename)):
+                mkdir = input('Parent director of {} not exists. Create? <Y/N>'
+                              .format(colors.red(args.filename)))
+                if mkdir != 'Y':
+                    print('OK, exit program.')
+                else:
+                    os.makedirs(os.path.dirname(args.filename))
+                    print('OK, created. Good luck')
+        #*************************************************************
         train(generator,
               iterations,
               optimizer,

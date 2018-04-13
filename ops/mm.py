@@ -51,7 +51,7 @@ def malloc(name,
                                      regularizer, trainable, collections)
     if add_to_collect and not reuse:
         core.add_to_collection(scope, variable)
-    if summary and not reuse:
+    if summary is not None and not reuse:
         core.summarize(variable.name, variable, summary)
     return variable
 

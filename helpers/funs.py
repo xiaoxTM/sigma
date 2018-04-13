@@ -23,6 +23,7 @@ import numpy as np
 import math
 import inspect
 
+
 def typecheck(**dwargs):
     dkeys = dwargs.keys()
     def _typecheck(fun):
@@ -88,7 +89,7 @@ def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S', split='-'):
         return datetime.strptime(date, fmt)
 
 
-@typecheck(x=int)
+# @typecheck(x=int)
 def intsize(x, cminus=False):
     if x > 0:
         return int(np.log10(x)) + 1

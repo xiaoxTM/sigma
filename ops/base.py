@@ -57,7 +57,7 @@ def embedding(table_shape,
     return _embedding
 
 
-@helpers.typecheck(input_shape=list, reuse=bool, name=str, scope=str)
+# @helpers.typecheck(input_shape=list, reuse=bool, name=str, scope=str)
 def flatten(input_shape,
             reuse=False,
             name=None,
@@ -71,7 +71,7 @@ def flatten(input_shape,
     return _flatten, output_shape
 
 
-@helpers.typecheck(output_shape=list, reuse=bool, name=str, scope=str)
+# @helpers.typecheck(output_shape=list, reuse=bool, name=str, scope=str)
 def reshape(output_shape,
             reuse=False,
             name=None,
@@ -83,7 +83,7 @@ def reshape(output_shape,
     return _reshape, output_shape
 
 
-@helpers.typecheck(input_shape=list, axis=int, reuse=bool, name=str, scope=str)
+# @helpers.typecheck(input_shape=list, axis=int, reuse=bool, name=str, scope=str)
 def expand_dims(input_shape,
                 axis,
                 reuse=False,
@@ -102,13 +102,13 @@ def expand_dims(input_shape,
     return _expand_dims, output_shape
 
 
-@helpers.typecheck(input_shape=list,
-                   axis=int,
-                   drop=bool,
-                   flatten=bool,
-                   reuse=bool,
-                   name=str,
-                   scope=str)
+# @helpers.typecheck(input_shape=list,
+#                    axis=int,
+#                    drop=bool,
+#                    flatten=bool,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
 def maskout(input_shape,
             indices=None,
             axis=-2,

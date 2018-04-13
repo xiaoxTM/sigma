@@ -157,10 +157,6 @@ def padnorm(fun):
     return _padnorm
 
 
-def wrap(fun, *args, **kwargs):
-    return eval('tf.{}(*args, **kwargs)'.format(fun))
-
-
 #= workflow control =====================
 def cond(condition,
          true_fun,
@@ -366,7 +362,7 @@ def tshape(x, name=None, out_type=int32):
 def reshape(x, output_shape, smart=True, name=None):
     """ if in smart mode
         it will automatically change `None` to `-1`
-        if appliable
+        if applicable
     """
     if smart:
         stats = commons.shape_statistics(output_shape)

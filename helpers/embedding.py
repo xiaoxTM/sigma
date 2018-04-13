@@ -23,11 +23,13 @@ except:
     raise ImportError('Library sklearn not found. To enable it, '
           'please install scikit-learn.')
 
+
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import offsetbox
 import matplotlib.pyplot as plt
+
 
 def plot_embedding(x, y, title=None, ax=None):
     """ plot embeddings give samples

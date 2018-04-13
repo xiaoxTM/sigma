@@ -20,11 +20,11 @@ import numpy as np
 from .. import colors, helpers
 from . import helper, core
 
-@helpers.typecheck(input_shape=list,
-                   axis=int,
-                   reuse=bool,
-                   name=str,
-                   scope=str)
+# @helpers.typecheck(input_shape=list,
+#                    axis=int,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
 def concat(inputs_shape,
            axis=-1,
            reuse=False,
@@ -61,11 +61,11 @@ def concat(inputs_shape,
     return _concat, output_shape
 
 
-@helpers.typecheck(input_shape=list,
-                   weights=[list, float],
-                   reuse=bool,
-                   name=str,
-                   scope=str)
+# @helpers.typecheck(input_shape=list,
+#                    weights=[list, float],
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
 def add(inputs_shape,
         weights=None,
         reuse=False,
@@ -103,10 +103,10 @@ def add(inputs_shape,
     return _add, output_shape
 
 
-@helpers.typecheck(input_shape=list,
-                   reuse=bool,
-                   name=str,
-                   scope=str)
+# @helpers.typecheck(input_shape=list,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
 def mul(inputs_shape, reuse=False, name=None, scope=None):
     if not isinstance(inputs_shape, (list, tuple)):
         raise TypeError('concat requires inputs '

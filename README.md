@@ -75,15 +75,16 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
 # useful functions
   - [x] session
     - build Session object with all setup done (e.g., checkpoints, logs)
-  - [x] build
+  - [x] build_model
     - build workflow given build_fun to build networks
+  - [x] build_reader
   - [x] train
   - [x] run
     - run train progress
   - [ ] predict
-  - [ ] validate
   - [x] build_experiment
     - experiment-level function to pack functions to do experiment
+  - [ ] type check
 
 # Advantages
   - seamless with original tensorflow library
@@ -100,6 +101,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - print no message [layers.core.__graph__=None]
     - terminal print [layers.core.__graph__=False]
     - save to file [layers.core.__graph__=True]
+    - print details [layers.core.__details__=True]
   - load / save and import / export
     - checkpoints
       - [x] load / save

@@ -12,15 +12,12 @@ import tensorflow as tf
 def build_func(inputs, labels):
     # inputs shape :
     #    [batch-size, rows, cols, depth]
-    ops.core.summarize('inputs', inputs)
-    x = layers.convs.conv2d(inputs, 256, 3,
-                            stride=2,
-                            padding='valid',
-                            act='relu')
-    ops.core.summarize('conv2d-0', x)
+    # ops.core.summarize('inputs', inputs)
+    x = layers.convs.conv2d(inputs, 256, 9, padding='valid', act='relu')
+    # ops.core.summarize('conv2d-0', x)
     #  [batch-size, rows, cols, 256]
     #=>[batch-size, rows, cols, 1, 256]
-    # x = layers.base.expand_dims(x, -2)
+    x = layers.base.expand_dims(x, -2)
     # no routing between conv1 and primary caps
     # routing means:
     #     `reaching a agreement for all capsules in lower layer`
@@ -28,36 +25,28 @@ def build_func(inputs, labels):
     # we disable routing by setting iterations to 1
     # x shape:
     #  [batch-size, nrows, ncols, 32, 8]
-    # x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
-    #                                      stride=2,
-    #                                      # activation for pre-predictions
-    #                                      # that is, u^{hat}_{j|i}
-    #                                      act='leaky_relu',
-    #                                      return_shape=True)
-    x = layers.convs.conv2d(x, 32, 3,
-                            stride=2,
-                            padding='valid',
-                            act='leaky_relu')
-    x = layers.convs.conv2d(x, 64, 3,
-                            stride=2,
-                            padding='valid',
-                            act='leaky_relu')
-    ops.core.summarize('conv2d-1', x)
+    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
+                                         stride=2,
+                                         # activation for pre-predictions
+                                         # that is, u^{hat}_{j|i}
+                                         #act='leaky_relu',
+                                         return_shape=True)
+    # ops.core.summarize('conv2d-1', x)
     #x, outshape = layers.capsules.conv2d(x, 64, 32, 5, 1,
     #                                     stride=1,
     #                                     return_shape=True,
     #                                     mode=mode)
-    # x = layers.base.reshape(x, [outshape[0], np.prod(outshape[1:-1]), outshape[-1]])
-    # x = layers.capsules.dense(x, 20, 16, 3)
-    x = layers.base.flatten(x)
-    x = layers.convs.dense(x, 100, act='leaky_relu')
-    ops.core.summarize('dense', x)
+    x = layers.base.reshape(x,
+                            [outshape[0],
+                             np.prod(outshape[1:-1]),
+                             outshape[-1]])
+    x = layers.capsules.dense(x, 20, 16, 3)
+    # ops.core.summarize('dense', x)
     # norm the output to represent the existance probabilities
     # of each class
-    # classification = layers.capsules.norm(x)
-    classification = layers.convs.dense(x, 20, act='leaky_relu')
-    ops.core.summarize('norm', classification)
-    class_loss = layers.losses.get('cce', classification, labels)
+    classification = layers.capsules.norm(x)
+    # ops.core.summarize('norm', classification)
+    class_loss = layers.losses.get('margin_loss', classification, labels)
     loss = class_loss
     #tf.summary.scalar('classification-loss', class_loss)
     ## reconstruction
@@ -100,6 +89,4 @@ if __name__=='__main__':
     # add some option here if necessary
     # > parser.add_argument('--print', type=bool, default=True):
     args = parser.parse_args()
-    args.checkpoint = 'cache'
-    args.log = 'cache'
     experiment(args, auto_timestamp=False)

@@ -240,7 +240,7 @@ def load_from_list_simple(filelist, gtlist,
     return samples, labels
 
 
-##################################################################################
+###############################################################################
 def load_from_list(filelist, gtlist,
                    size=None,
                    asarray=True,
@@ -315,7 +315,7 @@ def load_from_list(filelist, gtlist,
                                      color_mode, gtloader)
 
 
-##############################################################################
+###############################################################################
 def load_from_file(listname,
                    size=None,
                    asarray=True,
@@ -340,7 +340,7 @@ def load_from_file(listname,
                           color_mode, gtloader)
 
 
-################################################################################
+###############################################################################
 def load_from_dir(imagedir,
                   gtdir=None,
                   gtext=None,
