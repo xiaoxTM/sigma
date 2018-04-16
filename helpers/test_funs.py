@@ -12,5 +12,7 @@ def test(a, b, c):
 
 class FunsTest(unittest.TestCase):
     def test_typecheck(self):
-        self.assertRaises(TypeError, lambda: test('3', [], 20))
-        self.assertRaises(TypeError, lambda: test(3, '3', 10))
+        with self.subTest():
+            self.assertRaises(TypeError, lambda: test('3', [], 20))
+        with self.subTest():
+            self.assertRaises(TypeError, lambda: test(3, '3', 10))

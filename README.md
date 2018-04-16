@@ -84,7 +84,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
   - [ ] predict
   - [x] build_experiment
     - experiment-level function to pack functions to do experiment
-  - [ ] type check
+  - [x] type check
 
 # Advantages
   - seamless with original tensorflow library

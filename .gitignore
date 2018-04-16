@@ -100,11 +100,6 @@ ENV/
 # mypy
 .mypy_cache/
 
-test/data/*
-apps/gan/exp
-test/mnist_keras.py
-test
-
 clean
 
 cache

@@ -111,7 +111,7 @@ def split_inputs(inputs):
     """
     if isinstance(inputs, (list, tuple)):
         if len(inputs) == 1:
-            inputs, labels = inputs, None
+            inputs, labels = inputs[0], None
         elif len(inputs) == 2:
             inputs, labels = inputs
         else:
@@ -137,7 +137,7 @@ def split_inputs(inputs):
 #   kshape shape: [row, col, ins, outs] for 2d
 # for channel-first (without batch dimension) format
 #   kshape shape: [ins, outs, row, col] for 2d
-def set_print(mode=True, details=None):
+def set_print(mode: bool=True, details: bool=None):
     global __graph__
     global __details__
     if mode is None or isinstance(mode, bool):
@@ -153,7 +153,7 @@ def set_print(mode=True, details=None):
                             .format(type(details)))
 
 
-def set_defaults(key_values):
+def set_defaults(key_values: dict):
     if key_values is not None:
         if not isinstance(key_values, dict):
             raise TypeError('`key_values` for set_defaults must be dict type.'
@@ -166,7 +166,7 @@ def set_defaults(key_values):
             __defaults__[key] = value
 
 
-def _layer2color(lname):
+def _layer2color(lname: dict) -> str:
     for k,v in __layers__.items():
         if lname in v:
             return __colormaps__[k]
@@ -188,11 +188,11 @@ def defaults(*args, **kwargs):
             raise TypeError('args at {}-th is not callable. given {}'
                             .format(idx, arg))
 
-    list_args = list(map(lambda x:inspect.signature(x.__wrapped__), args))
+    funcs = list(map(lambda x:inspect.signature(x.__wrapped__), args))
     global _CONTEXT_DEFAULTS_
     context_keys = _CONTEXT_DEFAULTS_.keys()
     for k,v in kwargs.items():
-        value = [v, list_args]
+        value = [v, funcs]
         if k in context_keys:
             # append value (and functions) to exists list
             _CONTEXT_DEFAULTS_[k].append(v)
@@ -331,6 +331,50 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                         __graph__.add_edge(pydot.Edge(iname, outputname))
 
 
+def assign(fun, *args, **kwargs):
+    signature = inspect.signature(fun)
+    items = list(signature.parameters.items())
+    # merge args into kwargs
+    for idx, arg in enumerate(args):
+        kwargs[items[idx][0]] = arg
+    ctx_keys = _CONTEXT_DEFAULTS_.keys()
+    for name, parameter in items:
+        if name not in kwargs.keys():
+            # if parameter and the corresponding function in context
+            # print('context keys:', ctx_keys)
+            if name in ctx_keys:
+                lists = _CONTEXT_DEFAULTS_[name]
+                # print('lists:', lists)
+                found = False
+                # find fron context traversely
+                for (v,funcs) in lists:
+                    if len(funcs) == 0 or signature in funcs:
+                        kwargs[name] = v
+                        found = True
+                        break
+                if not found:
+                    if parameter.default is parameter.empty:
+                        raise LookupError('`{}` requires value.'
+                                          .format(name))
+                    kwargs[name] = parameter.default
+            else:
+                if parameter.default is parameter.empty:
+                    raise LookupError('`{}` requires value.'.format(name))
+                kwargs[name] = parameter.default
+    return kwargs
+
+
+""" decorator to make function available
+    to core.defaults() as function lists
+"""
+def defaultable(fun):
+    @functools.wraps(fun)
+    def _wrap(*args, **kwargs):
+        kwargs = assign(fun, *args, **kwargs)
+        return fun(**kwargs)
+    return _wrap
+
+
 """ layer decorator
         layer decorated using @layer must have the spec:
         fun layername(inputs, [...], reuse, name) => x[, output_shape]
@@ -338,32 +382,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
 def layer(fun):
     @functools.wraps(fun)
     def _wrap(*args, **kwargs):
-        signature = inspect.signature(fun)
-        items = list(signature.parameters.items())
-        # merge args into kwargs
-        for idx, arg in enumerate(args):
-            kwargs[items[idx][0]] = arg
-        for name, parameter in items:
-            if name not in kwargs.keys():
-                # if parameter and the corresponding function in context
-                if name in _CONTEXT_DEFAULTS_.keys():
-                    lists = _CONTEXT_DEFAULTS_[name]
-                    found = False
-                    # find fron context traversely
-                    for (v,funcs) in lists:
-                        if len(funcs) == 0 or fun in funcs:
-                            kwargs[name] = v
-                            found = True
-                            break
-                    if not found:
-                        if parameter.default is parameter.empty:
-                            raise LookupError('`{}` requires value.'
-                                              .format(name))
-                        kwargs[name] = parameter.default
-                else:
-                    if parameter.default is parameter.empty:
-                        raise LookupError('`{}` requires value.'.format(name))
-                    kwargs[name] = parameter.default
+        kwargs = assign(fun, *args, **kwargs)
         name, reuse = kwargs.get('name', None), kwargs.get('reuse', False)
         if name is None:
             if reuse:

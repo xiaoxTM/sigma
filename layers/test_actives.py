@@ -23,7 +23,7 @@ class ActivesTest(unittest.TestCase):
         squash = actives.squash(variable)
 
         _squash = ops.core.run(self.sess, squash)
-        self.assertTrue(np.all(data_squash == _squash))
+        self.assertListEqual(data_squash.tolist(), _squash.tolist())
 
 
     @classmethod
