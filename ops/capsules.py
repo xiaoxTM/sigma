@@ -56,7 +56,9 @@ def _agreement_routing(prediction,
                        logits_shape,
                        iterations,
                        bias,
-                       leaky=False):
+                       leaky=False,
+                       epsilon=core.epsilon,
+                       safe=False):
     """ calculate v_j by dynamic routing
         Attributes
         ==========
@@ -104,12 +106,10 @@ def _agreement_routing(prediction,
                                    size=iterations,
                                    clear_after_read=False)
     logits = core.zeros(logits_shape, dtype=core.float32)
-    act = actives.squash()
+    act = actives.squash(epsilon, safe, aslayer=False)
     idx = core.constant(0, dtype=core.int32)
     # softmax along with `outcaps` axis
     outcaps_axis = helper.normalize_axes(logits_shape, -2)
-    # for doing experiment, we also try to softmax along incaps
-    #incaps_axis = helper.normalize_axes(core.shape(logits), -3)
 
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
@@ -121,9 +121,7 @@ def _agreement_routing(prediction,
             # softmax along `outcaps` axis
             # that is, `agree` on some capsule
             # a.k.a., which capsule in higher layer to activate
-            # //FIXME: experimenting on softmax along incaps_axis
             coefficients = core.softmax(logits, axis=outcaps_axis)
-            #coefficients = core.softmax(coefficients, axis=incaps_axis)
         # average all lower capsules's prediction to higher capsule
         # that is, agreements from all capsules in lower layer
         preactivate = core.sum(coefficients * prediction,
@@ -203,6 +201,8 @@ def conv(convop, bias_shape, logits_shape, iterations,
          act=None,
          trainable=True,
          dtype=core.float32,
+         epsilon=core.epsilon,
+         safe=False,
          collections=None,
          summary='histogram',
          reuse=False,
@@ -245,7 +245,8 @@ def conv(convop, bias_shape, logits_shape, iterations,
             # for 2d:
             #     [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
             with core.name_scope('agreement_routing'):
-                x = _agreement_routing(x, logits_shape, iterations, bias, leaky)
+                x = _agreement_routing(x, logits_shape, iterations,
+                                       bias, leaky, epsilon, safe)
             return x
     return _conv
 
@@ -271,6 +272,8 @@ def fully_connected(input_shape, nouts, caps_dims,
                     act=None,
                     trainable=True,
                     dtype=core.float32,
+                    epsilon=core.epsilon,
+                    safe=False,
                     collections=None,
                     summary='histogram',
                     reuse=False,
@@ -334,6 +337,8 @@ def fully_connected(input_shape, nouts, caps_dims,
                 act,
                 trainable,
                 dtype,
+                epsilon,
+                safe,
                 collections,
                 summary,
                 reuse,
@@ -367,6 +372,8 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
            act=None,
            trainable=True,
            dtype=core.float32,
+           epsilon=core.epsilon,
+           safe=False,
            collections=None,
            summary='histogram',
            reuse=False,
@@ -505,6 +512,8 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
                 act,
                 trainable,
                 dtype,
+                epsilon,
+                safe,
                 collections,
                 summary,
                 reuse,
@@ -538,6 +547,8 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
            act=None,
            trainable=True,
            dtype=core.float32,
+           epsilon=core.epsilon,
+           safe=False,
            collections=None,
            summary='histogram',
            reuse=False,
@@ -675,6 +686,8 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
                 act,
                 trainable,
                 dtype,
+                epsilon,
+                safe,
                 collections,
                 summary,
                 reuse,

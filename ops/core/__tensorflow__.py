@@ -505,7 +505,7 @@ def norm(x,
         squared = tf.reduce_sum(x * x,
                                 axis=axis,
                                 keep_dims=keepdims)
-        normed = tf.sqrt(squared) + epsilon
+        normed = tf.sqrt(squared + epsilon)
         if return_squared:
             normed = [normed, squared]
     return normed
@@ -1268,7 +1268,10 @@ def load(session, checkpoint,
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
-    if not isinstance(session, tf.Session):
+    sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
+    if version >= '1.5':
+        sessions.append(tf_debug.TensorBoardDebugWrapperSession)
+    if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
                         'given {}'
                         .format(colors.fg.green, colors.reset,
@@ -1301,7 +1304,10 @@ def save(session,
                         .format(colors.fg.green, colors.reset,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
-    if not isinstance(session, tf.Session):
+    sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
+    if version >= '1.5':
+        sessions.append(tf_debug.TensorBoardDebugWrapperSession)
+    if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
                         'given {}'
                         .format(colors.fg.green, colors.reset,
@@ -1438,10 +1444,14 @@ def session(target='',
             graph=None,
             config=None,
             initializers=None,
+            debug=False,
             address=None):
     sess = tf.Session(target, graph, config)
-    if address is not None:
-        sess = tf_debug.TensorBoardDebugWrapperSession(sess, address)
+    if debug:
+        if address is not None:
+            sess = tf_debug.TensorBoardDebugWrapperSession(sess, address)
+        else:
+            sess = tf_debug.LocalCLIDebugWrapperSession(sess)
     sess.run([tf.global_variables_initializer(),
               tf.local_variables_initializer()])
     if initializers is not None:

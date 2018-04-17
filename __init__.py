@@ -26,7 +26,7 @@ import json
 import logging
 
 
-__version__ = '0.1.3.2'
+__version__ = '0.1.3.3'
 
 
 __packages__ = {'sigma.status' : status,

@@ -5,6 +5,7 @@ import os.path
 import argparse
 import numpy as np
 
+
 def phase(mode='train'):
     if mode not in ['train', 'predict']:
         raise ValueError('`phase` mode only support `train/predict`. given {}'
@@ -112,24 +113,6 @@ def predict(session, x, xtensor, ypred,
         return preds[0] if len(preds) == 1 else preds
 
 
-# def validate(validop, generator, iterations, summarize_op):
-#     @phase('predict')
-#     def _validate(global_step):
-#         loss = 0
-#         ans = None
-#         for iteration in range(iterations):
-#             global_step += iteration
-#             samples, step = next(generator)
-#             ans = validop(samples)
-#             # begin for debug
-#             summarize_op(ans['summarize'], global_step)
-#             # end for debug
-#             loss += ans['loss']
-#         loss = loss / iterations
-#         return (loss, ans.get('metric', None))
-#     return _validate
-
-
 def _save_op(savemode='all', modetarget='loss'):
     def _max(x, y):
         if y is None:
@@ -165,7 +148,7 @@ def checkpoint_save(checkpoint, saver, **kwargs):
     return _checkpoint_save
 
 
-def log_summarize(writer):
+def log_summary(writer):
     if writer is None:
         return lambda summary, global_step=None:summary
     def _log_summarize(summary, global_step=None):
@@ -179,26 +162,25 @@ def session(target='',
             initializers=None,
             checkpoint=None,
             log=None,
+            debug=False,
             address=None,
             verbose=True):
     """ get session and setup Graph, GPU, checkpoints, logs
     """
-    sess = ops.core.session(target, graph, config, initializers, address)
-    ans = {'session': sess}
+    sess = ops.core.session(target, graph, config, initializers, debug, address)
+    saver, summarize, writer = None, None, None
     if checkpoint is not None:
         parent_dir = checkpoint
         if checkpoint[-1] != '/':
             parent_dir = checkpoint.rsplit('/', 1)[0]
         os.makedirs(parent_dir, exist_ok=True)
-        sess, saver = helpers.load(sess, checkpoint, verbose=verbose)
-        ans['session'] = sess
-        ans['saver'] = saver
+        sess, saver = helpers.load(sess, checkpoint, saver, verbose=verbose)
     if log is not None:
         summarize = ops.core.summary_merge()
-        writer = ops.core.summary_writer(log, sess.graph)
-        ans['summarize'] = summarize
-        ans['writer'] = writer
-    return ans
+        # in case none tf.summary.* are invoked
+        if summarize is not None:
+            writer = ops.core.summary_writer(log, sess.graph)
+    return (sess, saver, summarize, writer)
 
 
 def run(session,
@@ -252,7 +234,7 @@ def run(session,
     # //FIXME: remove validating time from final iteration of train time
     if save_target not in ['loss', 'metric']:
         raise ValueError('save_target must be `loss` or `metric`. given {}'
-                         .format(colors.red(modetarget)))
+                         .format(colors.red(save_target)))
     progressor = helpers.line(None,
                               epochs=epochs,
                               iterations=iterations,
@@ -308,6 +290,7 @@ def run(session,
     if filename is not None:
         np.savetxt(filename, records)
 
+
 @phase('train')
 def train(generator,
           iterations,
@@ -321,6 +304,7 @@ def train(generator,
           config=None,
           checkpoint=None,
           log=None,
+          debug=False,
           address=None,
           filename=None,
           save_mode='all',
@@ -370,28 +354,27 @@ def train(generator,
 
     # run after optimization construction
     # to get rid of `Attempting to use uninitialized value beta1_power` ERROR
-    ans = session(graph=graph,
-                  config=config,
-                  checkpoint=checkpoint,
-                  log=log,
-                  address=address)
-    sess = ans['session']
-    saver = ans.get('saver', None)
-    summarize = ans.get('summarize', None)
-    writer = ans.get('writer', None)
+    sess, saver, summarize, writer = session(graph=graph,
+                                             config=config,
+                                             checkpoint=checkpoint,
+                                             log=log,
+                                             debug=debug,
+                                             address=address)
     checkpoint_save_op = checkpoint_save(checkpoint,
                                          saver,
                                          write_meta_graph=False,
                                          verbose=False)
-    summarize_op = log_summarize(writer)
-
+    summarize_op = log_summary(writer)
     if summarize is not None:
         trainop['summarize'] = summarize
 
-    train_fun = lambda samples:ops.core.run(sess, trainop, feed_dict=samples)
+    train_fun = lambda samples:ops.core.run(sess, trainop,
+                                            feed_dict=samples)
     valid_fun = None
     if valid_gen is not None and valid_iters is not None:
-        valid_fun = lambda samples:ops.core.run(sess, validop, feed_dict=samples)
+        valid_fun = lambda samples:ops.core.run(sess,
+                                                validop,
+                                                feed_dict=samples)
     if metric is not None:
         if isinstance(metric, (list, tuple)):
             # in case of using tf.metrics.*, metrics incudes three parts:
@@ -441,13 +424,12 @@ def train(generator,
                         acc  += ans['metric']
                     return (loss / iterations, acc / iterations)
                 valid_fun = _valid_fun
-
     if metric is not None:
         def encodeop(loss, acc):
             return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
                                     colors.green(round(acc, 6), '{: >.6f}'))
     else:
-        def encodop(loss, acc):
+        def encodeop(loss, acc):
             return '{}'.format(colors.blue(round(loss, 6), '{:<.6}'))
 
     run(sess,
@@ -469,9 +451,9 @@ def train(generator,
 
 def build_reader(build_fun, **kwargs):
     (input_shape, label_shape), (train, valid) = build_fun()
-    print('input shape: {}\nlabel shape: {}'
-          .format(colors.red(input_shape),
-                  colors.red(label_shape)))
+    # print('input shape: {}\nlabel shape: {}'
+    #       .format(colors.red(input_shape),
+    #               colors.red(label_shape)))
     valid_gen, valid_iters = None, None
     if isinstance(train, str):
         generator, _, iterations = dbs.images.generator(train, **kwargs)
@@ -622,8 +604,6 @@ def build_experiment(build_model_fun,
                                see sigma.engine.io.[mnist|cifar] for examples
             optimizer : string / sigma.ops.core.Optimizer
                         optimizer to optimize loss and train parameters
-            batch_size : int
-                         `batch-size` samples of data to read
             filename : string / bool / None
                        if None, will print no network structure information
                        if False, print to terminal
@@ -636,8 +616,6 @@ def build_experiment(build_model_fun,
                                parameters passed to ops.optimizer.get
             gpu_config : dict:
                          gpu configuration
-            batch_size : int
-                         batch size
     """
     if model_config is None:
         model_config = {}
@@ -684,18 +662,25 @@ def build_experiment(build_model_fun,
     parser.add_argument('--save-mode', type=str, default='all')
     parser.add_argument('--save-target', type=str, default='loss')
 
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--debug', type=bool, default=False)
+    parser.add_argument('--auto-timestamp', type=bool, default=False)
+    parser.add_argument('--verbose', type=bool, default=True)
+    # parser.add_argument('--shuffle', type=bool, default=True)
 
-    def _experiment(args, auto_timestamp=True, verbose=True):
+    parser.add_argument('--epochs', type=int, default=10)
+    # parser.add_argument('--batch-size', type=int, default=32)
+
+    def _experiment(args):
+        train_config = helpers.arg2dict(args,
+                                        ['verbose', 'eid', 'auto_timestamp'])
         # the process of training networks
-        if verbose:
+        if args.verbose:
             helpers.print_args(args)
 
         #----- beg re-configurations -----#
-        train_config = helpers.arg2dict(args)
-        train_config['checkpoint'] = train_config.get('checkpoint', None)
-        expid = train_config.get('eid', None)
-        if auto_timestamp:
+        train_config['checkpoint'] = args.checkpoint
+        expid = args.eid
+        if args.auto_timestamp:
             timestamp = helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None)
             if expid is None:
                 expid = timestamp
@@ -722,7 +707,6 @@ def build_experiment(build_model_fun,
                 train_config['log'] = '{}/log'.format(
                     train_config['log']
                 )
-        del train_config['eid']
         #----- end re-configurations -----#
 
         #----- get rid of some parameters in dictionary -----#
@@ -737,15 +721,17 @@ def build_experiment(build_model_fun,
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
             if key not in ['checkpoint', 'log', 'epochs', 'save_mode', \
-                           'save_target', 'address', 'filename']:
+                           'save_target', 'address', 'filename', 'debug']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
         #********** check filename existance if not None **********
+        if expid is not None and args.filename is None:
+            args.filename = expid + '.rec'
         if args.filename is not None:
             if os.path.isfile(args.filename):
                 go = input('Filename to record loss / metric exists.'
-                           ' Overwrite? <Y/N>')
+                           ' Overwrite? <Y/N> ')
                 if go != 'Y':
                     print('OK, exit program.')
                     exit(0)
@@ -754,14 +740,17 @@ def build_experiment(build_model_fun,
             elif os.path.isdir(args.filename):
                 raise ValueError('`{}` is a directory not file'
                                  .format(colors.red(args.filename)))
-            elif not os.path.exists(os.path.dirname(args.filename)):
-                mkdir = input('Parent director of {} not exists. Create? <Y/N>'
-                              .format(colors.red(args.filename)))
-                if mkdir != 'Y':
-                    print('OK, exit program.')
-                else:
-                    os.makedirs(os.path.dirname(args.filename))
-                    print('OK, created. Good luck')
+            else:
+                dirname = os.path.dirname(args.filename)
+                if len(dirname) != 0 and not os.path.exists(dirname):
+                    mkdir = input('Parent director {} not exists. Create? <Y/N>'
+                                  .format(colors.red(dirname)))
+                    if mkdir != 'Y':
+                        print('OK, exit program.')
+                        exit(0)
+                    else:
+                        os.makedirs(dirname)
+                        print('OK, created. Good luck')
         #*************************************************************
         train(generator,
               iterations,

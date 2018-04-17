@@ -68,7 +68,6 @@ def he_normal(seed=None, name=None):
 """
 def he_uniform(seed=None, name=None):
     def _he_uniform(x, dtype, partition_info=None):
-#        return init.he_uniform(x, dtype)
         fan_in, _ = get_fans(x)
         limit = core.sqrt(6 / fan_in)
         return core.random_uniform(x, -limit, limit, dtype, seed, name)
