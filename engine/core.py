@@ -17,10 +17,7 @@ def phase(mode='train'):
             else:
                 sigma.status.is_training = False
             x = fun(*args, **kwargs)
-            if mode == 'train':
-                sigma.status.is_training = False
-            else:
-                sigma.status.is_training = True
+            sigma.status.is_training = not sigma.status.is_training
             return x
         return _wrap
     return _phase
@@ -713,7 +710,8 @@ def build_experiment(build_model_fun,
         train_config_keys = train_config.keys()
         for key in ['generator', 'iterations',
                     'optimizer', 'loss', 'metric',
-                    'valid_gen', 'valid_iters']:
+                    'valid_gen', 'valid_iters',
+                    'config']:
             if key in train_config_keys:
                 print('`{}` in parser not allowed. will be removed'
                       .format(colors.red(key)))
@@ -727,9 +725,9 @@ def build_experiment(build_model_fun,
                 del train_config[key]
         #********** check filename existance if not None **********
         if expid is not None and args.filename is None:
-            args.filename = expid + '.rec'
-        if args.filename is not None:
-            if os.path.isfile(args.filename):
+            train_config['filename'] = expid + '.rec'
+        if train_config['filename'] is not None:
+            if os.path.isfile(train_config['filename']):
                 go = input('Filename to record loss / metric exists.'
                            ' Overwrite? <Y/N> ')
                 if go != 'Y':
@@ -737,11 +735,11 @@ def build_experiment(build_model_fun,
                     exit(0)
                 else:
                     print('OK, good luck.')
-            elif os.path.isdir(args.filename):
+            elif os.path.isdir(train_config['filename']):
                 raise ValueError('`{}` is a directory not file'
-                                 .format(colors.red(args.filename)))
+                                 .format(colors.red(train_config['filename'])))
             else:
-                dirname = os.path.dirname(args.filename)
+                dirname = os.path.dirname(train_config['filename'])
                 if len(dirname) != 0 and not os.path.exists(dirname):
                     mkdir = input('Parent director {} not exists. Create? <Y/N>'
                                   .format(colors.red(dirname)))

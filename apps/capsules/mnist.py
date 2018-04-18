@@ -15,12 +15,12 @@ logging.basicConfig(level=logging.INFO)
 def build_func(inputs, labels, initializer='glorot_normal'):
     # inputs shape :
     #    [batch-size, rows, cols, depth]
-    ops.core.summarize('inputs', inputs)
+    # ops.core.summarize('inputs', inputs)
     x = layers.convs.conv2d(inputs, 256, 9,
                             padding='valid',
                             act='relu',
                             weight_initializer=initializer)
-    ops.core.summarize('conv2d-0', x)
+    # ops.core.summarize('conv2d-0', x)
     #  [batch-size, rows, cols, 256]
     #=>[batch-size, rows, cols, 1, 256]
     x = layers.base.expand_dims(x, -2)
@@ -39,11 +39,11 @@ def build_func(inputs, labels, initializer='glorot_normal'):
                                          safe=True,
                                          weight_initializer=initializer,
                                          return_shape=True)
-    ops.core.summarize('conv2d-1', x)
-    #x, outshape = layers.capsules.conv2d(x, 64, 32, 5, 1,
-    #                                     stride=2,
-    #                                     weight_initializer=initializer,
-    #                                     return_shape=True)
+    # ops.core.summarize('conv2d-1', x)
+    # x, outshape = layers.capsules.conv2d(x, 64, 32, 5, 1,
+    #                                      stride=2,
+    #                                      weight_initializer=initializer,
+    #                                      return_shape=True)
     # ops.core.summarize('conv2d-2', x)
     x = layers.base.reshape(x,
                             [outshape[0],
@@ -51,11 +51,11 @@ def build_func(inputs, labels, initializer='glorot_normal'):
                              outshape[-1]])
     x = layers.capsules.dense(x, 10, 16, 3,
                               weight_initializer=initializer)
-    ops.core.summarize('fully_connected-0', x)
+    # ops.core.summarize('fully_connected-0', x)
     # norm the output to represent the existance probabilities
     # of each class
     classification = layers.capsules.norm(x)
-    ops.core.summarize('norm-0', classification)
+    # ops.core.summarize('norm-0', classification)
     class_loss = layers.losses.get('margin_loss', classification, labels)
     loss = class_loss
     #tf.summary.scalar('classification-loss', class_loss)
@@ -70,8 +70,8 @@ def build_func(inputs, labels, initializer='glorot_normal'):
     #tf.summary.scalar('reconstruction-loss', recon_loss)
     #loss = layers.merge.add([class_loss, recon_loss], [1, 0.005])
     metric = layers.metrics.accuracy([classification, labels])
-    ops.core.summarize('loss', loss, 'scalar')
-    ops.core.summarize('acc', metric[0], 'scalar')
+    # ops.core.summarize('loss', loss, 'scalar')
+    # ops.core.summarize('acc', metric[0], 'scalar')
     return [loss, metric]
 
 gpu_config = tf.ConfigProto()
@@ -91,13 +91,12 @@ experiment, parser = sigma.build_experiment(build_func,
                                             # filename='mnist-networks.png',
                                             batch_size=100,
                                             gpu_config=gpu_config,
-                                            summary='histogram',
                                             generator_config={'nclass':nclass})
 
 
 if __name__=='__main__':
     args = parser.parse_args()
     args.checkpoint='cache'
-    args.log='cache'
+    # args.log='cache'
     # args.auto_timestamp = True
     experiment(args)

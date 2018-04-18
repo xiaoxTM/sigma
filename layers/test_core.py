@@ -26,16 +26,12 @@ def make_test3(b=5, c='test2'):
     return (b, c)
 
 
+def make_test4(a, b=0.1, c='test4'):
+    x, y, z = make_test1(a, b, c)
+    return (x, setb(), z)
+
+
 class CoreTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        pass
-
-
-    # def setUp(self):
-    #     core.__graph__ = None
-    #     core.__details__ = None
-
 
     def test_split_inputs(self):
         x = [3,4]
@@ -101,8 +97,18 @@ class CoreTest(unittest.TestCase):
             m, n = make_test3()
             with self.subTest(idx=20):
                 self.assertEqual(m, 5)
+        with core.defaults(b=101):
+            x, y, z = make_test4(a=300)
+            with self.subTest():
+                self.assertEqual(x, 300)
+            with self.subTest():
+                self.assertEqual(y, 101)
+            with self.subTest():
+                self.assertEqual(z, 'test4')
 
-
-    @classmethod
-    def tearDownClass(self):
-        pass
+        with core.defaults(c='test41'):
+            x, y, z = make_test4(a=10)
+            with self.subTest():
+                self.assertEqual(y, 30)
+            with self.subTest():
+                self.assertEqual(z, 'test4')
