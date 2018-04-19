@@ -26,6 +26,7 @@ def malloc(name,
            dtype=None,
            initializer=None,
            regularizer=None,
+           cpuid=0,
            trainable=True,
            collections=None, # default is GraphKeys.GLOBAL_VARIABLES
            summary='histogram',
@@ -52,7 +53,8 @@ def malloc(name,
     if add_to_collect and not reuse:
         core.add_to_collection(scope, variable)
     if summary is not None and not reuse:
-        core.summarize(variable.name, variable, summary)
+        with core.device('/device:CPU:{}'.format(cpuid))
+            core.summarize(variable.name, variable, summary)
     return variable
 
 
@@ -62,6 +64,7 @@ def local_variable(name,
                    dtype=None,
                    initializers=None,
                    regularizer=None,
+                   cpuid=0,
                    trainable=True,
                    summary='histogram',
                    reuse=False,
@@ -73,6 +76,7 @@ def local_variable(name,
                   dtype,
                   initializer,
                   regularizer,
+                  cpuid,
                   trainable,
                   core.Collections.local_variables,
                   summary,
@@ -87,6 +91,7 @@ def global_variable(name,
                     dtype=None,
                     initializers=None,
                     regularizer=None,
+                    cpuid,
                     trainable=True,
                     summary='histogram',
                     reuse=False,
@@ -98,6 +103,7 @@ def global_variable(name,
                   dtype,
                   initializer,
                   regularizer,
+                  cpuid,
                   trainable,
                   core.Collections.global_variables,
                   summary,

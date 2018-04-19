@@ -25,6 +25,7 @@ def embedding(table_shape,
               dtype=core.float32,
               initializer='glorot_uniform',
               regularizer=None,
+              cpuid=0,
               trainable=True,
               collections=None,
               summary='histogram',
@@ -47,7 +48,7 @@ def embedding(table_shape,
                                              'embedding',
                                              reuse)
     embeddings = mm.malloc('embedding', name, table_shape, dtype,
-                           initializer, regularizer, trainable,
+                           initializer, regularizer, cpuid, trainable,
                            collections, summary, reuse, scope)
     def _embedding(ids):
         with ops_scope:

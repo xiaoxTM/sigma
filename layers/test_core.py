@@ -32,7 +32,6 @@ def make_test4(a, b=0.1, c='test4'):
 
 
 class CoreTest(unittest.TestCase):
-
     def test_split_inputs(self):
         x = [3,4]
         x, y = core.split_inputs(x)
