@@ -29,6 +29,7 @@ def norm(inputs,
          safe=False,
          act=None,
          return_shape=False,
+         check_shape=True,
          reuse=False,
          name=None,
          scope=None):
@@ -46,16 +47,7 @@ def norm(inputs,
                                     reuse,
                                     name,
                                     scope)
-    x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(colors.red(output),
-                                 colors.green(xshape)))
-    if return_shape:
-        x = [x, output]
-    return x
+    return convs._layers(fun, inputs, output, return_shape, check_shape)
 
 
 @core.layer
@@ -70,6 +62,7 @@ def fully_connected(inputs, nouts, caps_dims,
                     trainable=True,
                     dtype=ops.core.float32,
                     return_shape=False,
+                    check_shape=True,
                     epsilon=ops.core.epsilon,
                     safe=False,
                     collections=None,
@@ -99,8 +92,7 @@ def fully_connected(inputs, nouts, caps_dims,
                                                reuse,
                                                name,
                                                scope)
-    return convs._layers(fun, inputs, output, return_shape,
-                         'caps_fully_connected', reuse, name)
+    return convs._layers(fun, inputs, output, return_shape, check_shape)
 
 
 dense = fully_connected
@@ -121,6 +113,7 @@ def conv1d(inputs, nouts, caps_dims, kshape,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
+           check_shape=True,
            epsilon=ops.core.epsilon,
            safe=False,
            collections=None,
@@ -152,8 +145,7 @@ def conv1d(inputs, nouts, caps_dims, kshape,
                                       reuse,
                                       name,
                                       scope)
-    return convs._layers(fun, inputs, output, return_shape,
-                         'caps_conv1d', reuse, name)
+    return convs._layers(fun, inputs, output, return_shape, check_shape)
 
 
 @core.layer
@@ -171,6 +163,7 @@ def conv2d(inputs, nouts, caps_dims, kshape,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
+           check_shape=True,
            epsilon=ops.core.epsilon,
            safe=False,
            collections=None,
@@ -202,5 +195,4 @@ def conv2d(inputs, nouts, caps_dims, kshape,
                                       reuse,
                                       name,
                                       scope)
-    return convs._layers(fun, inputs, output, return_shape,
-                         'caps_conv2d', reuse, name)
+    return convs._layers(fun, inputs, output, return_shape, check_shape)

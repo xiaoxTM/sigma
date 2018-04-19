@@ -20,14 +20,15 @@ from .. import ops, colors
 from . import core
 
 
-def _layers(fun, inputs, output, return_shape, typename, reuse, name):
+def _layers(fun, inputs, output, return_shape, check_shape=True):
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the real'
-                         ' output shape not match. {} vs {}'
-                         .format(colors.green(output),
-                                 colors.red(xshape)))
+    if check_shape:
+        xshape = ops.core.shape(x)
+        if output[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the real'
+                             ' output shape not match. {} vs {}'
+                             .format(colors.green(output),
+                                     colors.red(xshape)))
     if return_shape:
         x = [x, output]
     return x
@@ -87,6 +88,7 @@ def fully_connected(inputs, nouts,
                     trainable=True,
                     dtype=ops.core.float32,
                     return_shape=False,
+                    check_shape=True,
                     collections=None,
                     summary=core.__defaults__['summary'],
                     reuse=False,
@@ -107,11 +109,12 @@ def fully_connected(inputs, nouts,
                                             reuse,
                                             name,
                                             scope)
-    return _layers(fun, inputs, output, return_shape,
-                   'fully-connected', reuse, name)
+    return _layers(fun, inputs, output, return_shape, check_shape)
+
 
 # alias of fully-connected
 dense = fully_connected
+
 
 """ 1-D convolutional operation
 """
@@ -128,6 +131,7 @@ def conv1d(inputs, nouts,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
+           check_shape=True,
            collections=None,
            summary=core.__defaults__['summary'],
            reuse=False,
@@ -152,8 +156,7 @@ def conv1d(inputs, nouts,
                                    name,
                                    scope)
 
-    return _layers(fun, inputs, output, return_shape,
-                   'conv1d', reuse, name)
+    return _layers(fun, inputs, output, return_shape, check_shape)
 
 
 # @layer
@@ -197,6 +200,7 @@ def conv2d(inputs, nouts,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
+           check_shape=True,
            collections=None,
            summary=core.__defaults__['summary'],
            reuse=False,
@@ -219,8 +223,7 @@ def conv2d(inputs, nouts,
                                    reuse,
                                    name,
                                    scope)
-    return _layers(fun, inputs, output, return_shape,
-                   'conv2d', reuse, name)
+    return _layers(fun, inputs, output, return_shape, check_shape)
 
 
 """ 2-D soft convolutional operation
@@ -263,6 +266,7 @@ def soft_conv2d(inputs, nouts,
                 trainable=True,
                 dtype=ops.core.float32,
                 return_shape=False,
+                check_shape=True,
                 collections=None,
                 summary=core.__defaults__['summary'],
                 reuse=False,
@@ -292,12 +296,13 @@ def soft_conv2d(inputs, nouts,
                                         name,
                                         scope)
     x, offsets = fun(inputs)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the real'
-                         ' output shape not match. {} vs {}'
-                         .format(colors.green(output),
-                                 colors.red(xshape)))
+    if check_shape:
+        xshape = ops.core.shape(x)
+        if output[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the real'
+                             ' output shape not match. {} vs {}'
+                             .format(colors.green(output),
+                                     colors.red(xshape)))
     if return_offsets:
         x = [x, offsets]
     if return_shape:
@@ -323,6 +328,7 @@ def conv3d(inputs, nouts,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
+           check_shape=True,
            collections=None,
            summary=core.__defaults__['summary'],
            reuse=False,
@@ -347,8 +353,7 @@ def conv3d(inputs, nouts,
                                    reuse,
                                    name,
                                    scope)
-    return _layers(fun, inputs, output, return_shape,
-                   'conv3d', reuse, name)
+    return _layers(fun, inputs, output, return_shape, check_shape)
 
 
 """ 2-D transpose convolutional operation
@@ -367,6 +372,7 @@ def deconv2d(inputs, output_shape, nouts,
              trainable=True,
              dtype=ops.core.float32,
              return_shape=False,
+             check_shape=True,
              collections=None,
              summary=core.__defaults__['summary'],
              reuse=False,
@@ -390,8 +396,7 @@ def deconv2d(inputs, output_shape, nouts,
                                      name,
                                      scope)
 
-    return _layers(fun, inputs, output, return_shape,
-                   'deconv2d', reuse, name)
+    return _layers(fun, inputs, output, return_shape, check_shape)
 
 
 @core.layer
@@ -409,6 +414,7 @@ def sepconv2d(inputs, nouts,
               trainable=True,
               dtype=ops.core.float32,
               return_shape=False,
+              check_shape=True,
               collections=None,
               summary=core.__defaults__['summary'],
               reuse=False,
@@ -433,5 +439,4 @@ def sepconv2d(inputs, nouts,
                                       reuse,
                                       name,
                                       scope)
-    return _layer(fun, inputs, output, return_shape,
-                  'sepconv2d', reuse, name)
+    return _layer(fun, inputs, output, return_shape, check_shape)
