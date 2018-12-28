@@ -297,7 +297,7 @@ def line(iterable,
             def format_message(epoch, prompt, iteration, iterations,
                                percentage, retvalue, elapsed_time):
                 return spec.format(epoch, prompt, iteration, iterations,
-                                   percentage,retvalue, elapsed_time)
+                                   percentage, retvalue, elapsed_time)
         else:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
                    ' {{}}{}'.format(epochsize,
@@ -310,7 +310,7 @@ def line(iterable,
             def format_message(epoch, prompt, iteration, iterations,
                                percentage, retvalue, elapsed_time):
                 return spec.format(epoch, prompt, iteration, iterations,
-                                   percentage,retvalue)
+                                   percentage, retvalue)
     def _line():
         totaltime = 0
         prev = 0

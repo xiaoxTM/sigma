@@ -406,14 +406,18 @@ def argmax(x,
            axis=None,
            dtype=int64,
            name=None):
-    return tf.argmax(x, axis=axis, output_type=dtype, name=name)
+    if tf.__version__ >= '1.4.0':
+        return tf.argmax(x, axis=axis, output_type=dtype, name=name)
+    return tf.argmax(x, axis=axis, name=name)
 
 
 def argmin(x,
            axis=None,
            dtype=int64,
            name=None):
-    return tf.argmin(x, axis=axis, output_type=dtype, name=name)
+    if tf.__version__ >= '1.4.0':
+        return tf.argmin(x, axis=axis, output_type=dtype, name=name)
+    return tf.argmin(x, axis=axis, name=name)
 
 
 def mean(x,

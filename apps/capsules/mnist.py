@@ -31,7 +31,7 @@ def build_func(inputs, labels, initializer='glorot_normal'):
     # we disable routing by setting iterations to 1
     # x shape:
     #  [batch-size, nrows, ncols, 32, 8]
-    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 3,
+    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
                                          # stride=2,
                                          # activation for pre-predictions
                                          # that is, u^{hat}_{j|i}
@@ -45,10 +45,15 @@ def build_func(inputs, labels, initializer='glorot_normal'):
     #                                      weight_initializer=initializer,
     #                                      return_shape=True)
     # ops.core.summarize('conv2d-2', x)
+
+    #  [batch-size, nrows, ncols, 32, 8]
+    #+>[batch_size, nrows * ncols * 32, 8]
     x = layers.base.reshape(x,
                             [outshape[0],
                              np.prod(outshape[1:-1]),
                              outshape[-1]])
+    #  [batch_size, nrows * ncols * 32, 8]
+    #=>[batch_size, 10, 16]
     x = layers.capsules.dense(x, 10, 16, 3,
                               weight_initializer=initializer)
     # ops.core.summarize('fully_connected-0', x)

@@ -111,33 +111,48 @@ def _agreement_routing(prediction,
     # softmax along with `outcaps` axis
     outcaps_axis = helper.normalize_axes(logits_shape, -2)
 
-    def _update(i, logits, activations):
-        """ dynamic routing to update coefficiences (c_{i, j})
-            logits : [batch-size, /*rows, cols,*/ incaps, outcaps, outcapdim]
-        """
-        if leaky:
+    if leaky:
+        def _update(i, logits, activations):
             coefficients = _leaky_routing(logits)
-        else:
+            preactivate = core.sum(coefficients * prediction,
+                                   axis=-3,
+                                   keepdims=True)
+            if bias:
+                preactivate += bias
+            # typically, squash
+            activation = act(preactivate)
+            activations = activations.write(i, activation)
+            # sum up along outcapdim dimension
+            distance = core.sum(prediction * activation,
+                                axis=core.axis,
+                                keepdims=True)
+            logits += distance
+            return (i+1, logits, activations)
+    else:
+        def _update(i, logits, activations):
+            """ dynamic routing to update coefficiences (c_{i, j})
+                logits : [batch-size, /*rows, cols,*/ incaps, outcaps, outcapdim]
+            """
             # softmax along `outcaps` axis
             # that is, `agree` on some capsule
             # a.k.a., which capsule in higher layer to activate
             coefficients = core.softmax(logits, axis=outcaps_axis)
-        # average all lower capsules's prediction to higher capsule
-        # that is, agreements from all capsules in lower layer
-        preactivate = core.sum(coefficients * prediction,
-                               axis=-3,
-                               keepdims=True)
-        if bias:
-            preactivate += bias
-        # typically, squash
-        activation = act(preactivate)
-        activations = activations.write(i, activation)
-        # sum up along outcapdim dimension
-        distance = core.sum(prediction * activation,
-                            axis=core.axis,
-                            keepdims=True)
-        logits += distance
-        return (i+1, logits, activations)
+            # average all lower capsules's prediction to higher capsule
+            # that is, agreements from all capsules in lower layer
+            preactivate = core.sum(coefficients * prediction,
+                                   axis=-3,
+                                   keepdims=True)
+            if bias:
+                preactivate += bias
+            # typically, squash
+            activation = act(preactivate)
+            activations = activations.write(i, activation)
+            # sum up along outcapdim dimension
+            distance = core.sum(prediction * activation,
+                                axis=core.axis,
+                                keepdims=True)
+            logits += distance
+            return (i+1, logits, activations)
 
     _, logits, activations = core.while_loop(
         lambda idx, logits, activations: idx < iterations,
@@ -267,6 +282,7 @@ def conv(convop, bias_shape, logits_shape, iterations,
 def fully_connected(input_shape, nouts, caps_dims,
                     iterations=2,
                     leaky=False,
+                    share_weights=True,
                     weight_initializer='glorot_uniform',
                     weight_regularizer=None,
                     bias_initializer='zeros',
@@ -305,32 +321,81 @@ def fully_connected(input_shape, nouts, caps_dims,
     output_shape = [batch_size, nouts, caps_dims]
     incaps, incapdim = input_shape[-2:]
     logits_shape = [batch_size, incaps, nouts, 1]
-    weight_shape = [incaps, incapdim, nouts * caps_dims]
     bias_shape = [nouts, caps_dims]
-    weight = mm.malloc('weight',
-                       name,
-                       weight_shape,
-                       dtype,
-                       weight_initializer,
-                       weight_regularizer,
-                       cpuid,
-                       trainable,
-                       collections,
-                       summary,
-                       reuse,
-                       scope)
-    def _fully_connected(x):
-        # x shape:
-        #    [batch-size, incaps, incapdims]
-        # weight shape:
-        #    [incaps, incapdim, nouts * caps_dims]
-        # expand x to [batch-size, incaps, incapdims, 1]
-        # and tile to [batch-size, incaps, incapdims, nouts * caps_dims]
-        x = core.tile(core.expand_dims(x, -1), [1, 1, 1, nouts * caps_dims])
-        # resulting [batch-size, incaps, incapdims, nouts * caps_dims]
-        # then sum along with incapdims to get [batch-size, incaps, nouts * caps_dims]
-        # then reshape to [batch-size, incaps, nouts, caps_dims]
-        return core.reshape(core.sum(x * weight, 2), [-1, incaps, nouts, caps_dims])
+    if share_weights:
+        weight_shape = [incapdim, nouts, caps_dims]
+        weight = mm.malloc('weight',
+                           name,
+                           weight_shape,
+                           dtype,
+                           weight_initializer,
+                           weight_regularizer,
+                           cpuid,
+                           trainable,
+                           collections,
+                           summary,
+                           reuse,
+                           scope)
+        def _fully_connected(x):
+            # x shape:
+            #    [batch-size, incaps, incapdim]
+            # weight shape:
+            #    [incapdim, nouts, caps_dims]
+            # => [batch-size, incaps, nouts, caps_dims]
+            return core.tensordot(x, weight, [[2], [0]])
+
+    else:
+        weight_shape = [incaps, incapdim, nouts * caps_dims]
+        weight = mm.malloc('weight',
+                           name,
+                           weight_shape,
+                           dtype,
+                           weight_initializer,
+                           weight_regularizer,
+                           cpuid,
+                           trainable,
+                           collections,
+                           summary,
+                           reuse,
+                           scope)
+        def _body(idx, x, array):
+            # kernels shape : [incaps, incapdims, outcaps, outcapdims]
+            # kernel shape  : [incapdims, outcaps, outcapdims]
+            weight = core.gather(weights, idx, axis=0)
+            # x shape       : [batch-size, incaps, incapdim]
+            # subx shape    : [batch-size, incapdim]
+            subx = core.gather(x, idx, axis=1)
+            # dot_prod shape: [bathc-size, outcaps, outcapdims]
+            dot_prod = core.tensordot(subx, weight, [[1], [0]])
+            array = array.write(idx, dot_prod)
+            return [idx + 1, x, array]
+
+        def _fully_connected(x):
+            """ capsule wise convolution in 2d
+                that is, convolve along `incaps` dimension
+            """
+            # x shape:
+            #     [batch-size, incaps, incapdim]
+            iterations = input_shape[-2] # <- incaps
+            idx = core.constant(0, core.int32)
+            array = core.TensorArray(dtype=core.float32,
+                                     size=iterations)
+            _, x, array = core.while_loop(
+                lambda idx, x, array : idx < iterations,
+                _body,
+                loop_vars = [idx, x, array],
+                parallel_iterations=iterations
+            )
+            # array should have the shape of:
+            # incaps * [batch-size, outcaps, outcapdims]
+            # stack to
+            # [incaps, batch-size, outcaps, outcapdims]
+            array = array.stack()
+            # then transpose to
+            # [batch-size, incaps, outcaps, caps_dims]
+            array = core.transpose(array, (1, 0, 2, 3))
+            return array
+
     return conv(_fully_connected,
                 bias_shape,
                 logits_shape,
@@ -433,23 +498,19 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
         # kernel shape:
         # [k, incapdims, outcaps * outcapdims]
         kernel_shape = [kshape[1] + input_shape[-1] + nouts * caps_dims]
-    else:
-        # kernel shape:
-        # [k, incaps, incapdims, outcaps * outcapdims]
-        kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
-    weights = mm.malloc('weights',
-                        name,
-                        kernel_shape,
-                        dtype,
-                        weight_initializer,
-                        weight_regularizer,
-                        cpuid,
-                        trainable,
-                        collections,
-                        summary,
-                        reuse,
-                        scope)
-    if share_weights:
+
+        weights = mm.malloc('weights',
+                            name,
+                            kernel_shape,
+                            dtype,
+                            weight_initializer,
+                            weight_regularizer,
+                            cpuid,
+                            trainable,
+                            collections,
+                            summary,
+                            reuse,
+                            scope)
         def _conv1d(x):
             #  [batch-size, neurons, incaps, incapdim]
             #=>[batch-size, incaps, neurons, incapdim]
@@ -464,7 +525,23 @@ def conv1d(input_shape, nouts, caps_dims, kshape,
             #  [batch-size, incaps, nneurons, outcaps, caps_dims]
             #=>[batch-size, incaps, nneurons, outcaps, caps_dims]
             return core.transpose(x, (0, 2, 1, 3, 4))
+
     else:
+        # kernel shape:
+        # [k, incaps, incapdims, outcaps * outcapdims]
+        kernel_shape = [kshape[1]] + input_shape[-2:] + [nouts * caps_dims]
+        weights = mm.malloc('weights',
+                            name,
+                            kernel_shape,
+                            dtype,
+                            weight_initializer,
+                            weight_regularizer,
+                            cpuid,
+                            trainable,
+                            collections,
+                            summary,
+                            reuse,
+                            scope)
         def _body(idx, x, array):
             # kernels shape : [k, incaps, incapdims, outcaps * outcapdims]
             # kernel shape  : [k, incapdims, outcaps * outcapdims]
@@ -610,23 +687,18 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
         # kernel shape:
         # [krow, kcol, incapdims, outcaps * outcapdims]
         kernel_shape = kshape[1:-1] + [incapdim, nouts * caps_dims]
-    else:
-        # kernel shape:
-        # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-        kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
-    weights = mm.malloc('weights',
-                        name,
-                        kernel_shape,
-                        dtype,
-                        weight_initializer,
-                        weight_regularizer,
-                        cpuid,
-                        trainable,
-                        collections,
-                        summary,
-                        reuse,
-                        scope)
-    if share_weights:
+        weights = mm.malloc('weights',
+                            name,
+                            kernel_shape,
+                            dtype,
+                            weight_initializer,
+                            weight_regularizer,
+                            cpuid,
+                            trainable,
+                            collections,
+                            summary,
+                            reuse,
+                            scope)
         def _conv2d(x):
             #  [batch-size, rows, cols, incaps, incapdim]
             #=>[batch-size, incaps, rows, cols, incapdim]
@@ -642,6 +714,21 @@ def conv2d(input_shape, nouts, caps_dims, kshape,
             #=>[batch-size, nrows, ncols, incaps, outcaps, caps_dims]
             return core.transpose(x, (0, 2, 3, 1, 4, 5))
     else:
+        # kernel shape:
+        # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
+        kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
+        weights = mm.malloc('weights',
+                            name,
+                            kernel_shape,
+                            dtype,
+                            weight_initializer,
+                            weight_regularizer,
+                            cpuid,
+                            trainable,
+                            collections,
+                            summary,
+                            reuse,
+                            scope)
         def _body(idx, x, array):
             # kernels shape : [krow, kcol, incaps, incapdims, outcaps * outcapdims]
             # kernel shape  : [krow, kcol, incapdims, outcaps * outcapdims]
