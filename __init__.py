@@ -18,7 +18,7 @@
 
 from . import status, ops, layers, helpers, engine, dbs, colors
 from .layers import defaults
-from .ops.core import placeholder
+from .ops.core import placeholder, seed
 from .engine import session, predict, build_experiment
 import os
 import os.path
@@ -26,7 +26,7 @@ import json
 import logging
 
 
-__version__ = '0.1.3.3'
+__version__ = '0.1.3.4'
 
 
 __packages__ = {'sigma.status' : status,

@@ -485,26 +485,26 @@ def segment_data_generator(self, nclass, filelist, batch_size,
                [train_samples, valid_samples, test_samples, eval_samples])
 
 
-def generator(imagepath, batch_size,
-              gtpath=None,
-              gtext=None,
-              size=None,
-              shuffle=True,
-              asarray=True,
-              scale=1.0,
-              center=True,
-              strides=0.5,
-              mode='crop',
-              spi=None,
-              void_label=0,
-              multiprocess=1,
-              color_mode='RGB',
-              basepath=None,
-              sep=' ',
-              num=None,
-              namefilter=None,
-              nclass=None,
-              onehot=False):
+def make_generator_from_list(imagepath, batch_size,
+                             gtpath=None,
+                             gtext=None,
+                             size=None,
+                             shuffle=True,
+                             asarray=True,
+                             scale=1.0,
+                             center=True,
+                             strides=0.5,
+                             mode='crop',
+                             spi=None,
+                             void_label=0,
+                             multiprocess=1,
+                             color_mode='RGB',
+                             basepath=None,
+                             sep=' ',
+                             num=None,
+                             namefilter=None,
+                             nclass=None,
+                             onehot=False):
     """ generator to generate batch of images
         Attributes
         ----------
@@ -634,7 +634,12 @@ def make_generator(x,
                    nclass=None):
     """ make generator from dataset
     """
-    if not isinstance(x, np.ndarray):
+    xlen = len(x)
+    pick_sample = lambda x, idx : x[idx]
+    if isinstance(x, tuple):
+        xlen = len(x[0])
+        pick_sample = lambda x, idx : (_x[idx] for _x in x)
+    elif not isinstance(x, np.ndarray):
         x = np.asarray(x)
 
     send = lambda dx, dy, idx : (dx, idx)
@@ -642,13 +647,13 @@ def make_generator(x,
         send = lambda dx, dy, idx : ({**dx, **dy}, idx)
         if not isinstance(y, np.ndarray):
             y = np.asarray(y)
-        if len(x) != len(y):
+        if xlen != len(y):
             raise ValueError('`x` and `y` must have same length. '
-                             'given {} vs {}'.format(colors.red(len(x)),
+                             'given {} vs {}'.format(colors.red(xlen),
                                                      colors.green(len(y))))
         if nclass is not None:
             y = one_hot(y, nclass)
-    length = len(x)
+    length = xlen
     idx = np.arange(length, dtype=np.int32)
     iterations = max(int(length / batch_size), 1)
     def _generate(inputs, labels):
@@ -661,7 +666,7 @@ def make_generator(x,
                     if beg > length:
                         beg = length - batch_size
                     end = max(min(beg + batch_size, length), beg)
-                    yield send({inputs:x[idx[beg:end]]},
+                    yield send({inputs:pick_sample(x, idx[beg:end])},
                                {labels:y[idx[beg:end]]},
                                iteration)
         return _next()

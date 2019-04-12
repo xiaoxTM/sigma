@@ -43,26 +43,3 @@ def concat(inputs,
     inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.merge.concat(inputs_shape, axis, reuse, name, scope)
     return _merge(fun, inputs, output, 'concat', return_shape)
-
-
-@core.layer
-def add(inputs,
-        weights=None,
-        return_shape=False,
-        reuse=False,
-        name=None,
-        scope=None):
-    input_shape = [ops.helper.norm_input_shape(ip)  for ip in inputs]
-    fun, output = ops.merge.add(input_shape, weights, reuse, name, scope)
-    return _merge(fun, inputs, output, 'add', return_shape)
-
-
-@core.layer
-def mul(inputs,
-        return_shape=False,
-        reuse=False,
-        name=None,
-        scope=None):
-    input_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
-    fun, output = ops.merge.mul(input_shape, reuse, name, scope)
-    return _merge(fun, inputs, output, 'mul', return_shape)

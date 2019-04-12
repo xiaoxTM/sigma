@@ -1,2 +1,0 @@
-rm -rf cache/logs/*
-rm -rf cache/checkpoints/*

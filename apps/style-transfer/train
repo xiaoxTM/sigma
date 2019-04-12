@@ -1,0 +1,15 @@
+#! /usr/bin/bash
+export PYTHONPATH=$PYTHONPATH:/home/xiaox/studio/src/git-series
+CHECKPOINT=cache/checkpoints/
+STYLE_IMAGE=dtrain/styles
+CONTENT_IMAGES=dtrain/content
+
+for style in deer.jpg beautiful_path.jpg river.jpg the_great_wall.jpg  #rain_princess.jpg #la_muse.jpg rain_princess.jpg the_scream.jpg the_shipwreck_of_the_minotaur.jpg udnie.jpg wave.jpg
+do
+    #echo ${STYLE_IMAGE}/${style}
+    python3 main.py \
+        --checkpoints ${CHECKPOINT} \
+        --style ${STYLE_IMAGE}/${style} \
+        --content ${CONTENT_IMAGES} \
+        --epochs 200
+done

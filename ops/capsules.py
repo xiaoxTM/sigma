@@ -133,11 +133,12 @@ def _agreement_routing(prediction,
             """ dynamic routing to update coefficiences (c_{i, j})
                 logits : [batch-size, /*rows, cols,*/ incaps, outcaps, outcapdim]
             """
-            # softmax along `outcaps` axis
+            # softmax along with `outcaps` axis
             # that is, `agree` on some capsule
             # a.k.a., which capsule in higher layer to activate
             coefficients = core.softmax(logits, axis=outcaps_axis)
             # average all lower capsules's prediction to higher capsule
+            # e.g., sum along with `incaps` axis
             # that is, agreements from all capsules in lower layer
             preactivate = core.sum(coefficients * prediction,
                                    axis=-3,

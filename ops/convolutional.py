@@ -146,7 +146,7 @@ def fully_connected(input_shape, nouts,
     kernel_shape = [input_shape[1], nouts] # get rid of batch_size axis
     output_shape = [input_shape[0], nouts]
     def _fully_connected(x, weight):
-        return core.dot(x, weight)
+        return core.matmul(x, weight)
     return conv(_fully_connected,
                 kernel_shape,
                 weight_initializer,
