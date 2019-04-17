@@ -283,8 +283,8 @@ def run(session,
             if trainacc is not None:
                 record += [trainacc]
             if valid_op is not None:
-                validloss, validacc = validop(global_idx)
-                validmessage = ' => {}'.format(encodeop(validloss, validacc))
+                validloss, validacc = valid_op(global_idx)
+                validmessage = ' => {}'.format(encode_op(validloss, validacc))
                 record += [validloss]
                 if validacc is not None:
                     record += [validacc]
@@ -293,7 +293,7 @@ def run(session,
         current = trainloss
         if save_target == 'metric' and trainacc is not None:
             current = trainacc
-        if saverop(current, best_result):
+        if saver_op(current, best_result):
             # if current loss is better than best result
             # save it to best_result
             best_result = current
@@ -365,15 +365,22 @@ def train(sess,
 
     summarize_op = log_summary(writer)
     if summarize is not None:
-        trainop['summarize'] = summarize
+        train_op['summarize'] = summarize
 
     train_fun = lambda samples:ops.core.run(sess, train_op,
                                             feed_dict=samples)
     valid_fun = None
     if valid_gen is not None and valid_iters is not None:
-        valid_fun = lambda samples:ops.core.run(sess,
-                                                valid_op,
-                                                feed_dict=samples)
+        @phase('predict')
+        def _valid_fun(global_step=None):
+            loss = 0
+            for iteration in range(iterations):
+                samples, step = next(valid_gen)
+                ans = ops.core.run(sess, valid_op, feed_dict=samples)
+                loss += ans['loss']
+            loss = loss / iterations
+            return (loss, None)
+        valid_fun = _valid_fun
     if metric is not None:
         if isinstance(metric, (list, tuple)):
             # in case of using tf.metrics.*, metrics incudes three parts:
@@ -447,11 +454,10 @@ def train(sess,
 
 def build_reader(build_fun, **kwargs):
     (input_shape, label_shape), (train, valid, test) = build_fun()
-
     if isinstance(input_shape, tuple):
-        inputs = (layers.base.input_spec(input_shape[i],
+        inputs = tuple([layers.base.input_spec(shape,
                   dtype=ops.core.float32,
-                  name='inputs-{}'.format(i)) for i in range(len(input_shape)))
+                  name='inputs-{}'.format(i)) for i,shape in enumerate(input_shape)])
     else:
         inputs = layers.base.input_spec(input_shape,
                                         dtype=ops.core.float32,
@@ -489,7 +495,7 @@ def build_reader(build_fun, **kwargs):
                                                                 **kwargs)
             test_gen = test_gen(inputs, labels)
     train_gen = train_gen(inputs, labels)
-
+    #print("train-gen:", train_gen)
     return (inputs, labels), \
            (train_gen, iterations), \
            (valid_gen, valid_iters), \
@@ -701,7 +707,11 @@ def build_experiment(build_model_fun,
                                         ['verbose', 'eid', 'auto_timestamp',
                                          'checkpoint', 'debug', 'address',
                                          'batch_size', 'log'])
-        test_config = helpers.arg2dict()
+        test_config = helpers.arg2dict(args,
+                                       ['verbose', 'eid', 'auto_timestamp',
+                                        'checkpoint', 'debug', 'address',
+                                        'log', 'shuffle', 'save-mode', 
+                                        'save-target', 'epochs'])
         # the process of training networks
         if args.verbose:
             helpers.print_args(args)

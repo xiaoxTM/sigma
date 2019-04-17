@@ -58,10 +58,10 @@ def mul(inputs,
 
 @core.layer
 def matmul(inputs,
-        return_shape=False,
-        reuse=False,
-        name=None,
-        scope=None):
+           return_shape=False,
+           reuse=False,
+           name=None,
+           scope=None):
     input_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.math.matmul(input_shape, reuse, name, scope)
     return _math(fun, inputs, output, 'matmul', return_shape)

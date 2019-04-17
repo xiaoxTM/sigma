@@ -82,7 +82,7 @@ def build_func(inputs, labels, initializer='glorot_normal'):
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.allow_growth = True
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
-gpu_config.gpu_options.visible_device_list = '0,1'
+gpu_config.gpu_options.visible_device_list = '0,1,2,3'
 gpu_config.intra_op_parallelism_threads = 1
 
 # sigma.engine.set_print(True, True)

@@ -19,7 +19,7 @@
 from . import convolutional as convs
 from . import normalization as norms
 from . import regularizers as regus
-from . import optimizers as opts
+# from . import optimizers as opts
 from . import math
 from . import actives
 from . import pools

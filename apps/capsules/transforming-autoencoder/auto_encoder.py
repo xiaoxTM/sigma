@@ -6,17 +6,22 @@ from sigma import layers, ops
 
 import tensorflow as tf
 
+import numpy as np
+
 import dataio
 
 def capsule(inputs, extra_inputs, recognition_dim, generation_dim, transformation='translation', scope=None, idx=0):
     input_shape = ops.helper.norm_input_shape(inputs)
     extra_shape = ops.helper.norm_input_shape(extra_inputs)
+
+    input_volumn = np.prod(input_shape[1:])
+
     with sigma.defaults(scope=scope):
         x = layers.base.flatten(inputs)
         recognition = layers.convs.dense(x, recognition_dim, act='sigmoid', name='recognition-{}'.format(idx))
 
         probability = layers.convs.dense(recognition, 1, act='sigmoid', name='probability-{}'.format(idx))
-        probability = ops.core.tile(probability, [1, input_shape[1]]) # maybe BUG here
+        probability = ops.core.tile(probability, [1, input_volumn]) # maybe BUG here
 
         if transformation == 'translation':
             learnt_transformation = layers.convs.dense(recognition, 2, name='prediction-{}'.format(idx))
@@ -28,9 +33,8 @@ def capsule(inputs, extra_inputs, recognition_dim, generation_dim, transformatio
             learnt_transformation = layers.base.flatten(learnt_transformation)
 
         generation = layers.convs.dense(learnt_transformation, generation_dim, act='sigmoid', name='generator-{}'.format(idx))
-        out = layers.convs.dense(generation, input_shape[1])
-        out = layers.math.matmul([out, probability])
-
+        out = layers.convs.dense(generation, input_volumn)
+        out = layers.math.mul([out, probability])
         return layers.base.reshape(out, input_shape)
 
 
@@ -44,7 +48,8 @@ def transforming_autoencoder(inputs, labels, recogntion_dim, generation_dim, nca
         inference = layers.actives.sigmoid(inference)
 
         loss = layers.losses.mse([inference, labels])
-        metric = layers.metrics.accuracy([inference, labels])
+        #metric = layers.metrics.accuracy([inference, labels])
+        metric = None
 
     return [inference, loss, metric]
 
@@ -55,7 +60,7 @@ gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
 gpu_config.gpu_options.visible_device_list = '0,1'
 gpu_config.intra_op_parallelism_threads = 1
 
-# sigma.engine.set_print(True, True)
+sigma.engine.set_print(False, False)
 nclass = 10
 experiment, parser = sigma.build_experiment(transforming_autoencoder,
                                             dataio.generate_mnist_data('translation'),
@@ -63,7 +68,7 @@ experiment, parser = sigma.build_experiment(transforming_autoencoder,
                                             # filename='mnist-networks.png',
                                             batch_size=100,
                                             gpu_config=gpu_config,
-                                            model_config={'recogntion_dim':50,
+                                            model_config={'recogntion_dim':30,
                                                           'generation_dim':30,
                                                           'ncapsules':10})
 

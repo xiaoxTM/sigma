@@ -1,7 +1,7 @@
 from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import random
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from skimage.transform import AffineTransform
 from skimage.transform import warp
 
@@ -15,9 +15,9 @@ def random_affine_matrix(sigma, max_translation):
 def transform_data(data_split, mode, max_translation=5, sigma=0.1, show=False):
     assert mode in ['translation', 'affine'], 'transformation {} not support'.format(mode)
 
-    if show:
-        plt.ion()
-        _, [ax1, ax2] = plt.subplots(1, 2)
+    #if show:
+    #    plt.ion()
+    #    _, [ax1, ax2] = plt.subplots(1, 2)
 
     samples = []
     labels  = []
@@ -35,11 +35,11 @@ def transform_data(data_split, mode, max_translation=5, sigma=0.1, show=False):
             transformation = random_affine_matrix(sigma, max_translation)
             itrans = warp(image, AffineTransform(matrix=transformation))
 
-        if show:
-            ax1.imshow(image)
-            ax2.imshow(itrans)
-            plt.show()
-            plt.waitforbuttonpress()
+        #if show:
+        #    ax1.imshow(image)
+        #    ax2.imshow(itrans)
+        #    plt.show()
+        #    plt.waitforbuttonpress()
 
         samples.append(np.expand_dims(image, axis=-1))
         transformations.append(transformation)
@@ -63,8 +63,5 @@ def generate_mnist_data(mode, max_translation=5, sigma=0.1):
         input_shape = [None]+list(np.asarray(train_extra[0][0]).shape[1:])
         extra_shape = [None]+list(np.asarray(train_extra[0][1]).shape[1:])
         label_shape = [None]+list(np.asarray(train_extra[1]).shape[1:])
-        print('input shape:', input_shape)
-        print('extra shape:', extra_shape)
-        print('label shape:', label_shape)
         return [(input_shape, extra_shape), label_shape], [train_extra, valid_extra, test_extra]
     return _mnist_data

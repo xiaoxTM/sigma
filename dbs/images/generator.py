@@ -635,10 +635,18 @@ def make_generator(x,
     """ make generator from dataset
     """
     xlen = len(x)
-    pick_sample = lambda x, idx : x[idx]
+    pick_sample = lambda x, idx, xkey: {xkey:x[idx]}
     if isinstance(x, tuple):
         xlen = len(x[0])
-        pick_sample = lambda x, idx : (_x[idx] for _x in x)
+        def _pick_sample(xs, idx, xkeys):
+            #kv = {key:x[idx] for x,key in zip(xs, xkeys)}
+            kv = {}
+            for x,key in zip(xs, xkeys):
+                if isinstance(x, list):
+                    x = np.asarray(x)
+                kv.update({key:x[idx]})
+            return kv
+        pick_sample = _pick_sample
     elif not isinstance(x, np.ndarray):
         x = np.asarray(x)
 
@@ -666,7 +674,7 @@ def make_generator(x,
                     if beg > length:
                         beg = length - batch_size
                     end = max(min(beg + batch_size, length), beg)
-                    yield send({inputs:pick_sample(x, idx[beg:end])},
+                    yield send(pick_sample(x, idx[beg:end], inputs),
                                {labels:y[idx[beg:end]]},
                                iteration)
         return _next()
