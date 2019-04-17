@@ -22,6 +22,7 @@ import io
 import pickle
 import gzip
 import os.path
+import numpy as np
 
 import tensorflow as tf
 from tensorflow.examples.tutorials import mnist
@@ -278,6 +279,11 @@ def get_collection(name, scope=None):
     return tf.get_collection(name, scope)
 
 
+def trainable_parameters():
+    trainable_variables_shapes = [v.get_shape() for v in tf.trainable_variables()]
+    return np.sum([np.prod(s) for s in trainable_variables_shapes])
+
+
 def assign(x, y,
            validate_shape=None,
            use_locking=None,
@@ -406,14 +412,18 @@ def argmax(x,
            axis=None,
            dtype=int64,
            name=None):
-    return tf.argmax(x, axis=axis, output_type=dtype, name=name)
+    if tf.__version__ >= '1.4.0':
+        return tf.argmax(x, axis=axis, output_type=dtype, name=name)
+    return tf.argmax(x, axis=axis, name=name)
 
 
 def argmin(x,
            axis=None,
            dtype=int64,
            name=None):
-    return tf.argmin(x, axis=axis, output_type=dtype, name=name)
+    if tf.__version__ >= '1.4.0':
+        return tf.argmin(x, axis=axis, output_type=dtype, name=name)
+    return tf.argmin(x, axis=axis, name=name)
 
 
 def mean(x,
@@ -504,7 +514,7 @@ def norm(x,
     else:
         squared = tf.reduce_sum(x * x,
                                 axis=axis,
-                                keep_dims=keepdims)
+                                keepdims=keepdims)
         normed = tf.sqrt(squared + epsilon)
         if return_squared:
             normed = [normed, squared]
@@ -651,6 +661,10 @@ def sigmoid(x, log=False, name=None):
 
 def tanh(x, name=None):
     return tf.nn.tanh(x, name)
+
+
+def seed(x):
+    tf.set_random_seed(x)
 
 
 def random_normal(shape,
@@ -818,14 +832,14 @@ def depthwise_conv2d(x, kernels, strides, padding,
                                   data_format)
 
 
-def dot(a, b,
-        transpose_a=False,
-        transpose_b=False,
-        adjoint_a=False,
-        adjoint_b=False,
-        a_is_sparse=False,
-        b_is_sparse=False,
-        name=None):
+def matmul(a, b,
+           transpose_a=False,
+           transpose_b=False,
+           adjoint_a=False,
+           adjoint_b=False,
+           a_is_sparse=False,
+           b_is_sparse=False,
+           name=None):
     return tf.matmul(a, b,
                      transpose_a,
                      transpose_b,
@@ -1136,7 +1150,7 @@ def max_pool(x, ksize, strides, padding,
             data_format=commons.data_format,
             name=None):
     return tf.nn.max_pool(x,
-                          size,
+                          ksize,
                           strides,
                           padding,
                           data_format,
@@ -1489,3 +1503,6 @@ def summary_writer(logdir,
 
 def add_summary(filewriter, summary, global_step=None):
     return filewriter.add_summary(summary, global_step)
+
+def device(name_or_function):
+    return tf.device(name_or_function)

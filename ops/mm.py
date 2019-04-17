@@ -53,7 +53,7 @@ def malloc(name,
     if add_to_collect and not reuse:
         core.add_to_collection(scope, variable)
     if summary is not None and not reuse:
-        with core.device('/device:CPU:{}'.format(cpuid))
+        with core.device('/device:CPU:{}'.format(cpuid)):
             core.summarize(variable.name, variable, summary)
     return variable
 
@@ -91,7 +91,7 @@ def global_variable(name,
                     dtype=None,
                     initializers=None,
                     regularizer=None,
-                    cpuid,
+                    cpuid=0,
                     trainable=True,
                     summary='histogram',
                     reuse=False,

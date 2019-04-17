@@ -113,7 +113,10 @@ def name_normalize(names, scope=None):
         if scope is None:
             return name.split('/', 1)[0]
         else:
-            return name.split('/', 2)[1]
+            splits = name.split('/', 2)
+            if len(splits) == 1:
+                return splits[0]
+            return splits[1]
     if isinstance(names, str):
         return _normalize(names)
     elif isinstance(names, (tuple, list, np.ndarray)):

@@ -102,12 +102,10 @@ def intsize(x, cminus=False):
             return int(np.log10(-x)) + 1
 
 
-def arg2dict(args, excludes=None):
+def arg2dict(args, includes=None):
     kwargs = {}
-    if excludes is None:
-        excludes = []
     for arg in vars(args):
-        if arg not in excludes:
+        if includes is None or arg in includes:
             kwargs[arg] = getattr(args, arg)
     return kwargs
 
@@ -297,7 +295,7 @@ def line(iterable,
             def format_message(epoch, prompt, iteration, iterations,
                                percentage, retvalue, elapsed_time):
                 return spec.format(epoch, prompt, iteration, iterations,
-                                   percentage,retvalue, elapsed_time)
+                                   percentage, retvalue, elapsed_time)
         else:
             spec = '\r<{{:<{}}}{}{}> [{{:{}}}, {{:{}}} / {{:{}}}, {{:3}}%]' \
                    ' {{}}{}'.format(epochsize,
@@ -310,7 +308,7 @@ def line(iterable,
             def format_message(epoch, prompt, iteration, iterations,
                                percentage, retvalue, elapsed_time):
                 return spec.format(epoch, prompt, iteration, iterations,
-                                   percentage,retvalue)
+                                   percentage, retvalue)
     def _line():
         totaltime = 0
         prev = 0

@@ -34,7 +34,7 @@ def mnist(dirs=None, to_tensor=True, onehot=False, nclass=None):
             if ops.core.axis < 0:
                 normed_axis += 1
             label_shape.insert(normed_axis, nclass)
-        return (input_shape, label_shape), ([xtrain, ytrain], [xvalid, yvalid])
+        return (input_shape, label_shape), ([xtrain, ytrain], [xvalid, yvalid], [None, None])
     return _mnist
 
 

@@ -33,7 +33,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] deconv2d
     - [x] soft_conv2d [aka. deformable convolution]
     - [ ] sepconv2d [aka. separable_conv2d]
-  - capsules
+  - capsules (different capsules use same weights)
     - [x] norm
     - [ ] conv1d
     - [x] conv2d

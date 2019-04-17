@@ -30,7 +30,7 @@ def predict_op(input_shape,
                reuse=False,
                name=None,
                scope=None):
-    ops_scope, name = ops.helper.assign_scope(name, scope, 'prediction', reuse)
+    ops_scope, ltype, name = ops.helper.assign_scope(name, scope, 'prediction', reuse)
     if predop is None:
         def _linear(x, axis, name):
             return x
@@ -59,36 +59,57 @@ def predict_op(input_shape,
 
 
 @phase('predict')
-def predict(session, x, xtensor, ypred,
-            predop=None,
+def predict(sess,
+            y, # tensor
+            generator,
+            iterations,
+            x=None, # numpy.ndarray
+            ground_truth=None,
+            predop='argmax',
             batch_size=32,
             axis=None,
             dtype=ops.core.int64,
             nclass=None,
-            checkpoints=None,
+            checkpoint=None,
             savedir=None,
             reuse=False,
             name=None,
             scope=None):
-    predop = predict_op(ops.core.shape(ypred),
-                        predop,
-                        axis,
-                        dtype,
-                        reuse,
-                        name,
-                        scope)
-    ypred = predop(ypred)
-    if nclass is None:
-        nclass = ops.helper.depth(ypred)
-    if checkpoints is not None:
-        sess, saver = helpers.load(sess, checkpoints, verbose=True)
-    batch_size = min(batch_size, len(x))
-    generator, nsamples, iterations = dbs.images.make_generator(x, None,
-                                                                xtensor,
-                                                                batch_size,
-                                                                False,
-                                                                nclass)
-    progressor = helper.line(iterable=None,
+    if isinstance(y, tuple):
+        input_shape = ops.core.shape(y)
+        ypred = predict_op(input_shape,
+                           predop,
+                           axis,
+                           dtype,
+                           reuse,
+                           name,
+                           scope)(y[0])
+        y = (ypred, y[1:])
+        if nclass is None:
+            nclass = ops.helper.depth(y[0])
+    else:
+        input_shape = ops.core.shape(y)
+        y = predict_op(input_shape,
+                       predop,
+                       axis,
+                       dtype,
+                       reuse,
+                       name,
+                       scope)(y)
+        if nclass is None:
+            nclass = ops.helper.depth(y)
+    if checkpoint is not None:
+        sess, saver = helpers.load(sess, checkpoint, verbose=True)
+    if generator is None and iterations is None:
+        if x is None:
+            ValueError("generator, iterations and x cannot ALL be None")
+        batch_size = min(batch_size, len(x))
+        generator, _, iterations = dbs.images.make_generator(x,
+                                                             ground_truth,
+                                                             batch_size,
+                                                             False,
+                                                             nclass)
+    progressor = helpers.line(iterable=None,
                              epochs=None,
                              iterations=iterations,
                              timeit=True)[0]()
@@ -96,9 +117,9 @@ def predict(session, x, xtensor, ypred,
     (global_idx, _, epoch, iteration) = next(progressor)
     while epoch < 1:
         samples, step = next(generator)
-        pred = ops.core.run(session, ypred, feed_dict=samples)
+        pred = ops.core.run(sess, y, feed_dict=samples)
         if savedir is None:
-            preds.append(pred)
+            preds.append([pred])
         else:
             os.makedirs(savedir, exist_ok=True)
             for i, images in enumerate(zip(samples, pred.astype(np.int8))):
@@ -181,13 +202,13 @@ def session(target='',
 
 
 def run(session,
-        trainop,
+        train_op,
         generator,
         iterations,
-        encodeop,
+        encode_op,
         checkpoint_save_op,
         summarize_op,
-        validop=None,
+        valid_op=None,
         epochs=1000,
         filename=None,
         save_mode='all',
@@ -228,7 +249,7 @@ def run(session,
                   - epm : epoch per message
                   - other parameters see @helpers.mail.sendmail
     """
-    # //FIXME: remove validating time from final iteration of train time
+    # FIXME: remove validating time from final iteration of train time
     if save_target not in ['loss', 'metric']:
         raise ValueError('save_target must be `loss` or `metric`. given {}'
                          .format(colors.red(save_target)))
@@ -236,11 +257,10 @@ def run(session,
                               epochs=epochs,
                               iterations=iterations,
                               brief=False,
-                              # use `send` to get next data instead of `next`
                               feedbacks=True,
                               timeit=True,
                               nprompts=20)[0]()
-    saverop = _save_op(save_mode, save_target)
+    saver_op = _save_op(save_mode, save_target)
     best_result = None
     epm = -1
     if emc is not None:
@@ -252,7 +272,7 @@ def run(session,
     while epoch < epochs:
         validmessage = ''
         samples, step = next(generator)
-        rdict = trainop(samples)
+        rdict = train_op(samples)
         summarize_op(rdict.get('summarize', None), global_step=global_idx)
         trainloss = rdict['loss']
         trainacc = rdict.get('metric', None)
@@ -262,9 +282,9 @@ def run(session,
             record = [trainloss]
             if trainacc is not None:
                 record += [trainacc]
-            if validop is not None:
-                validloss, validacc = validop(global_idx)
-                validmessage = ' => {}'.format(encodeop(validloss, validacc))
+            if valid_op is not None:
+                validloss, validacc = valid_op(global_idx)
+                validmessage = ' => {}'.format(encode_op(validloss, validacc))
                 record += [validloss]
                 if validacc is not None:
                     record += [validacc]
@@ -273,12 +293,12 @@ def run(session,
         current = trainloss
         if save_target == 'metric' and trainacc is not None:
             current = trainacc
-        if saverop(current, best_result):
+        if saver_op(current, best_result):
             # if current loss is better than best result
             # save it to best_result
             best_result = current
             checkpoint_save_op(session)
-        trainmessage = encodeop(trainloss, trainacc)
+        trainmessage = encode_op(trainloss, trainacc)
         (global_idx, _, epoch, iteration) = progressor.send(
             '{{{}{}}}'.format(trainmessage,
                               validmessage))
@@ -289,20 +309,18 @@ def run(session,
 
 
 @phase('train')
-def train(generator,
+def train(sess,
+          generator,
           iterations,
-          optimizer,
-          loss,
+          train_op,
+          valid_op,
           metric=None,
           valid_gen=None,
           valid_iters=None,
+          writer=None,
+          summarize=None,
+          checkpoint_save_op=None,
           epochs=1000,
-          graph=None,
-          config=None,
-          checkpoint=None,
-          log=None,
-          debug=False,
-          address=None,
           filename=None,
           save_mode='all',
           save_target='loss'):
@@ -324,54 +342,45 @@ def train(generator,
                           total iterations for validation
             epochs : int
                      epochs to train throughout the train-dataset
-            graph : Graph
-            config : dict
-                     gpu configuration
-            checkpoint : str
-                         checkpoint to store median train result
-            log : str
-                  log directory for tensorboard visualization
-            address : str
-                      address for tfdebug and tensorboard debugging
-                      should in the form of:
-                        hostname:port
-            savemode : str
+            # graph : Graph
+            # config : dict
+            #          gpu configuration
+            # checkpoint : str
+            #              checkpoint to store median train result
+            # log : str
+            #       log directory for tensorboard visualization
+            # address : str
+            #           address for tfdebug and tensorboard debugging
+            #           should in the form of:
+            #             hostname:port
+            save_mode : str
                        `all` for saving all results to checkpoint
                        `min` for saving minimal value of current and global results
                        `max` for saving maximal value of current and global results
-            modetarget : string
+            save_target : string
                          which to save
                          `loss` for saving loss
                          `metric` for saving metric
     """
-    loss_op = ops.losses.get(loss)
-    optimization_op = optimizer.minimize(loss_op)
-    trainop = {'optimizer':optimization_op, 'loss':loss_op}
-    validop = {'loss':loss_op}
 
-    # run after optimization construction
-    # to get rid of `Attempting to use uninitialized value beta1_power` ERROR
-    sess, saver, summarize, writer = session(graph=graph,
-                                             config=config,
-                                             checkpoint=checkpoint,
-                                             log=log,
-                                             debug=debug,
-                                             address=address)
-    checkpoint_save_op = checkpoint_save(checkpoint,
-                                         saver,
-                                         write_meta_graph=False,
-                                         verbose=False)
     summarize_op = log_summary(writer)
     if summarize is not None:
-        trainop['summarize'] = summarize
+        train_op['summarize'] = summarize
 
-    train_fun = lambda samples:ops.core.run(sess, trainop,
+    train_fun = lambda samples:ops.core.run(sess, train_op,
                                             feed_dict=samples)
     valid_fun = None
     if valid_gen is not None and valid_iters is not None:
-        valid_fun = lambda samples:ops.core.run(sess,
-                                                validop,
-                                                feed_dict=samples)
+        @phase('predict')
+        def _valid_fun(global_step=None):
+            loss = 0
+            for iteration in range(iterations):
+                samples, step = next(valid_gen)
+                ans = ops.core.run(sess, valid_op, feed_dict=samples)
+                loss += ans['loss']
+            loss = loss / iterations
+            return (loss, None)
+        valid_fun = _valid_fun
     if metric is not None:
         if isinstance(metric, (list, tuple)):
             # in case of using tf.metrics.*, metrics incudes three parts:
@@ -380,24 +389,24 @@ def train(generator,
             #       metric_update op returns updating of metric
             #       metric_initializer op initialize / reset metric_measure
             metric_measure, metric_update, metric_initializer = metric
-            trainop['update'] = metric_update
+            train_op['update'] = metric_update
             def _train_fun(samples):
                 # initialize / reset metric
                 ops.core.run(sess, metric_initializer)
-                ans = ops.core.run(sess, trainop, feed_dict=samples)
+                ans = ops.core.run(sess, train_op, feed_dict=samples)
                 acc = ops.core.run(sess, metric_measure)
                 ans['metric'] = acc
                 return ans
             train_fun = _train_fun
             if valid_fun is not None:
-                validop['update'] = metric_update
+                valid_op['update'] = metric_update
                 @phase('predict')
                 def _valid_fun(global_step=None):
                     ops.core.run(sess, metric_initializer)
                     loss = 0
                     for iteration in range(iterations):
                         samples, step = next(valid_gen)
-                        ans = ops.core.run(sess, validop, feed_dict=samples)
+                        ans = ops.core.run(sess, valid_op, feed_dict=samples)
                         loss += ans['loss']
                     loss = loss / iterations
                     return (loss, ops.core.run(sess, metric_measure))
@@ -407,7 +416,7 @@ def train(generator,
             # metric should have form of
             #    def metric_fun(sess, op, samples) -> (loss, metric)
             def _train_fun(samples):
-                return metric(sess, trainop, samples)
+                return metric(sess, train_op, samples)
             train_fun = _train_fun
             if valid_fun is not None:
                 @phase('predict')
@@ -416,24 +425,24 @@ def train(generator,
                     acc  = 0.0
                     for iteration in range(iterations):
                         samples, step = next(valid_gen)
-                        ans = metric(sess, trainop, samples)
+                        ans = metric(sess, train_op, samples)
                         loss += ans['loss']
                         acc  += ans['metric']
                     return (loss / iterations, acc / iterations)
                 valid_fun = _valid_fun
     if metric is not None:
-        def encodeop(loss, acc):
+        def encode_fun(loss, acc):
             return '{} / {}'.format(colors.blue(round(loss, 6), '{:0<.6f}'),
                                     colors.green(round(acc, 6), '{: >.6f}'))
     else:
-        def encodeop(loss, acc):
+        def encode_fun(loss, acc):
             return '{}'.format(colors.blue(round(loss, 6), '{:<.6}'))
 
     run(sess,
         train_fun,
         generator,
         iterations,
-        encodeop,
+        encode_fun,
         checkpoint_save_op,
         summarize_op,
         valid_fun,
@@ -442,41 +451,55 @@ def train(generator,
         save_mode,
         save_target)
 
-    ops.core.close_summary_writer(writer)
-    ops.core.close_session(sess)
-
 
 def build_reader(build_fun, **kwargs):
-    (input_shape, label_shape), (train, valid) = build_fun()
-    # print('input shape: {}\nlabel shape: {}'
-    #       .format(colors.red(input_shape),
-    #               colors.red(label_shape)))
-    valid_gen, valid_iters = None, None
-    if isinstance(train, str):
-        generator, _, iterations = dbs.images.generator(train, **kwargs)
-        if valid is not None:
-            kwargs['shuffle'] = False
-            valid_gen, _, valid_iters = dbs.images.generator(valid, **kwargs)
-    elif isinstance(train, (list, tuple)):
-        generator, _, iterations = dbs.images.make_generator(train[0],
-                                                             train[1],
-                                                             **kwargs)
-        if valid is not None:
-            kwargs['shuffle'] = False
-            valid_gen, _, valid_iters = dbs.images.make_generator(valid[0],
-                                                                  valid[1],
-                                                                  **kwargs)
-    inputs = layers.base.input_spec(input_shape,
-                                    dtype=ops.core.float32,
-                                    name='inputs')
+    (input_shape, label_shape), (train, valid, test) = build_fun()
+    if isinstance(input_shape, tuple):
+        inputs = tuple([layers.base.input_spec(shape,
+                  dtype=ops.core.float32,
+                  name='inputs-{}'.format(i)) for i,shape in enumerate(input_shape)])
+    else:
+        inputs = layers.base.input_spec(input_shape,
+                                        dtype=ops.core.float32,
+                                        name='inputs')
     labels = None
     if label_shape is not None:
         labels =layers.base.label_spec(label_shape,
                                        dtype=ops.core.float32,
                                        name='labels')
+
+    valid_gen, valid_iters = None, None
+    test_gen, test_iters = None, None
+    if isinstance(train, str):
+        train_gen, _, iterations = dbs.images.make_generator_from_list(train, **kwargs)
+        kwargs['shuffle'] = False
+        if valid[0] is not None and valid[1] is not None:
+            valid_gen, _, valid_iters = dbs.images.make_generator_from_list(valid, **kwargs)
+            valid_gen = valid_gen(inputs, labels)
+        if test is not None:
+            test_gen, _, valid_iters = dbs.images.make_generator_from_list(test, **kwargs)
+            test_gen = test_gen(inputs, labels)
+    elif isinstance(train, (list, tuple)):
+        train_gen, _, iterations = dbs.images.make_generator(train[0],
+                                                             train[1],
+                                                             **kwargs)
+        kwargs['shuffle'] = False
+        if valid[0] is not None and valid[1] is not None:
+            valid_gen, _, valid_iters = dbs.images.make_generator(valid[0],
+                                                                  valid[1],
+                                                                  **kwargs)
+            valid_gen = valid_gen(inputs, labels)
+        if test[0] is not None:
+            test_gen, _, test_iters = dbs.images.make_generator(test[0],
+                                                                test[1],
+                                                                **kwargs)
+            test_gen = test_gen(inputs, labels)
+    train_gen = train_gen(inputs, labels)
+    #print("train-gen:", train_gen)
     return (inputs, labels), \
-           (generator(inputs, labels), iterations), \
-           (valid_gen(inputs, labels), valid_iters)
+           (train_gen, iterations), \
+           (valid_gen, valid_iters), \
+           (test_gen, test_iters)
 
 
 def build_model(inputs,
@@ -530,24 +553,54 @@ def build_model(inputs,
                         scope=scope):
         x = build_fun(inputs, labels, **kwargs)
     if ops.helper.is_tensor(x):
-        loss, metric = x, None
+        inference, loss, metric = None, x, None
     elif isinstance(x, (list, tuple)):
         if len(x) == 1:
-            loss, metric = x, None
+            inference, loss, metric = None, x, None
         elif len(x) == 2:
             loss, metric = x
+            inference = None
+        elif len(x) == 3:
+            inference, loss, metric = x
         else:
             raise ValueError('The return value of `build_fun` must have'
-                             ' length of 1 or 2 in list / tuple. given {}'
+                             ' length of 1, 2  or 3 in list / tuple. given {}'
                              .format(len(x)))
     elif isinstance(x, dict):
         loss = x['loss']
         metric = x.get('metric', None)
+        inference = x.get('inference', None);
     else:
         raise TypeError('The return value type of `build_fun` must be'
                         ' tensor / list / tuple / dict. given {}'
                         .format(type(x)))
-    return [loss, metric]
+    return [inference, loss, metric]
+
+
+def build_parser():
+    parser = argparse.ArgumentParser()
+    # begin of options for training
+    parser.add_argument('--checkpoint', type=str, default=None)
+    parser.add_argument('--log', type=str, default=None)
+    parser.add_argument('--eid', type=str, default=None)
+    parser.add_argument('--address', type=str, default=None)
+    parser.add_argument('--filename', type=str, default=None)
+    #or typically : parser.address='localhost:6064'
+    parser.add_argument('--save-mode', type=str, default='all')
+    parser.add_argument('--save-target', type=str, default='loss')
+    parser.add_argument('--epochs', type=int, default=10)
+
+    parser.add_argument('--debug', type=bool, default=False)
+    parser.add_argument('--auto-timestamp', type=bool, default=False)
+    parser.add_argument('--verbose', type=bool, default=True)
+    # parser.add_argument('--shuffle', type=bool, default=True)
+    # end of options for training
+
+    # begin of options for testing
+    parser.add_argument('--batch-size', type=int, default=32)
+    # end of options for testing
+
+    return parser
 
 
 def build_experiment(build_model_fun,
@@ -594,7 +647,6 @@ def build_experiment(build_model_fun,
                                should have signature of
                                `
                                    def build_reader(#necessary parameters here):
-                                       @sigma.engine.io.imageio
                                        def _build_reader(**kwargs):
                                            # loading dataset from files here
                                            return (input_shape, label_shape), \
@@ -629,19 +681,20 @@ def build_experiment(build_model_fun,
     #----- read the dataset -----#
     (inputs, labels), \
     (generator, iterations), \
-    (valid_gen, valid_iters) = build_reader(build_reader_fun,
+    (valid_gen, valid_iters), \
+    (test_gen, test_iters) = build_reader(build_reader_fun,
                                             **generator_config)
 
     #----- build networks -----#
-    [loss, metric] = build_model(inputs,
-                                 build_model_fun,
-                                 labels,
-                                 check_shape,
-                                 collections,
-                                 summary,
-                                 reuse,
-                                 scope,
-                                 **model_config)
+    [inference, loss, metric] = build_model(inputs,
+                                            build_model_fun,
+                                            labels,
+                                            check_shape,
+                                            collections,
+                                            summary,
+                                            reuse,
+                                            scope,
+                                            **model_config)
     if isinstance(filename, str):
         if layers.core.__graph__ is not None and \
           layers.core.__graph__ is not False:
@@ -653,33 +706,22 @@ def build_experiment(build_model_fun,
     #----- train configuration -----#
     optimizer = ops.optimizers.get(optimizer, **optimizer_config)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint', type=str, default=None)
-    parser.add_argument('--log', type=str, default=None)
-    parser.add_argument('--eid', type=str, default=None)
-    parser.add_argument('--address', type=str, default=None)
-    parser.add_argument('--filename', type=str, default=None)
-    #or typically : parser.address='localhost:6064'
-    parser.add_argument('--save-mode', type=str, default='all')
-    parser.add_argument('--save-target', type=str, default='loss')
-
-    parser.add_argument('--debug', type=bool, default=False)
-    parser.add_argument('--auto-timestamp', type=bool, default=False)
-    parser.add_argument('--verbose', type=bool, default=True)
-    # parser.add_argument('--shuffle', type=bool, default=True)
-
-    parser.add_argument('--epochs', type=int, default=10)
-    # parser.add_argument('--batch-size', type=int, default=32)
-
     def _experiment(args):
         train_config = helpers.arg2dict(args,
-                                        ['verbose', 'eid', 'auto_timestamp'])
+                                        ['epochs', 'save_mode',
+                                         'save_target', 'filename'])
+        test_config = helpers.arg2dict(args,
+                                       ['predop', 'batch_size', 'axis',
+                                        'nclass', 'savedir', 'reuse',
+                                        'name', 'scope'])
+        print('test config:', test_config)
         # the process of training networks
         if args.verbose:
             helpers.print_args(args)
 
         #----- beg re-configurations -----#
-        train_config['checkpoint'] = args.checkpoint
+        checkpoint = args.checkpoint
+        log = args.log
         expid = args.eid
         if args.auto_timestamp:
             timestamp = helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None)
@@ -688,48 +730,41 @@ def build_experiment(build_model_fun,
             else:
                 expid = '{}-{}'.format(expid, timestamp)
         if expid is not None:
-            if train_config['checkpoint'] is None:
-                train_config['checkpoint'] = '{}/ckpt/main'.format(expid)
+            if checkpoint is None:
+                checkpoint = '{}/ckpt/main'.format(expid)
             else:
-                train_config['checkpoint'] = '{}/{}/ckpt/main'.format(
-                    train_config['checkpoint'], expid)
-            train_config['log'] = train_config.get('log', None)
-            if train_config['log'] is None:
-                train_config['log'] = '{}/log'.format(expid)
+                checkpoint = '{}/{}/ckpt/main'.format(checkpoint, expid)
+            if log is None:
+                log = '{}/log'.format(expid)
             else:
-                train_config['log'] = '{}/{}/log'.format(
-                                         train_config['log'], expid)
+                log = '{}/{}/log'.format(log, expid)
         else:
-            if train_config['checkpoint'] is not None:
-                train_config['checkpoint'] = '{}/ckpt/main'.format(
-                    train_config['checkpoint']
-                )
-            if train_config['log'] is not None:
-                train_config['log'] = '{}/log'.format(
-                    train_config['log']
-                )
+            if checkpoint is not None:
+                checkpoint = '{}/ckpt/main'.format(checkpoint)
+            if log is not None:
+                log = '{}/log'.format(log)
         #----- end re-configurations -----#
 
         #----- get rid of some parameters in dictionary -----#
         train_config_keys = train_config.keys()
         for key in ['generator', 'iterations',
                     'optimizer', 'loss', 'metric',
-                    'valid_gen', 'valid_iters',
-                    'config']:
+                    'valid_gen', 'valid_iters', 'config']:
             if key in train_config_keys:
                 print('`{}` in parser not allowed. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
-            if key not in ['checkpoint', 'log', 'epochs', 'save_mode', \
-                           'save_target', 'address', 'filename', 'debug']:
+            if key not in ['epochs', 'save_mode', 'save_target','filename']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
         #********** check filename existance if not None **********
         if expid is not None and args.filename is None:
             train_config['filename'] = expid + '.rec'
+            if args.checkpoint is not None:
+                train_config['filename'] = os.path.join(args.checkpoint, train_config['filename'])
         if train_config['filename'] is not None:
             if os.path.isfile(train_config['filename']):
                 go = input('Filename to record loss / metric exists.'
@@ -745,7 +780,7 @@ def build_experiment(build_model_fun,
             else:
                 dirname = os.path.dirname(train_config['filename'])
                 if len(dirname) != 0 and not os.path.exists(dirname):
-                    mkdir = input('Parent director {} not exists. Create? <Y/N>'
+                    mkdir = input('Parent directory {} not exists. Create? <Y/N>'
                                   .format(colors.red(dirname)))
                     if mkdir != 'Y':
                         print('OK, exit program.')
@@ -754,13 +789,38 @@ def build_experiment(build_model_fun,
                         os.makedirs(dirname)
                         print('OK, created. Good luck')
         #*************************************************************
-        train(generator,
+
+        loss_op = ops.losses.get(loss)
+        optimization_op = optimizer.minimize(loss_op)
+        train_op = {'optimizer':optimization_op, 'loss':loss_op}
+        valid_op = {'loss':loss_op}
+
+        sess, saver, summarize, writer = session(config=gpu_config,
+                                                 checkpoint=checkpoint,
+                                                 log=log,
+                                                 debug=args.debug,
+                                                 address=args.address)
+        checkpoint_save_op = checkpoint_save(checkpoint,
+                                             saver,
+                                             write_meta_graph=False,
+                                             verbose=False)
+        train(sess,
+              generator,
               iterations,
-              optimizer,
-              loss,
+              train_op,
+              valid_op,
               metric,
               valid_gen,
               valid_iters,
-              config=gpu_config,
+              writer,
+              summarize,
+              checkpoint_save_op,
               **train_config)
-    return _experiment, parser
+
+        if test_gen is not None and test_iters is not None:
+            predict(sess, inference, generator=test_gen, iterations=test_iters, checkpoint=checkpoint, **test_config)
+
+        ops.core.close_summary_writer(writer)
+        ops.core.close_session(sess)
+
+    return _experiment

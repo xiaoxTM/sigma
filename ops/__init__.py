@@ -19,9 +19,10 @@
 from . import core
 from . import convolutional as convs
 from . import normalization as norms
+from . import regularizers as regus
+from . import optimizers as opts
+from . import math
 from . import capsules
-from . import optimizers
-from . import regularizers
 from . import actives
 from . import pools
 from . import merge
@@ -29,6 +30,8 @@ from . import helper
 from . import base
 from . import losses
 from . import metrics
+
+from .core import trainable_parameters
 
 def get():
     return {'data_format' : core.data_format,

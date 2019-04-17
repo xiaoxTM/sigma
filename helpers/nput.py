@@ -115,6 +115,7 @@ def one_hot(y, nclass=None):
     elif isinstance(y, list):
         y = np.asarray(y).astype(np.int32)
         shape = list(y.shape)
+    print('shape:', shape)
     if not y.dtype in [np.int32, np.int64]:
         raise TypeError('given y must be  int32 or int64 dtype. given {}'
                         .format(y.dtype))

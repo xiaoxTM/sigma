@@ -1,0 +1,11 @@
+#! /usr/bin/bash
+export PYTHONPATH=$PYTHONPATH:/home/xiaox/studio/src/git-series
+CHECKPOINT=cache/checkpoints/
+STYLE_IMAGE=dtrain/style.png
+CONTENT_IMAGES=dtrain/content
+
+python3 main.py \
+        --checkpoints ${CHECKPOINT} \
+        --style ${STYLE_IMAGE} \
+        --content ${CONTENT_IMAGES} \
+        --train False
