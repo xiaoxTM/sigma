@@ -19,7 +19,7 @@
 from . import status, ops, layers, helpers, engine, dbs, colors
 from .layers import defaults
 from .ops.core import placeholder, seed
-from .engine import session, predict, build_experiment
+from .engine import session, predict, build_experiment, build_parser
 import os
 import os.path
 import json

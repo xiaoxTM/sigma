@@ -3,11 +3,9 @@ import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 import sigma
 from sigma import layers, ops
-
+import os.path
 import tensorflow as tf
-
 import numpy as np
-
 import dataio
 
 def capsule(inputs, extra_inputs, recognition_dim, generation_dim, transformation='translation', scope=None, idx=0):
@@ -57,25 +55,28 @@ def transforming_autoencoder(inputs, labels, recogntion_dim, generation_dim, nca
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.allow_growth = True
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
-gpu_config.gpu_options.visible_device_list = '0,1'
+gpu_config.gpu_options.visible_device_list = '0,1,2,3'
 gpu_config.intra_op_parallelism_threads = 1
 
 sigma.engine.set_print(False, False)
 nclass = 10
-experiment, parser = sigma.build_experiment(transforming_autoencoder,
-                                            dataio.generate_mnist_data('translation'),
-                                            'AdamOptimizer',
-                                            # filename='mnist-networks.png',
-                                            batch_size=100,
-                                            gpu_config=gpu_config,
-                                            model_config={'recogntion_dim':30,
-                                                          'generation_dim':30,
-                                                          'ncapsules':10})
 
 
 if __name__=='__main__':
+    parser = sigma.build_parser()
     args = parser.parse_args()
-    args.checkpoint='cache'
+    experiment = sigma.build_experiment(transforming_autoencoder,
+                                        dataio.generate_mnist_data('translation'),
+                                        'AdamOptimizer',
+                                        # filename='mnist-networks.png',
+                                        batch_size=100,
+                                        gpu_config=gpu_config,
+                                        model_config={'recogntion_dim':30,
+                                                      'generation_dim':30,
+                                                      'ncapsules':10})
+    exp = '/home/xiaox/studio/exp/sigma/capsules/transforming-autoencoder'
+    args.checkpoint=os.path.join(exp, 'cache')
+    args.epochs = 10
     # args.log='cache'
     # args.auto_timestamp = True
     experiment(args)

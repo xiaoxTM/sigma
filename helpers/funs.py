@@ -102,12 +102,10 @@ def intsize(x, cminus=False):
             return int(np.log10(-x)) + 1
 
 
-def arg2dict(args, excludes=None):
+def arg2dict(args, includes=None):
     kwargs = {}
-    if excludes is None:
-        excludes = []
     for arg in vars(args):
-        if arg not in excludes:
+        if includes is None or arg in includes:
             kwargs[arg] = getattr(args, arg)
     return kwargs
 

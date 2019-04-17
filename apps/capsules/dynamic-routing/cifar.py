@@ -92,7 +92,8 @@ experiment, parser = sigma.build_experiment(build_func,
 if __name__=='__main__':
     # add some option here if necessary
     # > parser.add_argument('--print', type=bool, default=True):
+    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/cifar'
     args = parser.parse_args()
-    args.checkpoint = 'cache'
-    args.log = 'cache'
+    args.checkpoint = os.path.join(exp, 'cache')
+    args.log = os.pathjoin(exp, 'cache')
     experiment(args)

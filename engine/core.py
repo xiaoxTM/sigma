@@ -30,7 +30,7 @@ def predict_op(input_shape,
                reuse=False,
                name=None,
                scope=None):
-    ops_scope, name = ops.helper.assign_scope(name, scope, 'prediction', reuse)
+    ops_scope, ltype, name = ops.helper.assign_scope(name, scope, 'prediction', reuse)
     if predop is None:
         def _linear(x, axis, name):
             return x
@@ -109,7 +109,7 @@ def predict(sess,
                                                              batch_size,
                                                              False,
                                                              nclass)
-    progressor = helper.line(iterable=None,
+    progressor = helpers.line(iterable=None,
                              epochs=None,
                              iterations=iterations,
                              timeit=True)[0]()
@@ -577,6 +577,32 @@ def build_model(inputs,
     return [inference, loss, metric]
 
 
+def build_parser():
+    parser = argparse.ArgumentParser()
+    # begin of options for training
+    parser.add_argument('--checkpoint', type=str, default=None)
+    parser.add_argument('--log', type=str, default=None)
+    parser.add_argument('--eid', type=str, default=None)
+    parser.add_argument('--address', type=str, default=None)
+    parser.add_argument('--filename', type=str, default=None)
+    #or typically : parser.address='localhost:6064'
+    parser.add_argument('--save-mode', type=str, default='all')
+    parser.add_argument('--save-target', type=str, default='loss')
+    parser.add_argument('--epochs', type=int, default=10)
+
+    parser.add_argument('--debug', type=bool, default=False)
+    parser.add_argument('--auto-timestamp', type=bool, default=False)
+    parser.add_argument('--verbose', type=bool, default=True)
+    # parser.add_argument('--shuffle', type=bool, default=True)
+    # end of options for training
+
+    # begin of options for testing
+    parser.add_argument('--batch-size', type=int, default=32)
+    # end of options for testing
+
+    return parser
+
+
 def build_experiment(build_model_fun,
                      build_reader_fun,
                      optimizer,
@@ -680,38 +706,15 @@ def build_experiment(build_model_fun,
     #----- train configuration -----#
     optimizer = ops.optimizers.get(optimizer, **optimizer_config)
 
-    parser = argparse.ArgumentParser()
-    # begin of options for training
-    parser.add_argument('--checkpoint', type=str, default=None)
-    parser.add_argument('--log', type=str, default=None)
-    parser.add_argument('--eid', type=str, default=None)
-    parser.add_argument('--address', type=str, default=None)
-    parser.add_argument('--filename', type=str, default=None)
-    #or typically : parser.address='localhost:6064'
-    parser.add_argument('--save-mode', type=str, default='all')
-    parser.add_argument('--save-target', type=str, default='loss')
-    parser.add_argument('--epochs', type=int, default=10)
-
-    parser.add_argument('--debug', type=bool, default=False)
-    parser.add_argument('--auto-timestamp', type=bool, default=False)
-    parser.add_argument('--verbose', type=bool, default=True)
-    # parser.add_argument('--shuffle', type=bool, default=True)
-    # end of options for training
-
-    # begin of options for testing
-    parser.add_argument('--batch-size', type=int, default=32)
-    # end of options for testing
-
     def _experiment(args):
         train_config = helpers.arg2dict(args,
-                                        ['verbose', 'eid', 'auto_timestamp',
-                                         'checkpoint', 'debug', 'address',
-                                         'batch_size', 'log'])
+                                        ['epochs', 'save_mode',
+                                         'save_target', 'filename'])
         test_config = helpers.arg2dict(args,
-                                       ['verbose', 'eid', 'auto_timestamp',
-                                        'checkpoint', 'debug', 'address',
-                                        'log', 'shuffle', 'save-mode', 
-                                        'save-target', 'epochs'])
+                                       ['predop', 'batch_size', 'axis',
+                                        'nclass', 'savedir', 'reuse',
+                                        'name', 'scope'])
+        print('test config:', test_config)
         # the process of training networks
         if args.verbose:
             helpers.print_args(args)
@@ -746,23 +749,22 @@ def build_experiment(build_model_fun,
         train_config_keys = train_config.keys()
         for key in ['generator', 'iterations',
                     'optimizer', 'loss', 'metric',
-                    'valid_gen', 'valid_iters',
-                    'config']:
+                    'valid_gen', 'valid_iters', 'config']:
             if key in train_config_keys:
                 print('`{}` in parser not allowed. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
         #----- check parameters not allowed for sigma.train
         for key in list(train_config_keys):
-            if key not in ['epochs', 'save_mode',
-                           'save_target',
-                           'filename']:
+            if key not in ['epochs', 'save_mode', 'save_target','filename']:
                 print('sigma.train contains no parameter `{}`. will be removed'
                       .format(colors.red(key)))
                 del train_config[key]
         #********** check filename existance if not None **********
         if expid is not None and args.filename is None:
             train_config['filename'] = expid + '.rec'
+            if args.checkpoint is not None:
+                train_config['filename'] = os.path.join(args.checkpoint, train_config['filename'])
         if train_config['filename'] is not None:
             if os.path.isfile(train_config['filename']):
                 go = input('Filename to record loss / metric exists.'
@@ -778,7 +780,7 @@ def build_experiment(build_model_fun,
             else:
                 dirname = os.path.dirname(train_config['filename'])
                 if len(dirname) != 0 and not os.path.exists(dirname):
-                    mkdir = input('Parent director {} not exists. Create? <Y/N>'
+                    mkdir = input('Parent directory {} not exists. Create? <Y/N>'
                                   .format(colors.red(dirname)))
                     if mkdir != 'Y':
                         print('OK, exit program.')
@@ -816,9 +818,9 @@ def build_experiment(build_model_fun,
               **train_config)
 
         if test_gen is not None and test_iters is not None:
-            predict(sess, inference, generator=test_gen, iterations=test_iters, checkpoints=checkpoint, **test_config)
+            predict(sess, inference, generator=test_gen, iterations=test_iters, checkpoint=checkpoint, **test_config)
 
         ops.core.close_summary_writer(writer)
         ops.core.close_session(sess)
 
-    return _experiment, parser
+    return _experiment

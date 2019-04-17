@@ -17,6 +17,8 @@ from sigma import helpers, layers, dbs
 #import inspect
 import h5py
 
+exp = '/home/xiaox/studio/exp/sigma/capsules/style-transfer'
+
 class PositiveCheckAction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
         if nargs is not None:
@@ -201,10 +203,10 @@ def evaluate(args):
                                         feed_dict={input_vgg:style_image,
                                                    input_transform:content_images
                                        })
-                os.makedirs('cache/iter/{}'.format(epoch), exist_ok=True)
+                os.makedirs('{}/cache/iter/{}'.format(exp, epoch), exist_ok=True)
                 for idx, images in enumerate(zip(content_images, _transformed.astype(np.uint8))):
-                    sm.imsave('cache/iter/{}/{}.png'
-                              .format(iteration, idx),
+                    sm.imsave('{}/cache/iter/{}/{}.png'
+                              .format(exp, iteration, idx),
                               helpers.stack(images, interval=10, value=[0,0,0]))
                 if iteration == iterations:
                     break
@@ -212,7 +214,7 @@ def evaluate(args):
             _transformed = sess.run(input_transform,
                                     feed_dict={input_vgg:style_image,
                                                input_transform:generator})
-            sm.imsave('cache/result.png',
+            sm.imsave(os.path.join(exp, 'cache/result.png'),
                       helpers.stack([generator, _transformed.astype(np.uint8)],
                                      interval=10, value=[0, 0, 0]))
         print('\n>>> DONE')

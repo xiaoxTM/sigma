@@ -3,16 +3,14 @@ import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 import sigma
 from sigma import layers, dbs, ops, engine, colors, helpers
-
+import os.path
 import numpy as np
-
 import tensorflow as tf
-
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-def build_func(inputs, labels, initializer='glorot_normal'):
+def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16):
     # inputs shape :
     #    [batch-size, rows, cols, depth]
     # ops.core.summarize('inputs', inputs)
@@ -31,7 +29,7 @@ def build_func(inputs, labels, initializer='glorot_normal'):
     # we disable routing by setting iterations to 1
     # x shape:
     #  [batch-size, nrows, ncols, 32, 8]
-    x, outshape = layers.capsules.conv2d(x, 32, 8, 9, 1,
+    x, outshape = layers.capsules.conv2d(x, 32, pdim, 9, 1,
                                          # stride=2,
                                          # activation for pre-predictions
                                          # that is, u^{hat}_{j|i}
@@ -54,7 +52,7 @@ def build_func(inputs, labels, initializer='glorot_normal'):
                              outshape[-1]])
     #  [batch_size, nrows * ncols * 32, 8]
     #=>[batch_size, 10, 16]
-    x = layers.capsules.dense(x, 10, 16, 3,
+    x = layers.capsules.dense(x, 10, ddim, 3,
                               weight_initializer=initializer)
     # ops.core.summarize('fully_connected-0', x)
     # norm the output to represent the existance probabilities
@@ -82,26 +80,35 @@ def build_func(inputs, labels, initializer='glorot_normal'):
 gpu_config = tf.ConfigProto()
 gpu_config.gpu_options.allow_growth = True
 gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
-gpu_config.gpu_options.visible_device_list = '0,1,2,3'
+# gpu_config.gpu_options.visible_device_list = '0,1,2,3'
 gpu_config.intra_op_parallelism_threads = 1
 
-# sigma.engine.set_print(True, True)
+
+sigma.engine.set_print(None)
 nclass = 10
-experiment, parser = sigma.build_experiment(build_func,
-                                            engine.io.mnist('data',
-                                                            False,
-                                                            False,
-                                                            nclass),
-                                            'AdamOptimizer',
-                                            # filename='mnist-networks.png',
-                                            batch_size=100,
-                                            # gpu_config=gpu_config,
-                                            generator_config={'nclass':nclass})
 
 
 if __name__=='__main__':
+    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
+    parser = sigma.build_parser()
+    parser.add_argument("--primary", type=int, default=8)
+    parser.add_argument("--digit", type=int, default=16)
+    parser.add_argument("--gpu", type=str, default='0')
     args = parser.parse_args()
-    args.checkpoint='cache'
+    gpu_config.gpu_options.visible_device_list=args.gpu
+    experiment = sigma.build_experiment(build_func,
+                                        engine.io.mnist('data',
+                                                        False,
+                                                        False,
+                                                        nclass),
+                                        'AdamOptimizer',
+                                        # filename='mnist-networks.png',
+                                        batch_size=100,
+                                        gpu_config=gpu_config,
+                                        model_config={'pdim':args.primary, 'ddim':args.digit},
+                                        generator_config={'nclass':nclass})
+    args.checkpoint=os.path.join(exp, 'cache')
     # args.log='cache'
-    # args.auto_timestamp = True
+    args.eid='primary-{}-digital-{}'.format(args.primary, args.digit)
+    args.auto_timestamp = True
     experiment(args)

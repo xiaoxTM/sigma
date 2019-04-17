@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .core import session, run, build_model, build_reader, train, predict, build_experiment
+from .core import session, run, build_model, build_reader, train, predict, build_experiment, build_parser
 from .io import mnist, cifar
 from ..ops.core import __backend__
 from ..layers.core import set_print, set_defaults, export_graph
