@@ -118,7 +118,7 @@ def load_weights(session):
 def load(style, content, shape):
     style_image, _ = dbs.images.load_image(style, size=shape[1:], mode='bilinear')
     if os.path.isdir(content):
-        content_images = dbs.images.generator(content, batch_size=shape[0], size=shape[1:], mode='bilinear')
+        content_images = dbs.images.make_generator_from_list(content, batch_size=shape[0], size=shape[1:], mode='bilinear')
     elif os.path.isfile(content):
         content_images, _ = dbs.images.load_image(content, size=shape[1:], mode='bilinear')
     return style_image, content_images

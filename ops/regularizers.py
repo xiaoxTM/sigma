@@ -17,7 +17,7 @@
 """
 
 import numpy as np
-from . import core
+from . import core, helper
 
 def regularize(l1=0.0, l2=0.0):
     def _regularize(x):

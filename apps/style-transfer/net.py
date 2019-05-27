@@ -100,7 +100,7 @@ def transblock(inputs, nouts, kernel=3, stride=1, deconv=False, act='relu', reus
         x = layers.actives.relu(x)
     if residual:
         x = transblock(x, nouts, kernel, stride, act=None, reuse=reuse)
-        x = layers.merge.add([inputs, x])
+        x = layers.math.add([inputs, x])
     return x
 
 

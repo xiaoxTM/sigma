@@ -1199,7 +1199,7 @@ def resize_area(images,
 
 
 #------ tensorflow lx_loss -----#
-def l2_loss(tensor, name):
+def l2_loss(tensor, name=None):
     return tf.nn.l2_loss(tensor, name)
 
 

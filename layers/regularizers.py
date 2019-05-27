@@ -25,7 +25,7 @@ def total_variation_regularize(inputs,
                                name=None,
                                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
-    return ops.regularizers.total_variation_regularizer(shape,
+    return ops.regularizers.total_variation_regularizer(input_shape,
                                                         reuse,
                                                         name,
                                                         scope)(inputs)
