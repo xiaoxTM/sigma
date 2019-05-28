@@ -100,7 +100,7 @@ def transblock(inputs, nouts, kernel=3, stride=1, deconv=False, act='relu', reus
         x = layers.actives.relu(x)
     if residual:
         x = transblock(x, nouts, kernel, stride, act=None, reuse=reuse)
-        x = layers.merge.add([inputs, x])
+        x = layers.math.add([inputs, x])
     return x
 
 
@@ -123,7 +123,7 @@ def transform(inputs, weight_path=None, reuse=False):
     x = transblock(x, base, 3, 2, True, reuse=reuse, output_shape=output_shape1)
 
     x = transblock(x, 3, 9, act=None, reuse=reuse)
-    x = layers.merge.add([layers.actives.tanh(x), inputs])
+    x = layers.math.add([layers.actives.tanh(x), inputs])
 
     return layers.actives.tanh(x) * 127.5 + 255.0 / 2.0
 

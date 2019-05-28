@@ -103,7 +103,6 @@ __colormaps__ = {'actives' : 'Magenta',
                  'other' : 'Yellow'
                  }
 
-
 def split_inputs(inputs):
     """ split inputs into two parts according to the type of inputs:
         - inputs
@@ -255,29 +254,37 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
             if isinstance(inputs, (list, tuple)):
                 if ops.helper.is_tensor(inputs[0]):
                     input_shape = [ops.core.shape(x) for x in inputs]
-                    inputname = [ops.helper.name_normalize(x.name, scope) \
-                                 for x in inputs]
+                    # input_name is a tuple of strings
+                    input_name = list(ops.helper.scope_name([x.name for x in inputs]))
                 else:
                     is_input_layer = True
-                    input_shape = [inputs]
-                    inputname = [name]
+                    # inputs is a list of int to represent the shape of input tensor
+                    input_shape = inputs
+                    # input_name is a string
+                    input_name = ops.helper.scope_name(name)
+            elif ops.helper.is_tensor(inputs):
+                input_shape = ops.core.shape(inputs)
+                # input_name is a string
+                input_name = ops.helper.scope_name(inputs.name)
             else:
-                input_shape = [ops.core.shape(inputs)]
-                inputname = [ops.helper.name_normalize(inputs.name, scope)]
+                raise TypeError('inputs must be list/tuple or Tensor. given {}'
+                                .format(type(inputs)))
             output_shape = ops.core.shape(outputs)
-            outputname = ops.helper.name_normalize(outputs.name, scope)
+            # outputname is a string
+            output_name = ops.helper.scope_name(outputs.name)
             if __graph__ is False:
                 if not is_input_layer:
-                    if len(inputname) == 1:
-                        inputname = inputname[0]
-                        input_shape = input_shape[0]
-                    input_name_str = str(inputname)
+                    # if isinstance(inputname, tuple) and len(inputname) == 1:
+                    #     inputname = inputname[0]
+                    #     input_shape = input_shape[0]
+                    # input_name_str = ops.helper.concat_scope_and_name(inputname)
                     input_shape_str = str(input_shape)
-                    print('{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}'
+                    input_name_str = str(input_name).replace("'","")
+                    print('{}{} \t=>`{}[{} | {}]{}`=> \t{}{}'
                           .format(input_name_str,
                                   colors.green(input_shape_str),
                                   colors.fg.blue, name, typename, colors.reset,
-                                  outputname, colors.red(output_shape)))
+                                  output_name, colors.red(output_shape)))
                     if __details__ is True:
                         length = len(input_name_str) + len(input_shape_str)
                         for key, value in kwargs.items():
@@ -295,14 +302,14 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     dot.set_node_defaults(shape='record')
                     __graph__ = dot
                 if is_input_layer:
-                    for iname, ishape in zip(inputname, input_shape):
+                    if isinstance(input_name, str):
+                        input_name = [input_name]
+                        input_shape = [input_shape]
+                    for iname, ishape in zip(input_name, input_shape):
                         label = '%s\n|{{%s}}' % (iname, ishape)
                         node = pydot.Node(iname, label=label)
                         __graph__.add_node(node)
                 else:
-                    ishape = input_shape
-                    if len(ishape) == 1:
-                        ishape = ishape[0]
                     if __details__ is True:
                         parameters = None
                         for key, value in kwargs.items():
@@ -315,20 +322,22 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                                 parameters = '{}\n{}:{}'.format(parameters,
                                                                 key, value)
                         label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{%s}}}' % (name,
-                                                                                  ishape,
+                                                                                  str(input_shape).replace("'",""),
                                                                                   output_shape,
                                                                                   parameters)
                     else:
                         label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (name,
-                                                                       ishape,
+                                                                       str(input_shape).replace("'",""),
                                                                        output_shape)
                     color = _layer2color(typename)
-                    __graph__.add_node(pydot.Node(outputname,
+                    __graph__.add_node(pydot.Node(output_name,
                                                   label=label,
                                                   fillcolor=color,
                                                   style='filled'))
-                    for iname in inputname:
-                        __graph__.add_edge(pydot.Edge(iname, outputname))
+                    if isinstance(input_name, str):
+                        input_name = [input_name]
+                    for iname in input_name:
+                        __graph__.add_edge(pydot.Edge(iname, output_name))
 
 
 def assign(fun, *args, **kwargs):

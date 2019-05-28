@@ -1199,7 +1199,7 @@ def resize_area(images,
 
 
 #------ tensorflow lx_loss -----#
-def l2_loss(tensor, name):
+def l2_loss(tensor, name=None):
     return tf.nn.l2_loss(tensor, name)
 
 
@@ -1330,7 +1330,7 @@ def save(session,
     if verbose:
         print('{}saving check point to {}{}{}'
                .format(colors.fg.cyan, colors.fg.red,
-                       checkpoints, colors.reset))
+                       checkpoint, colors.reset))
     saver.save(session, checkpoint, **kwargs)
     return session, saver
 

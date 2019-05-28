@@ -101,29 +101,60 @@ def feature_dims(x):
     shape.pop(0)
     return shape
 
+''' names is list of string who has form of
+    [scope]+, [layer-name, layer-type,]? variable-name
+'''
+def concat_scope_and_name(names):
+    def _concat_scope_and_name(name):
+        if not isinstance(name, list):
+            raise TypeError('name type must be list. given {}'
+                            .format(type(name)))
+        length = len(name)
+        if length < 1 or length > 4 or length == 2:
+            raise ValueError('name must have length in [3, 4] or 1, given {}'
+                             .format(length))
+        elif length == 1:
+            # name = [variable]
+            return '{}'.format(name[0])
+        elif length == 3:
+            # name = [layer-name, layer-type, variable]
+            return '{}'.format(name[0])
+        else: #length == 4
+            # name = [scope+, layer-name, layer-type, variable]
+            return '{}:{}'.format(name[0], name[1])
+    if isinstance(names, list):
+        return _concat_scope_and_name(names)
+    elif isinstance(names, tuple):
+        tuples = tuple(map(_concat_scope_and_name, names))
+        if len(tuples) == 1:
+            return tuples[0]
+        return tuples
 
-def name_normalize(names, scope=None):
-    """ normalize variable name (or say, remove variable index)
-        generally, `names` is a list of :
-            [scope/]/{layer-name/layer-type}/[{sub-spaces/}*]variable-name:index
-        return layer-name
+def split_name(names, nameonly=True):
+    """ split variable name (or say, remove variable index)
+        generally, `names` are a list of :
+            [scope/]*/layer-name/layer-type/variable-name:index
+        return scope(s), layer-name, layer-type, variable-name:index
     """
-    def _normalize(name):
+    def _split(name):
         name = name.rsplit(':', 1)[0]
-        if scope is None:
-            return name.split('/', 1)[0]
+        splits = name.rsplit('/', 3)
+        if nameonly is True:
+            return splits[-3]
         else:
-            splits = name.split('/', 2)
-            if len(splits) == 1:
-                return splits[0]
-            return splits[1]
+            return splits
     if isinstance(names, str):
-        return _normalize(names)
+        return _split(names)
     elif isinstance(names, (tuple, list, np.ndarray)):
-        return map(_normalize, names)
+        return tuple(map(_split, names))
     else:
         raise TypeError('name must be tuple/list/np.ndarray. given {}'
                         .format(type(names)))
+
+
+def scope_name(names):
+    name_lists = split_name(names, False)
+    return concat_scope_and_name(name_lists)
 
 
 """ normalize axis given tensor shape

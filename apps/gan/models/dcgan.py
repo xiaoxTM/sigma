@@ -40,14 +40,14 @@ def discriminator(nclass=10, scope='discriminator'):
         with sigma.defaults(weight_initializer=winit, padding=padding,
                             act=act, reuse=reuse, scope=scope):
             x = layers.convs.conv2d(x, 64, 5, 2, act=None, name='conv2d-1')
-            x = layers.norm.batch_norm(x, name='batchnorm-1')
+            x = layers.norms.batch_norm(x, name='batchnorm-1')
             x = layers.convs.conv2d(x, 128, 5, 2, act=None, name='conv2d-2')
-            x = layers.norm.batch_norm(x, name='batchnorm-2')
+            x = layers.norms.batch_norm(x, name='batchnorm-2')
             x = layers.base.flatten(x, name='flatten')
             x = layers.convs.dense(x, 1024, act=None, name='dense')
-            x = layers.norm.batch_norm(x, name='batchnorm-3')
+            x = layers.norms.batch_norm(x, name='batchnorm-3')
             x = layers.convs.dense(x, 1, act=None, name='regression')
-            x = layers.norm.batch_norm(x, name='batchnorm-4')
+            x = layers.norms.batch_norm(x, name='batchnorm-4')
         return x
 
     return _discriminator
@@ -71,10 +71,10 @@ def generator(ninput=100, nclass=10, scope='generator'):
                             act=act, reuse=reuse, scope=scope):
             inputs = tf.random_normal(shape, dtype=tf.float32, name='random-noise')
             x = layers.convs.dense(inputs, 7*7*128, act=None, name='dense')
-            x = layers.norm.batch_norm(x, act=act, name='batchnorm-1')
+            x = layers.norms.batch_norm(x, act=act, name='batchnorm-1')
             x = layers.base.reshape(x, (-1, 7, 7, 128))
             x = layers.convs.deconv2d(x, None, 64, 5, 2, act=None, name ='conv2d-1')
-            x = layers.norm.batch_norm(x, name='batchnorm-2')
+            x = layers.norms.batch_norm(x, name='batchnorm-2')
             x = layers.convs.deconv2d(x, None, 1, 3, 2, act='sigmoid', name='conv2d-2')
         return x
     return _generator

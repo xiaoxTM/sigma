@@ -80,7 +80,7 @@ def instance_norm(input_shape,
     act = actives.get(act)
     def _instance_norm(x):
         with ops_scope:
-            mean, variance = core.moments(x, axes, keep_dims=True)
+            mean, variance = core.moments(x, axes, keepdims=True)
             normalized = (x - mean) / core.sqrt(variance + epsilon)
             if scale is not None:
                 normalized = scale * normalized

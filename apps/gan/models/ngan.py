@@ -35,10 +35,10 @@ def save(objs, filename):
 
 def config_gpu():
     config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.intra_op_parallelism_threads = 8
-    config.gpu_options.per_process_gpu_memory_fraction = 0.8
-    config.gpu_options.visible_device_list = '1'
+    #config.gpu_options.allow_growth = True
+    #config.intra_op_parallelism_threads = 8
+    #config.gpu_options.per_process_gpu_memory_fraction = 0.8
+    #config.gpu_options.visible_device_list = '1'
     return config
 
 
@@ -106,7 +106,7 @@ def generator(ninput=99, nclass=10, scope='generator'):
             # dense(inputs, output_channels)
             # batch-size x (ninput+1) => 1024
             x = layers.convs.dense(inputs, 1024, name='dense-1')
-            # x = layers.norm.batch_norm(x, reuse=reuse, name='batchnorm-1', scope=scope)
+            # x = layers.norms.batch_norm(x, reuse=reuse, name='batchnorm-1', scope=scope)
             # batch-size x 1024 => batch-size x (7*7*128)
             x = layers.convs.dense(x, 7*7*128, name='dense-2')
             # batch-size x (7 * 7 * 128) => batch-szie x 7 x 7 x 128
@@ -127,68 +127,64 @@ def generator(ninput=99, nclass=10, scope='generator'):
 def build(ginputs, dshape, nclass=10, batch_size=256):
     discriminate = discriminator()
     generate     = generator(ginputs)
-    with tf.name_scope('generator'):
-        fdata = generate(shape=[batch_size, ginputs])
-        noise = tf.placeholder(tf.float32, shape=[batch_size, ginputs],
-                               name='noise')
-        ndata = generate(noise=noise, reuse=True)
-    with tf.name_scope('discriminator'):
-        rdata = tf.placeholder(tf.float32, shape=[batch_size, *dshape],
-                               name='feed-data')
-        freg = discriminate(fdata)
+    fdata = generate(shape=[batch_size, ginputs])
+    noise = tf.placeholder(tf.float32, shape=[batch_size, ginputs],
+                           name='noise')
+    ndata = generate(noise=noise, reuse=True)
+    rdata = tf.placeholder(tf.float32, shape=[batch_size, *dshape],
+                           name='feed-data')
+    freg = discriminate(fdata)
 
-    with tf.name_scope('optimizer'):
-        with tf.name_scope('loss'):
-            # discriminator trys to recoginse real data or generated data
-            # reg_rloss = layers.losses.bce(rreg, tf.ones_like(rreg))
+    # discriminator trys to recoginse real data or generated data
+    # reg_rloss = layers.losses.bce(rreg, tf.ones_like(rreg))
 
-            # blend real data with fake data (generated data)
-            alpha = tf.constant(value=0.5, shape=(batch_size, 1),
-                                dtype=tf.float32)
-            blabels = tf.ones_like(alpha)
-            alpha = tf.reshape(alpha, [batch_size] + [1] * len(rdata.get_shape()
-                                                              .as_list()[1:]))
-            bdata = alpha * rdata + (1-alpha) * fdata
-            adata = alpha * rdata + (1-alpha) * ndata
-            breg = discriminate(bdata, reuse=True)
+    # blend real data with fake data (generated data)
+    alpha = tf.constant(value=0.5, shape=(batch_size, 1),
+                        dtype=tf.float32)
+    blabels = tf.ones_like(alpha)
+    alpha = tf.reshape(alpha, [batch_size] + [1] * len(rdata.get_shape()
+                                                      .as_list()[1:]))
+    bdata = alpha * rdata + (1-alpha) * fdata
+    adata = alpha * rdata + (1-alpha) * ndata
+    breg = discriminate(bdata, reuse=True)
 
-            reg_bloss = layers.losses.bce(breg, blabels)
-            reg_floss = layers.losses.bce(freg, tf.zeros_like(freg))
-            dloss = reg_floss + reg_bloss
-            gloss = layers.losses.bce(freg, tf.ones_like(freg))
+    reg_bloss = layers.losses.bce([breg, blabels])
+    reg_floss = layers.losses.bce([freg, tf.zeros_like(freg)])
+    dloss = reg_floss + reg_bloss
+    gloss = layers.losses.bce([freg, tf.ones_like(freg)])
 
-        gparams = tf.get_collection('generator')
-        if len(gparams) == 0:
-            print('ERROR: generator has no parameters to optimize. \
-                  make sure you set `scope` to layers with trainable parameters')
-        print('parameters for generator training')
-        for gp in gparams:
-            print('    ', gp.name, gp.get_shape().as_list())
-        dparams = tf.get_collection('discriminator')
-        if len(dparams) == 0:
-            print('ERROR: discriminator has no parameters to optimize.\
-                  make sure you set `scope` to layers with trainable parameters')
-        print('parameters for discriminator training')
-        for dp in dparams:
-            print('    ', dp.name, dp.get_shape().as_list())
+    gparams = tf.get_collection('generator')
+    if len(gparams) == 0:
+        print('ERROR: generator has no parameters to optimize. \
+              make sure you set `scope` to layers with trainable parameters')
+    #print('parameters for generator training')
+    #for gp in gparams:
+    #    print('    ', gp.name, gp.get_shape().as_list())
+    dparams = tf.get_collection('discriminator')
+    if len(dparams) == 0:
+        print('ERROR: discriminator has no parameters to optimize.\
+              make sure you set `scope` to layers with trainable parameters')
+    #print('parameters for discriminator training')
+    #for dp in dparams:
+    #    print('    ', dp.name, dp.get_shape().as_list())
 
-        doptimizer = tf.train.AdamOptimizer(learning_rate=0.0001,
-                                            beta1=0.5, beta2=0.9
-                                           ).minimize(dloss, var_list=dparams,
-                                                      name='dgrad')
-        goptimizer = tf.train.AdamOptimizer(learning_rate=0.0001,
-                                            beta1=0.5, beta2=0.9
-                                           ).minimize(gloss, var_list=gparams,
-                                                      name='ggrad')
+    doptimizer = tf.train.AdamOptimizer(learning_rate=0.0001,
+                                        beta1=0.5, beta2=0.9
+                                       ).minimize(dloss, var_list=dparams,
+                                                  name='dgrad')
+    goptimizer = tf.train.AdamOptimizer(learning_rate=0.0001,
+                                        beta1=0.5, beta2=0.9
+                                       ).minimize(gloss, var_list=gparams,
+                                                  name='ggrad')
     options = Options(rdata, fdata, bdata, ndata, adata, noise, dloss, gloss)
     return goptimizer, doptimizer, options
 
 
 def valid(session, fdata, bdata, nclass=10):
-    logs = 'exp/logs/mnist/acgan/tensorboard'
-    check_points = 'exp/check-points/mnist/acgan/'
+    logs = 'exp/logs/mnist/ngan/tensorboard'
+    check_points = 'exp/check-points/mnist/ngan/'
     ddir = '/home/xiaox/studio/db/mnist'
-    log_images = 'exp/logs/mnist/acgan/images'
+    log_images = 'exp/logs/mnist/ngan/images'
 
     # epoch per save
     eps = 100
@@ -220,7 +216,7 @@ def valid(session, fdata, bdata, nclass=10):
 
 def train(session, goptim, doptim, options,
           batch_size=256, nclass=10,
-          epochs=100000, critic_iters=100):
+          epochs=100000, critic_iters=3):
 
     logs = 'exp/logs/mnist/acgan/tensorboard'
     check_points = 'exp/check-points/mnist/acgan/'
@@ -247,7 +243,7 @@ def train(session, goptim, doptim, options,
                          ckpt.model_checkpoint_path, colors.reset))
             saver.restore(session, ckpt.model_checkpoint_path)
 
-    database = dbs.mnist.sampler(ddir, True, batch_size)
+    database = dbs.images.mnist.sampler(ddir, True, batch_size)
     rsample, _ = next(database)
     noise = np.random.normal(0, 1, size=options.noise.get_shape().as_list())
     ax = None
@@ -257,8 +253,8 @@ def train(session, goptim, doptim, options,
         ndata, adata = session.run([options.ndata, options.adata],
                                    feed_dict={options.rdata:rsample,
                                               options.noise:noise})
-        ax = tsne.plot_data([rsample, ndata, adata],
-                            'exp/tsne/{}.png'.format(epoch), 0, ax)
+        # ax = tsne.plot_data([rsample, ndata, adata],
+        #                     'exp/tsne/{}.png'.format(epoch), 0, ax)
 
         # train discriminator
         # status.is_training = True
@@ -284,8 +280,8 @@ def train(session, goptim, doptim, options,
         # evaluating distributions after generator training
         ndata = session.run(options.ndata,
                             feed_dict={options.noise:noise})
-        ax = tsne.plot_data([rsample, ndata, adata],
-                            'exp/tsne/{}.png'.format(epoch), 1, ax)
+        # ax = tsne.plot_data([rsample, ndata, adata],
+        #                     'exp/tsne/{}.png'.format(epoch), 1, ax)
 
         # save to check-point and log images
         if epoch % eps == 0 and check_points is not None:
@@ -305,13 +301,15 @@ def train(session, goptim, doptim, options,
 
 
 def run(ginputs, dshape, is_train=True, batch_size=256):
+    # sigma.engine.set_print(True, False)
     goptim, doptim, options = build(ginputs, dshape, 10, batch_size)
+    # sigma.layers.export_graph("ngan-model.png")
     session = tf.Session(config=config_gpu())
 
     session.run(tf.global_variables_initializer())
 
     if is_train:
         train(session, goptim, doptim, options, epochs=10000,
-              batch_size=batch_size, critic_iters=5)
+              batch_size=batch_size, critic_iters=3)
     else:
         valid(session, options.fdata)
