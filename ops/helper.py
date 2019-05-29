@@ -101,6 +101,19 @@ def feature_dims(x):
     shape.pop(0)
     return shape
 
+def split_scope(name):
+    def _split_scope(n):
+        scope = n.rsplit(':', 1)
+        if len(scope) == 2:
+            scope = scope[0]
+        else:
+            scope = 'None'
+        return scope
+    if isinstance(name, str):
+        return _split_scope(name)
+    elif isinstance(name, (tuple, list)):
+        return list(map(_split_scope, name))
+
 ''' names is list of string who has form of
     [scope]+, [layer-name, layer-type,]? variable-name
 '''

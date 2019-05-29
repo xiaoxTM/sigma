@@ -73,6 +73,7 @@ __layers__ = {'actives': ['crelu',
                        'norm',
                        'maskout'],
               'convs': ['fully_conv',
+                        'fully_connected',
                         'dense',
                         'dot',
                         'conv1d',
@@ -235,8 +236,29 @@ def export_graph(filename, ext=None):
     __graph__.write(filename, format=ext)
 
 
+def graph_has_node(graph, name):
+    if isinstance(graph, bool):
+        return False
+    if isinstance(name, (tuple, list)):
+        return False
+    name = name.replace(':', '-')
+    if len(graph.get_node(name)) == 0:
+        return False
+    return True
+
+def graph_has_edge(graph, input_name, output_name):
+    if isinstance(graph, bool):
+        return False
+    if isinstance(input_name, (tuple, list)):
+        return False
+    input_name = input_name.replace(':', '-')
+    output_name = output_name.replace(':', '-')
+    if len(graph.get_edge(input_name, output_name)) == 0:
+        return False
+    return True
+
 """ if not reuse:
-        print('{}{}{} \t\t=>`[{} | {}]`=> \t\t{}{}{}'
+        print('{}{}{} \t=>`[{} | {}]`=> \t{}{}{}'
               .format(colors.fg.green, input_shape, colors.reset,
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
@@ -247,31 +269,32 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     # //FUTURE: print details of each layer. e.g., parameters of each layer. For graph ONLY
     global __graph__
     if __graph__ is not None:
-        if not reuse:
-            is_input_layer = False
-            if name is None:
-                raise ValueError('name is not given')
-            if isinstance(inputs, (list, tuple)):
-                if ops.helper.is_tensor(inputs[0]):
-                    input_shape = [ops.core.shape(x) for x in inputs]
-                    # input_name is a tuple of strings
-                    input_name = list(ops.helper.scope_name([x.name for x in inputs]))
-                else:
-                    is_input_layer = True
-                    # inputs is a list of int to represent the shape of input tensor
-                    input_shape = inputs
-                    # input_name is a string
-                    input_name = ops.helper.scope_name(name)
-            elif ops.helper.is_tensor(inputs):
-                input_shape = ops.core.shape(inputs)
-                # input_name is a string
-                input_name = ops.helper.scope_name(inputs.name)
+        is_input_layer = False
+        if name is None:
+            raise ValueError('name is not given')
+        if isinstance(inputs, (list, tuple)):
+            if ops.helper.is_tensor(inputs[0]):
+                input_shape = [ops.core.shape(x) for x in inputs]
+                # input_name is a tuple of strings
+                input_name = list(ops.helper.scope_name([x.name for x in inputs]))
             else:
-                raise TypeError('inputs must be list/tuple or Tensor. given {}'
-                                .format(type(inputs)))
+                is_input_layer = True
+                # inputs is a list of int to represent the shape of input tensor
+                input_shape = inputs
+                # input_name is a string
+                input_name = ops.helper.scope_name(name)
+        elif ops.helper.is_tensor(inputs):
+            input_shape = ops.core.shape(inputs)
+            # input_name is a string
+            input_name = ops.helper.scope_name(inputs.name)
+        else:
+            raise TypeError('inputs must be list/tuple or Tensor. given {}'
+                            .format(type(inputs)))
+        # outputname is a string
+        output_name = ops.helper.scope_name(outputs.name)
+        has_edge = graph_has_edge(__graph__, input_name, output_name)
+        if not reuse or not has_edge:
             output_shape = ops.core.shape(outputs)
-            # outputname is a string
-            output_name = ops.helper.scope_name(outputs.name)
             if __graph__ is False:
                 if not is_input_layer:
                     # if isinstance(inputname, tuple) and len(inputname) == 1:
@@ -301,43 +324,61 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     dot.set('concentrate', True)
                     dot.set_node_defaults(shape='record')
                     __graph__ = dot
+                input_scope = str(ops.helper.split_scope(input_name)).replace("'","")
                 if is_input_layer:
                     if isinstance(input_name, str):
                         input_name = [input_name]
                         input_shape = [input_shape]
                     for iname, ishape in zip(input_name, input_shape):
-                        label = '%s\n|{{%s}}' % (iname, ishape)
+                        iname = iname.replace(':', '-')
+                        label = '%s\n|{{%s}}|{{%s}}' % (iname, ishape, input_scope)
                         node = pydot.Node(iname, label=label)
                         __graph__.add_node(node)
                 else:
+                    output_scope = str(ops.helper.split_scope(output_name)).replace("'","")
                     if __details__ is True:
+                        # input_scope = ops.helper.split_scope(input_name)
+                        # output_scope = ops.helper.split_scope(output_name)
+                        # if isinstance(input_scope, str):
+                        #     input_scope = [input_scope]
                         parameters = None
                         for key, value in kwargs.items():
                             value = print_value(value)
                             # get rid of '<' and '>' otherwise can not print parameters
-                            value = value.replace('<', '[').replace('>', ']')
+                            value = value.replace('<', '[').replace('>', ']').replace("'","")
                             if parameters is None:
                                 parameters = '{}:{}'.format(key, value)
                             else:
                                 parameters = '{}\n{}:{}'.format(parameters,
                                                                 key, value)
-                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{%s}}}' % (name,
+                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{}|{}}|{{%s}}}' % (name,
                                                                                   str(input_shape).replace("'",""),
                                                                                   output_shape,
+                                                                                  input_scope,
+                                                                                  output_scope,
                                                                                   parameters)
                     else:
-                        label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (name,
+                        label = '%s\n|{input:|output:}|{{%s}|{%s}}|{{%s}|{%s}}' % (name,
                                                                        str(input_shape).replace("'",""),
-                                                                       output_shape)
+                                                                       output_shape,
+                                                                       input_scope,
+                                                                       output_scope)
                     color = _layer2color(typename)
-                    __graph__.add_node(pydot.Node(output_name,
-                                                  label=label,
-                                                  fillcolor=color,
-                                                  style='filled'))
+                    output_name = output_name.replace(':', '-')
+                    if not graph_has_node(__graph__, output_name):
+                        __graph__.add_node(pydot.Node(output_name,
+                                                      label=label,
+                                                      fillcolor=color,
+                                                      style='filled'))
                     if isinstance(input_name, str):
                         input_name = [input_name]
-                    for iname in input_name:
-                        __graph__.add_edge(pydot.Edge(iname, output_name))
+                        input_shape = [input_shape]
+                    for iname, ishape in zip(input_name, input_shape):
+                        iname = iname.replace(':', '-')
+                        if reuse and not has_edge:
+                            __graph__.add_edge(pydot.Edge(iname, output_name, style='dashed'))
+                        else:
+                            __graph__.add_edge(pydot.Edge(iname, output_name))
 
 
 def assign(fun, *args, **kwargs):
@@ -348,28 +389,30 @@ def assign(fun, *args, **kwargs):
         kwargs[items[idx][0]] = arg
     ctx_keys = _CONTEXT_DEFAULTS_.keys()
     for name, parameter in items:
-        if name not in kwargs.keys():
-            # if parameter and the corresponding function in context
-            # print('context keys:', ctx_keys)
-            if name in ctx_keys:
-                lists = _CONTEXT_DEFAULTS_[name]
-                # print('lists:', lists)
-                found = False
-                # find fron context traversely
-                for (v,funcs) in lists:
-                    if len(funcs) == 0 or signature in funcs:
-                        kwargs[name] = v
-                        found = True
-                        break
-                if not found:
+        if parameter.kind != parameter.VAR_KEYWORD \
+           and parameter.kind != parameter.VAR_POSITIONAL:
+            if name not in kwargs.keys():
+                # if parameter and the corresponding function in context
+                # print('context keys:', ctx_keys)
+                if name in ctx_keys:
+                    lists = _CONTEXT_DEFAULTS_[name]
+                    # print('lists:', lists)
+                    found = False
+                    # find from context traversely
+                    for (v,funcs) in lists:
+                        if len(funcs) == 0 or signature in funcs:
+                            kwargs[name] = v
+                            found = True
+                            break
+                    if not found:
+                        if parameter.default is parameter.empty:
+                            raise LookupError('`{}` requires value.'
+                                              .format(name))
+                        kwargs[name] = parameter.default
+                else:
                     if parameter.default is parameter.empty:
-                        raise LookupError('`{}` requires value.'
-                                          .format(name))
+                        raise LookupError('`{}` requires value.'.format(name))
                     kwargs[name] = parameter.default
-            else:
-                if parameter.default is parameter.empty:
-                    raise LookupError('`{}` requires value.'.format(name))
-                kwargs[name] = parameter.default
     return kwargs
 
 

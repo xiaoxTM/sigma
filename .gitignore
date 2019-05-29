@@ -100,6 +100,8 @@ ENV/
 # mypy
 .mypy_cache/
 
+*.png
+
 clean
 
 cache

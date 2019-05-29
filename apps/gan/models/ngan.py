@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 import sigma
-from sigma import layers, colors, dbs, status
+from sigma import layers, colors, dbs, status, ops
 import os.path
 import numpy as np
 import scipy.misc as sm
@@ -95,8 +95,12 @@ def generator(ninput=99, nclass=10, scope='generator'):
             #     batch-size x ninput
             if noise is None:
                 if shape is not None:
-                    inputs = tf.random_uniform(shape, 0, 1, dtype=tf.float32,
-                                              name='random-noise')
+                    inputs = layers.base.random_spec(shape,
+                                                     dtype=tf.float32,
+                                                     type='random_uniform',
+                                                     name='random-noise',
+                                                     minval=0,
+                                                     maxval=1)
                 else:
                     raise ValueError('cannot feed generator with'
                                      'none shape and none noise')
@@ -128,11 +132,10 @@ def build(ginputs, dshape, nclass=10, batch_size=256):
     discriminate = discriminator()
     generate     = generator(ginputs)
     fdata = generate(shape=[batch_size, ginputs])
-    noise = tf.placeholder(tf.float32, shape=[batch_size, ginputs],
-                           name='noise')
+    noise = layers.base.input_spec([batch_size, ginputs], tf.float32,
+                                   name='noise')
     ndata = generate(noise=noise, reuse=True)
-    rdata = tf.placeholder(tf.float32, shape=[batch_size, *dshape],
-                           name='feed-data')
+    rdata = layers.base.input_spec([batch_size, *dshape], tf.float32, name='feed-data')
     freg = discriminate(fdata)
 
     # discriminator trys to recoginse real data or generated data
@@ -141,17 +144,18 @@ def build(ginputs, dshape, nclass=10, batch_size=256):
     # blend real data with fake data (generated data)
     alpha = tf.constant(value=0.5, shape=(batch_size, 1),
                         dtype=tf.float32)
-    blabels = tf.ones_like(alpha)
+    blabels = layers.base.random_spec([batch_size, 1], tf.float32, 'ones', name='input_label-ones-0')
     alpha = tf.reshape(alpha, [batch_size] + [1] * len(rdata.get_shape()
                                                       .as_list()[1:]))
-    bdata = alpha * rdata + (1-alpha) * fdata
+    bdata = layers.math.add([rdata, fdata], weights=[alpha, 1-alpha])
+    # bdata = alpha * rdata + (1-alpha) * fdata
     adata = alpha * rdata + (1-alpha) * ndata
     breg = discriminate(bdata, reuse=True)
 
     reg_bloss = layers.losses.bce([breg, blabels])
-    reg_floss = layers.losses.bce([freg, tf.zeros_like(freg)])
+    reg_floss = layers.losses.bce([freg, layers.base.random_spec(ops.core.shape(freg), tf.float32, 'zeros', name='input_label-zeros')])
     dloss = reg_floss + reg_bloss
-    gloss = layers.losses.bce([freg, tf.ones_like(freg)])
+    gloss = layers.losses.bce([freg, layers.base.random_spec(ops.core.shape(freg), tf.float32, 'ones', name='input_label-ones-1')])
 
     gparams = tf.get_collection('generator')
     if len(gparams) == 0:
@@ -301,15 +305,15 @@ def train(session, goptim, doptim, options,
 
 
 def run(ginputs, dshape, is_train=True, batch_size=256):
-    # sigma.engine.set_print(True, False)
+    sigma.engine.set_print(True, False)
     goptim, doptim, options = build(ginputs, dshape, 10, batch_size)
-    # sigma.layers.export_graph("ngan-model.png")
-    session = tf.Session(config=config_gpu())
-
-    session.run(tf.global_variables_initializer())
-
-    if is_train:
-        train(session, goptim, doptim, options, epochs=10000,
-              batch_size=batch_size, critic_iters=3)
-    else:
-        valid(session, options.fdata)
+    sigma.engine.export_graph("ngan-model.png")
+    # session = tf.Session(config=config_gpu())
+    #
+    # session.run(tf.global_variables_initializer())
+    #
+    # if is_train:
+    #     train(session, goptim, doptim, options, epochs=10000,
+    #           batch_size=batch_size, critic_iters=1)
+    # else:
+    #     valid(session, options.fdata)
