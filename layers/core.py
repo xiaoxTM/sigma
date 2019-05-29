@@ -73,6 +73,7 @@ __layers__ = {'actives': ['crelu',
                        'norm',
                        'maskout'],
               'convs': ['fully_conv',
+                        'fully_connected',
                         'dense',
                         'dot',
                         'conv1d',
@@ -102,7 +103,6 @@ __colormaps__ = {'actives' : 'Magenta',
                  'pools' : 'Gold',
                  'other' : 'Yellow'
                  }
-
 
 def split_inputs(inputs):
     """ split inputs into two parts according to the type of inputs:
@@ -236,8 +236,29 @@ def export_graph(filename, ext=None):
     __graph__.write(filename, format=ext)
 
 
+def graph_has_node(graph, name):
+    if isinstance(graph, bool):
+        return False
+    if isinstance(name, (tuple, list)):
+        return False
+    name = name.replace(':', '-')
+    if len(graph.get_node(name)) == 0:
+        return False
+    return True
+
+def graph_has_edge(graph, input_name, output_name):
+    if isinstance(graph, bool):
+        return False
+    if isinstance(input_name, (tuple, list)):
+        return False
+    input_name = input_name.replace(':', '-')
+    output_name = output_name.replace(':', '-')
+    if len(graph.get_edge(input_name, output_name)) == 0:
+        return False
+    return True
+
 """ if not reuse:
-        print('{}{}{} \t\t=>`[{} | {}]`=> \t\t{}{}{}'
+        print('{}{}{} \t=>`[{} | {}]`=> \t{}{}{}'
               .format(colors.fg.green, input_shape, colors.reset,
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
@@ -248,36 +269,45 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     # //FUTURE: print details of each layer. e.g., parameters of each layer. For graph ONLY
     global __graph__
     if __graph__ is not None:
-        if not reuse:
-            is_input_layer = False
-            if name is None:
-                raise ValueError('name is not given')
-            if isinstance(inputs, (list, tuple)):
-                if ops.helper.is_tensor(inputs[0]):
-                    input_shape = [ops.core.shape(x) for x in inputs]
-                    inputname = [ops.helper.name_normalize(x.name, scope) \
-                                 for x in inputs]
-                else:
-                    is_input_layer = True
-                    input_shape = [inputs]
-                    inputname = [name]
+        is_input_layer = False
+        if name is None:
+            raise ValueError('name is not given')
+        if isinstance(inputs, (list, tuple)):
+            if ops.helper.is_tensor(inputs[0]):
+                input_shape = [ops.core.shape(x) for x in inputs]
+                # input_name is a tuple of strings
+                input_name = list(ops.helper.scope_name([x.name for x in inputs]))
             else:
-                input_shape = [ops.core.shape(inputs)]
-                inputname = [ops.helper.name_normalize(inputs.name, scope)]
+                is_input_layer = True
+                # inputs is a list of int to represent the shape of input tensor
+                input_shape = inputs
+                # input_name is a string
+                input_name = ops.helper.scope_name(name)
+        elif ops.helper.is_tensor(inputs):
+            input_shape = ops.core.shape(inputs)
+            # input_name is a string
+            input_name = ops.helper.scope_name(inputs.name)
+        else:
+            raise TypeError('inputs must be list/tuple or Tensor. given {}'
+                            .format(type(inputs)))
+        # outputname is a string
+        output_name = ops.helper.scope_name(outputs.name)
+        has_edge = graph_has_edge(__graph__, input_name, output_name)
+        if not reuse or not has_edge:
             output_shape = ops.core.shape(outputs)
-            outputname = ops.helper.name_normalize(outputs.name, scope)
             if __graph__ is False:
                 if not is_input_layer:
-                    if len(inputname) == 1:
-                        inputname = inputname[0]
-                        input_shape = input_shape[0]
-                    input_name_str = str(inputname)
+                    # if isinstance(inputname, tuple) and len(inputname) == 1:
+                    #     inputname = inputname[0]
+                    #     input_shape = input_shape[0]
+                    # input_name_str = ops.helper.concat_scope_and_name(inputname)
                     input_shape_str = str(input_shape)
-                    print('{}{} \t\t=>`{}[{} | {}]{}`=> \t\t{}{}'
+                    input_name_str = str(input_name).replace("'","")
+                    print('{}{} \t=>`{}[{} | {}]{}`=> \t{}{}'
                           .format(input_name_str,
                                   colors.green(input_shape_str),
                                   colors.fg.blue, name, typename, colors.reset,
-                                  outputname, colors.red(output_shape)))
+                                  output_name, colors.red(output_shape)))
                     if __details__ is True:
                         length = len(input_name_str) + len(input_shape_str)
                         for key, value in kwargs.items():
@@ -294,41 +324,61 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     dot.set('concentrate', True)
                     dot.set_node_defaults(shape='record')
                     __graph__ = dot
+                input_scope = str(ops.helper.split_scope(input_name)).replace("'","")
                 if is_input_layer:
-                    for iname, ishape in zip(inputname, input_shape):
-                        label = '%s\n|{{%s}}' % (iname, ishape)
+                    if isinstance(input_name, str):
+                        input_name = [input_name]
+                        input_shape = [input_shape]
+                    for iname, ishape in zip(input_name, input_shape):
+                        iname = iname.replace(':', '-')
+                        label = '%s\n|{{%s}}|{{%s}}' % (iname, ishape, input_scope)
                         node = pydot.Node(iname, label=label)
                         __graph__.add_node(node)
                 else:
-                    ishape = input_shape
-                    if len(ishape) == 1:
-                        ishape = ishape[0]
+                    output_scope = str(ops.helper.split_scope(output_name)).replace("'","")
                     if __details__ is True:
+                        # input_scope = ops.helper.split_scope(input_name)
+                        # output_scope = ops.helper.split_scope(output_name)
+                        # if isinstance(input_scope, str):
+                        #     input_scope = [input_scope]
                         parameters = None
                         for key, value in kwargs.items():
                             value = print_value(value)
                             # get rid of '<' and '>' otherwise can not print parameters
-                            value = value.replace('<', '[').replace('>', ']')
+                            value = value.replace('<', '[').replace('>', ']').replace("'","")
                             if parameters is None:
                                 parameters = '{}:{}'.format(key, value)
                             else:
                                 parameters = '{}\n{}:{}'.format(parameters,
                                                                 key, value)
-                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{%s}}}' % (name,
-                                                                                  ishape,
+                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{}|{}}|{{%s}}}' % (name,
+                                                                                  str(input_shape).replace("'",""),
                                                                                   output_shape,
+                                                                                  input_scope,
+                                                                                  output_scope,
                                                                                   parameters)
                     else:
-                        label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (name,
-                                                                       ishape,
-                                                                       output_shape)
+                        label = '%s\n|{input:|output:}|{{%s}|{%s}}|{{%s}|{%s}}' % (name,
+                                                                       str(input_shape).replace("'",""),
+                                                                       output_shape,
+                                                                       input_scope,
+                                                                       output_scope)
                     color = _layer2color(typename)
-                    __graph__.add_node(pydot.Node(outputname,
-                                                  label=label,
-                                                  fillcolor=color,
-                                                  style='filled'))
-                    for iname in inputname:
-                        __graph__.add_edge(pydot.Edge(iname, outputname))
+                    output_name = output_name.replace(':', '-')
+                    if not graph_has_node(__graph__, output_name):
+                        __graph__.add_node(pydot.Node(output_name,
+                                                      label=label,
+                                                      fillcolor=color,
+                                                      style='filled'))
+                    if isinstance(input_name, str):
+                        input_name = [input_name]
+                        input_shape = [input_shape]
+                    for iname, ishape in zip(input_name, input_shape):
+                        iname = iname.replace(':', '-')
+                        if reuse and not has_edge:
+                            __graph__.add_edge(pydot.Edge(iname, output_name, style='dashed'))
+                        else:
+                            __graph__.add_edge(pydot.Edge(iname, output_name))
 
 
 def assign(fun, *args, **kwargs):
@@ -339,28 +389,30 @@ def assign(fun, *args, **kwargs):
         kwargs[items[idx][0]] = arg
     ctx_keys = _CONTEXT_DEFAULTS_.keys()
     for name, parameter in items:
-        if name not in kwargs.keys():
-            # if parameter and the corresponding function in context
-            # print('context keys:', ctx_keys)
-            if name in ctx_keys:
-                lists = _CONTEXT_DEFAULTS_[name]
-                # print('lists:', lists)
-                found = False
-                # find fron context traversely
-                for (v,funcs) in lists:
-                    if len(funcs) == 0 or signature in funcs:
-                        kwargs[name] = v
-                        found = True
-                        break
-                if not found:
+        if parameter.kind != parameter.VAR_KEYWORD \
+           and parameter.kind != parameter.VAR_POSITIONAL:
+            if name not in kwargs.keys():
+                # if parameter and the corresponding function in context
+                # print('context keys:', ctx_keys)
+                if name in ctx_keys:
+                    lists = _CONTEXT_DEFAULTS_[name]
+                    # print('lists:', lists)
+                    found = False
+                    # find from context traversely
+                    for (v,funcs) in lists:
+                        if len(funcs) == 0 or signature in funcs:
+                            kwargs[name] = v
+                            found = True
+                            break
+                    if not found:
+                        if parameter.default is parameter.empty:
+                            raise LookupError('`{}` requires value.'
+                                              .format(name))
+                        kwargs[name] = parameter.default
+                else:
                     if parameter.default is parameter.empty:
-                        raise LookupError('`{}` requires value.'
-                                          .format(name))
+                        raise LookupError('`{}` requires value.'.format(name))
                     kwargs[name] = parameter.default
-            else:
-                if parameter.default is parameter.empty:
-                    raise LookupError('`{}` requires value.'.format(name))
-                kwargs[name] = parameter.default
     return kwargs
 
 

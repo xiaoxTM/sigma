@@ -54,13 +54,13 @@ class HelperTest(unittest.TestCase):
             self.assertEqual(helper.depth(x), 4)
 
 
-    def test_name_normalize(self):
+    def test_split_name(self):
         with self.subTest(idx=17):
-            self.assertRaises(TypeError, lambda: helper.name_normalize(3.0))
+            self.assertRaises(TypeError, lambda: helper.split_name(3.0))
         with self.subTest(idx=18):
-            self.assertEqual(helper.name_normalize('dense-1/dense/routing/logits-1'), 'dense-1')
+            self.assertEqual(helper.split_name('dense/dense/routing/logits:0', False), ['dense', 'dense', 'routing', 'logits'])
         with self.subTest(idx=19):
-            self.assertEqual(helper.name_normalize('test/dense-1/dense/routing/logits-1', 'test'), 'dense-1')
+            self.assertEqual(helper.split_name('test/dense/dense/routing/logits:0'), 'dense')
 
 
     def test_normalize_axes(self):

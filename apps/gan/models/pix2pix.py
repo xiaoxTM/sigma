@@ -18,17 +18,17 @@ def block(x, filters, rate=None, up=False, reuse=False, name=None, scope=None):
         x = layers.convs.deconv2d(x, None, filters, 4, 2, padding='SAME',
                                   reuse=reuse, name='{}-deconv'.format(name),
                                   scope=scope)
-        x = layers.norm.batch_norm(x, reuse=reuse, scope=scope,
+        x = layers.norms.batch_norm(x, reuse=reuse, scope=scope,
                                  name='{}-bnorm'.format(name))
     else:
         x = layers.convs.conv2d(x, filters, 4, 2, reuse=reuse, padding='SAME',
                                 name='{}-conv'.format(name), scope=scope)
         # if not the first layer of encoder
         if filters != 64:
-            x = layers.norm.batch_norm(x, reuse=reuse, scope=scope,
+            x = layers.norms.batch_norm(x, reuse=reuse, scope=scope,
                                        name='{}-bnorm'.format(name))
     if rate:
-        x = layers.norm.dropout(x, rate, name='{}-dropout'.format(name),
+        x = layers.norms.dropout(x, rate, name='{}-dropout'.format(name),
                                 reuse=reuse, scope=scope)
     if up: # if decoder
         x = layers.actives.relu(x, name='{}-relu'.format(name))

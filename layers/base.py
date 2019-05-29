@@ -158,6 +158,7 @@ def input_spec(inputs,
         due to core.layer spec, the first
         parameter must be `inputs`.
         therefore use `inputs` instead of `input_shape`
+        for naming parameter
     """
     ops.helper.check_input_shape(inputs)
     ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
@@ -184,3 +185,21 @@ def label_spec(inputs,
                                                                'labels',
                                                                reuse)
     return ops.core.placeholder(dtype, inputs, name)
+
+
+@core.layer
+def random_spec(inputs,
+                dtype=ops.core.float32,
+                type='random_uniform',
+                reuse=False,
+                name=None,
+                scope=None,
+                **kwargs):
+    ops.helper.check_input_shape(inputs)
+    ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
+                                                               scope,
+                                                               'random',
+                                                               reuse)
+    kwargs['name'] = name
+    initializer = ops.initializers.get(type, **kwargs)
+    return initializer(inputs, dtype)

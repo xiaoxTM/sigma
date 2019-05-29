@@ -29,7 +29,7 @@ from . import losses
 from . import metrics
 from . import core
 from . import capsules
-from .core import defaults
+from .core import defaults, export_graph
 
 
 def get():

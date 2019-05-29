@@ -51,7 +51,7 @@ def build_parser():
     parser.add_argument('--train', type=bool, default=True)
     parser.add_argument('--weight-path', type=str, action=PathCheckAction, default=None)
     parser.add_argument('--epochs', type=int, action=PositiveCheckAction, default=2)
-    parser.add_argument('--batch-size', type=int, action=PositiveCheckAction, default=1)
+    parser.add_argument('--batch-size', type=int, action=PositiveCheckAction, default=10)
     parser.add_argument('--content-weight', type=float, action=PositiveCheckAction, default=7.5e0)
     parser.add_argument('--style-weight', type=float, action=PositiveCheckAction, default=1e2)
     parser.add_argument('--tv-weight', type=float, action=PositiveCheckAction, default=2e2)
@@ -136,7 +136,7 @@ def train(args):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
-    config.gpu_options.visible_device_list = '3'
+    config.gpu_options.visible_device_list = '6'
     config.intra_op_parallelism_threads = 8
     style_image, (generator, _, iterations) = load(args.style, args.content, input_shape)
     generator = generator('input', 'label')
@@ -162,7 +162,7 @@ def train(args):
                 #writer.add_summary(_summarize, global_step=(epoch*iterations+iteration))
                 print('\rIter:{:4d}/{:4d}\t total:{:.4f}\t--style:{:.4f}\t--content:{:.4f}\t--tv:{:.4f}'
                       .format(iteration, iterations, _losses[0], _losses[1], _losses[2], _losses[3]), end='')
-                if iteration == iterations:
+                if (iteration+1) >= iterations:
                     break
                     # test on the first-10 images
             print('')
