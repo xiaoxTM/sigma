@@ -84,7 +84,7 @@ gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
 gpu_config.intra_op_parallelism_threads = 1
 
 
-sigma.engine.set_print(None)
+sigma.engine.set_print(True, True)
 nclass = 10
 
 
@@ -97,18 +97,18 @@ if __name__=='__main__':
     args = parser.parse_args()
     gpu_config.gpu_options.visible_device_list=args.gpu
     experiment = sigma.build_experiment(build_func,
-                                        engine.io.mnist('data',
+                                        engine.io.mnist('/home/xiaox/studio/db/mnist',
                                                         False,
                                                         False,
                                                         nclass),
                                         'AdamOptimizer',
-                                        # filename='mnist-networks.png',
+                                        filename='mnist-networks.png',
                                         batch_size=100,
-                                        gpu_config=gpu_config,
+                                        #gpu_config=gpu_config,
                                         model_config={'pdim':args.primary, 'ddim':args.digit},
                                         generator_config={'nclass':nclass})
     args.checkpoint=os.path.join(exp, 'cache')
     # args.log='cache'
     args.eid='primary-{}-digital-{}'.format(args.primary, args.digit)
     args.auto_timestamp = True
-    experiment(args)
+    # experiment(args)

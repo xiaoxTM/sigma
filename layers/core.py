@@ -54,8 +54,14 @@ __defaults__ = {'padding' : 'valid',
                 'bias_regularizer' : None
                }
 
+# __layers__ = ['squash', 'crelu', 'relu', 'relu6', 'elu', 'selu', 'leaky_relu',
+#               'softmax', 'softplus', 'softsign', 'sigmoid', 'tanh', 'linear',
+#               'embedding', 'flatten', 'reshape', 'expand_dims', 'maskout',
+#               'input_spec', 'label_spec', 'random_spec',
+#              ]
 
-__layers__ = {'actives': ['crelu',
+
+__modules__ = {'actives': ['crelu',
                           'relu',
                           'relu6',
                           'elu',
@@ -167,7 +173,7 @@ def set_defaults(key_values: dict):
 
 
 def _layer2color(lname: dict) -> str:
-    for k,v in __layers__.items():
+    for k,v in __modules__.items():
         if lname in v:
             return __colormaps__[k]
     return __colormaps__['other']
@@ -265,6 +271,9 @@ def graph_has_edge(graph, input_name, output_name):
 """
 def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     """ print each layer
+        parameters:
+            @name: layer name
+            @typename: layer type name
     """
     # //FUTURE: print details of each layer. e.g., parameters of each layer. For graph ONLY
     global __graph__
@@ -325,17 +334,15 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     dot.set_node_defaults(shape='record')
                     __graph__ = dot
                 input_scope = str(ops.helper.split_scope(input_name)).replace("'","")
+                output_scope = str(ops.helper.split_scope(output_name)).replace("'","")
                 if is_input_layer:
-                    if isinstance(input_name, str):
-                        input_name = [input_name]
-                        input_shape = [input_shape]
-                    for iname, ishape in zip(input_name, input_shape):
-                        iname = iname.replace(':', '-')
-                        label = '%s\n|{{%s}}|{{%s}}' % (iname, ishape, input_scope)
-                        node = pydot.Node(iname, label=label)
-                        __graph__.add_node(node)
+                    if isinstance(input_name, (list, tuple)):
+                        raise TypeError('input layer cannot be list/tuple of shapes')
+                    output_name = output_name.replace(':', '-')
+                    label = '%s\n|{{%s}}|{{%s}}' % (output_name, output_shape, input_scope)
+                    node = pydot.Node(output_name, label=label)
+                    __graph__.add_node(node)
                 else:
-                    output_scope = str(ops.helper.split_scope(output_name)).replace("'","")
                     if __details__ is True:
                         # input_scope = ops.helper.split_scope(input_name)
                         # output_scope = ops.helper.split_scope(output_name)
@@ -351,7 +358,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                             else:
                                 parameters = '{}\n{}:{}'.format(parameters,
                                                                 key, value)
-                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{}|{}}|{{%s}}}' % (name,
+                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}|{{%s}|{%s}}}|{{%s}}}' % (name,
                                                                                   str(input_shape).replace("'",""),
                                                                                   output_shape,
                                                                                   input_scope,

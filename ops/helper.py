@@ -69,7 +69,7 @@ def assign_scope(name, scope, ltype, reuse=False):
             name = dispatch_name(ltype, -1)
         else:
             name = dispatch_name(ltype)
-    name_with_ltype = '{}/{}'.format(name, ltype)
+    name_with_ltype = '.{}./{}'.format(name, ltype)
     if scope is None:
         ops_scope = core.name_scope('{}'.format(name_with_ltype))
     else:
@@ -105,7 +105,13 @@ def split_scope(name):
     def _split_scope(n):
         scope = n.rsplit(':', 1)
         if len(scope) == 2:
-            scope = scope[0]
+            if scope[1].isnumeric():
+                # in case of name:index
+                scope = scope[0].rsplit(':', 1)
+            if len(scope) == 2:
+                scope = scope[0]
+            else:
+                scope = 'None'
         else:
             scope = 'None'
         return scope
@@ -123,18 +129,15 @@ def concat_scope_and_name(names):
             raise TypeError('name type must be list. given {}'
                             .format(type(name)))
         length = len(name)
-        if length < 1 or length > 4 or length == 2:
-            raise ValueError('name must have length in [3, 4] or 1, given {}'
+        if length < 1 or length > 2:
+            raise ValueError('name must have length in [1, 2], given {}'
                              .format(length))
         elif length == 1:
-            # name = [variable]
+            # name = [layer-name]
             return '{}'.format(name[0])
-        elif length == 3:
-            # name = [layer-name, layer-type, variable]
-            return '{}'.format(name[0])
-        else: #length == 4
-            # name = [scope+, layer-name, layer-type, variable]
-            return '{}:{}'.format(name[0], name[1])
+        else: #length == 2
+            # name = [scope+, layer-name]
+            return '{}-{}'.format(name[0], name[1])
     if isinstance(names, list):
         return _concat_scope_and_name(names)
     elif isinstance(names, tuple):
@@ -146,16 +149,26 @@ def concat_scope_and_name(names):
 def split_name(names, nameonly=True):
     """ split variable name (or say, remove variable index)
         generally, `names` are a list of :
-            [scope/]*/layer-name/layer-type/variable-name:index
-        return scope(s), layer-name, layer-type, variable-name:index
+            [scope/]*/.layer-name./layer-type/[subspace/*/]variable-name:index
+        return [scope(s),] layer-name
     """
     def _split(name):
-        name = name.rsplit(':', 1)[0]
-        splits = name.rsplit('/', 3)
-        if nameonly is True:
-            return splits[-3]
+        if name.find('/.') == -1:
+            # no scope
+            # .layer-name./layer-type/[subspace*/]variable-name:index
+            # ==> layer-name
+            name = name.split('./')[0]
+            if name[0] == '.':
+                name = name[1:]
+            name = [name]
         else:
-            return splits
+            # [scope/]*/.layer-name./layer-type/[subspace*/]variable-name:index
+            # ==> scope/*, layer-name
+            name = name.split('./')[0].split('/.')
+        if nameonly is True:
+            return name[-1]
+        else:
+            return name
     if isinstance(names, str):
         return _split(names)
     elif isinstance(names, (tuple, list, np.ndarray)):

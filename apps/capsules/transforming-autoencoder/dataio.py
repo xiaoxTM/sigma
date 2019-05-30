@@ -2,8 +2,8 @@ from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import random
 #import matplotlib.pyplot as plt
-from skimage.transform import AffineTransform
-from skimage.transform import warp
+#from skimage.transform import AffineTransform
+#from skimage.transform import warp
 
 def random_affine_matrix(sigma, max_translation):
     rotate = np.eye(2) + sigma * np.random.normal(0, 1, size=[2, 2])
@@ -51,7 +51,7 @@ def transform_data(data_split, mode, max_translation=5, sigma=0.1, show=False):
 def generate_mnist_data(mode, max_translation=5, sigma=0.1):
 
     def _mnist_data(**kwargs):
-        mnist = input_data.read_data_sets('data', one_hot=True)
+        mnist = input_data.read_data_sets('/home/xiaox/studio/db/mnist', one_hot=True)
 
         mnist = {'train': mnist.train.images,
                  'valid': mnist.validation.images,

@@ -68,9 +68,9 @@ if __name__=='__main__':
     experiment = sigma.build_experiment(transforming_autoencoder,
                                         dataio.generate_mnist_data('translation'),
                                         'AdamOptimizer',
-                                        # filename='mnist-networks.png',
+                                        filename='mnist-networks.png',
                                         batch_size=100,
-                                        gpu_config=gpu_config,
+                                        #gpu_config=gpu_config,
                                         model_config={'recogntion_dim':30,
                                                       'generation_dim':30,
                                                       'ncapsules':10})
