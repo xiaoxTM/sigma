@@ -18,15 +18,15 @@
 
 import numpy as np
 import multiprocessing as mp
-from scipy import misc as sm
 import os
 import os.path
 import logging
 from sigma.helpers import nput
 from .. import utils
 
+
 def save_image(filename, image):
-    sm.imsave(filename, image)
+    imsave(filename, image)
 
 
 #####################################################
@@ -40,7 +40,6 @@ def load_image(filename,
                mode='crop',
                spi=None,
                void_label=0,
-               color_mode='RGB',
                gtloader=None):
     """
         filename: source image filename
@@ -54,7 +53,7 @@ def load_image(filename,
     assert scale > 0
     assert os.path.isfile(filename), 'file {} not found'.format(filename)
     logging.debug('loading {}'.format(filename))
-    sample = sm.imread(filename, mode=color_mode)
+    sample = nput.imread(filename)
     assert len(sample.shape) == 2 or len(sample.shape) == 3
     sample = sample.astype(np.float32) * scale
     assert mode in ('crop', 'nearest', 'lanczos', 'bilinear', 'bicubic', 'cubic')
@@ -73,25 +72,25 @@ def load_image(filename,
         else:
             if len(sample.shape) == len(size):
                 if sample.shape != size:
-                    sample = [sm.imresize(sample, size, interp=mode)]
+                    sample = [nput.imresize(sample, size, interp=mode)]
                     if isinstance(label, np.ndarray):
-                        label  = [sm.imresize(label , size, interp=mode)]
+                        label  = [nput.imresize(label , size, interp=mode)]
             else:
                 if len(size) == 2:
-                    sample = [sm.imresize(sample,(size[0], size[1],
+                    sample = [nput.imresize(sample,(size[0], size[1],
                                                   sample.shape[2]),
                                                   interp=mode)
                                                   .astype(np.float32)]
                     if isinstance(label, np.ndarray):
-                        label  = [sm.imresize(label , (size[0], size[1],
+                        label  = [nput.imresize(label , (size[0], size[1],
                                                        sample[0].shape[2]),
                                                        interp=mode)]
                 else:
-                    sample = [sm.imresize(sample, (size[0], size[1]),
+                    sample = [nput.imresize(sample, (size[0], size[1]),
                                                    interp=mode)
                                                    .astype(np.float32)]
                     if isinstance(label, np.ndarray):
-                        label  = [sm.imresize(label , (size[0], size[1]), interp=mode)]
+                        label  = [nput.imresize(label , (size[0], size[1]), interp=mode)]
     else:
         sample = [sample]
         if isinstance(label, np.ndarray):
@@ -127,11 +126,11 @@ def load_image(filename,
 def load_image_multiprocess_worker(parameters):
     filename, gtname, size, asarray, \
     scale, center, strides, mode, spi, \
-        void_label, color_mode = parameters
+        void_label = parameters
     return load_image(filename, gtname, size, \
                       asarray, scale, center, \
                       strides, mode, spi, \
-                      void_label, color_mode)
+                      void_label)
 
 
 def load_from_list_multiprocess(filelist, gtlist, multiprocess,
@@ -143,7 +142,6 @@ def load_from_list_multiprocess(filelist, gtlist, multiprocess,
                                 mode='crop',
                                 spi=None,
                                 void_label=0,
-                                color_mode='RGB',
                                 gtloader=None):
     assert isinstance(filelist, (list, tuple))
     assert gtlist is None or isinstance(gtlist, (list, tuple))
@@ -163,7 +161,7 @@ def load_from_list_multiprocess(filelist, gtlist, multiprocess,
         parameters[counter] = [f, g, size, asarray,
                                scale, center, strides,
                                mode, spi, void_label,
-                               color_mode, gtloader]
+                               gtloader]
         counter += 1
         if counter == multiprocess:
             samples_and_labels = worker.map(load_image_multiprocess_worker,
@@ -199,7 +197,6 @@ def load_from_list_simple(filelist, gtlist,
                           mode='crop',
                           spi=None,
                           void_label=0,
-                          color_mode='RGB',
                           gtloader=None):
     """ load image in single process
         Attributes
@@ -216,7 +213,7 @@ def load_from_list_simple(filelist, gtlist,
             sample, _ = load_image(f, None, size, asarray,
                                    scale, center, strides,
                                    mode, spi, void_label,
-                                   color_mode, gtloader)
+                                   gtloader)
             if len(sample) > 0:
                 samples.extend(sample)
     else:
@@ -229,7 +226,7 @@ def load_from_list_simple(filelist, gtlist,
             sample, label = load_image(f, g, size, asarray,
                                        scale, center, strides,
                                        mode, spi, void_label,
-                                       color_mode, gtloader)
+                                       gtloader)
             if len(sample) > 0:
                 samples.extend(sample)
                 labels.extend(label)
@@ -251,7 +248,6 @@ def load_from_list(filelist, gtlist,
                    spi=None,
                    void_label=0,
                    multiprocess=1,
-                   color_mode='RGB',
                    gtloader=None):
     """
         Descriptions
@@ -284,16 +280,6 @@ def load_from_list(filelist, gtlist,
                          ignore class label
             multiprocess : int
                            processes to load image
-            color_mode : string
-                         color spaces used to load image (see @https://docs.scipy.org/doc/scipy/reference/generated/scipy.misc.imread.html)
-                         - L    : 8 bit pixels, black and white
-                         - P    : 8-bit pixels, mapped to any other mode using a color palette
-                         - RGB  : 3x8-bit pixels, true color
-                         - RGBA : 4x6-bit pixels, true color with transparency mask
-                         - CMYK : 4x8-bit pixels, color separation
-                         - YCbCr: 3x8-bit pixels, color video format
-                         - I    : 32-bit signed integer pixels
-                         - F    : 32-bit floating point pixels
         Returns:
         ---------
             list of images [and ground truth if gtlist is not None] if asarray is False
@@ -302,17 +288,17 @@ def load_from_list(filelist, gtlist,
     """
     if gtloader is None:
         def _loader(x):
-            return sm.imread(x, mode=color_mode)
+            return nput.imread(x)
         gtloader = _loader
     if multiprocess != 1:
         return load_from_list_multiprocess(filelist, gtlist, multiprocess,
                                            size, asarray, scale, center,
                                            strides, mode, spi, void_label,
-                                           color_mode, gtloader)
+                                           gtloader)
     else:
         return load_from_list_simple(filelist, gtlist, size, asarray, scale,
                                      center, strides, mode, spi, void_label,
-                                     color_mode, gtloader)
+                                     gtloader)
 
 
 ###############################################################################
@@ -330,14 +316,13 @@ def load_from_file(listname,
                    void_label=0,
                    multiprocess=1,
                    namefilter=None,
-                   color_mode='RGB',
                    gtloader=None):
     filelist, gtlist = utils.load_filename(listname, num, basepath, sep, namefilter)
     return load_from_list(filelist, gtlist,
                           size, asarray, scale,
                           center, strides, mode,
                           spi, void_label, multiprocess,
-                          color_mode, gtloader)
+                          gtloader)
 
 
 ###############################################################################
@@ -355,7 +340,6 @@ def load_from_dir(imagedir,
                   void_label=0,
                   multiprocess=1,
                   namefilter=None,
-                  color_mode='RGB',
                   gtloader=None):
     """
         size can be [width of image, height of image] for grayscale
@@ -379,4 +363,4 @@ def load_from_dir(imagedir,
                           size, asarray, scale,
                           center, strides, mode,
                           spi, void_label, multiprocess,
-                          color_mode, gtloader)
+                          gtloader)

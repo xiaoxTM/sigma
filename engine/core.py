@@ -122,10 +122,8 @@ def predict(sess,
             preds.append([pred])
         else:
             os.makedirs(savedir, exist_ok=True)
-            for i, images in enumerate(zip(samples, pred.astype(np.int8))):
-                dbs.images.save_image('{}/{}.png'.format(global_idx, i),
-                                      helpers.stack(images, interval=10,
-                                                    value=[0, 0, 0]))
+            for i, images in enumerate(pred.astype(np.int8)):
+                dbs.images.save_image('{}/{}.png'.format(global_idx, i), images)
         (global_idx, _, epoch, iteration) = next(progressor)
     if len(preds) > 0:
         return preds[0] if len(preds) == 1 else preds
@@ -598,6 +596,9 @@ def build_parser():
 
     # begin of options for testing
     parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--axis', type=int, default=None)
+    parser.add_argument('--savedir', type=str, default=None)
+    parser.add_argument('--predop', type=str, default='argmax')
     # end of options for testing
 
     return parser
@@ -714,7 +715,6 @@ def build_experiment(build_model_fun,
                                        ['predop', 'batch_size', 'axis',
                                         'nclass', 'savedir', 'reuse',
                                         'name', 'scope'])
-        print('test config:', test_config)
         # the process of training networks
         if args.verbose:
             helpers.print_args(args)
