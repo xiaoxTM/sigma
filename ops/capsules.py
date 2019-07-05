@@ -346,8 +346,8 @@ def cap_fully_connected(input_shape, nouts, caps_dims,
             return core.tensordot(x, weight, [[2], [0]])
 
     else:
-        weight_shape = [incaps, incapdim, nouts * caps_dims]
-        weight = mm.malloc('weight',
+        weight_shape = [incaps, incapdim, nouts, caps_dims]
+        weights = mm.malloc('weight',
                            name,
                            weight_shape,
                            dtype,

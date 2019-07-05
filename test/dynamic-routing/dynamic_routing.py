@@ -9,6 +9,8 @@ import tensorflow as tf
 import logging
 import os
 
+import time
+
 from tensorflow.examples.tutorials.mnist import input_data
 
 import skimage as sk
@@ -90,6 +92,9 @@ def train(epochs=100, batchsize=100, checkpoint=None):
     config.gpu_options.per_process_gpu_memory_fraction = 0.5
     # config.gpu_options.visible_device_list = '0,1,2,3'
     # config.intra_op_parallelism_threads = 1
+    ## allow TensorFlow put operations on CPU if operations
+    ## can not been put on GPU
+    config.allow_soft_placement = True
 
     filefolds = '/home/xiaox/studio/db/mnist'
     mnist = input_data.read_data_sets(filefolds, one_hot=True)
@@ -114,6 +119,7 @@ def train(epochs=100, batchsize=100, checkpoint=None):
         losses = np.ones([epochs, 2])
 
         for epoch in range(epochs):
+            start = time.time()
             steps = int(mnist.train.num_examples / batchsize)
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
@@ -121,7 +127,8 @@ def train(epochs=100, batchsize=100, checkpoint=None):
                 _, loss = sess.run([train_op, loss_op], feed_dict=train_feed)
                 if step % 20 == 0:
                     print('train loss for {}-th iteration: {}'.format(step, loss))
-
+            end = time.time()
+            print("time cost:", end - start)
             valid_step = int(mnist.validation.num_examples / batchsize)
             validation_loss = []
             for vstep in range(valid_step):
@@ -140,14 +147,14 @@ def train(epochs=100, batchsize=100, checkpoint=None):
                 test_feed = {inputs:xs, labels:ys}
                 reconstruction, loss = sess.run([reconstruction_op, loss_op], feed_dict=test_feed)
                 test_loss.append(loss)
-                if epoch % 10 == 0:
-                    for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
-                        origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
-                        predict = sk.img_as_ubyte(predict)
-                        #print(origin.shape, predict.shape)
-                        os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
-                        images = np.concatenate([origin, predict], axis=1)
-                        skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
+                #if epoch % 10 == 0:
+                #    for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
+                #        origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
+                #        predict = sk.img_as_ubyte(predict)
+                #        #print(origin.shape, predict.shape)
+                #        os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
+                #        images = np.concatenate([origin, predict], axis=1)
+                #        skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
             tloss = np.asarray(test_loss).mean()
             losses[epoch][1] = tloss
             print('test loss for {}-th epoch: {}'.format(epoch, tloss))
@@ -157,7 +164,7 @@ def train(epochs=100, batchsize=100, checkpoint=None):
 
 
 if __name__=='__main__':
-    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
+    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/non-share-weights'
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     checkpoint = os.path.join(exp, 'cache/checkpoint/ckpt')
     train(checkpoint=checkpoint)
