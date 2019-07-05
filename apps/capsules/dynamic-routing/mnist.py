@@ -7,6 +7,7 @@ import os.path
 import numpy as np
 import tensorflow as tf
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -77,14 +78,14 @@ def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16):
     # ops.core.summarize('acc', metric[0], 'scalar')
     return [loss, metric]
 
-gpu_config = tf.ConfigProto()
-gpu_config.gpu_options.allow_growth = True
-gpu_config.gpu_options.per_process_gpu_memory_fraction = 0.8
-# gpu_config.gpu_options.visible_device_list = '0,1,2,3'
-gpu_config.intra_op_parallelism_threads = 1
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+config.gpu_options.per_process_gpu_memory_fraction = 0.8
+# config.gpu_options.visible_device_list = '0,1,2,3'
+config.intra_op_parallelism_threads = 1
 
 
-sigma.engine.set_print(True, True)
+# sigma.engine.set_print(True, True)
 nclass = 10
 
 
@@ -95,20 +96,21 @@ if __name__=='__main__':
     parser.add_argument("--digit", type=int, default=16)
     parser.add_argument("--gpu", type=str, default='0')
     args = parser.parse_args()
-    gpu_config.gpu_options.visible_device_list=args.gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # gpu_config.gpu_options.visible_device_list=args.gpu
     experiment = sigma.build_experiment(build_func,
                                         engine.io.mnist('/home/xiaox/studio/db/mnist',
                                                         False,
                                                         False,
                                                         nclass),
                                         'AdamOptimizer',
-                                        filename='mnist-networks.png',
+                                        # filename='mnist-networks.png',
                                         batch_size=100,
-                                        #gpu_config=gpu_config,
+                                        config=config,
                                         model_config={'pdim':args.primary, 'ddim':args.digit},
                                         generator_config={'nclass':nclass})
     args.checkpoint=os.path.join(exp, 'cache')
     # args.log='cache'
     args.eid='primary-{}-digital-{}'.format(args.primary, args.digit)
     args.auto_timestamp = True
-    # experiment(args)
+    experiment(args)

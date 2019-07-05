@@ -112,7 +112,7 @@ def expand_dims(inputs,
 
 @core.layer
 def maskout(inputs,
-            indices=None,
+            index=None,
             axis=-2, # axis according to which to maskout
             drop=False,
             flatten=True,
@@ -129,14 +129,13 @@ def maskout(inputs,
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.maskout(input_shape,
-                                   indices,
                                    axis,
                                    drop,
                                    flatten,
                                    reuse,
                                    name,
                                    scope)
-    x = fun(inputs, indices)
+    x = fun(inputs, index)
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '

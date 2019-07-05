@@ -390,10 +390,10 @@ def reshape(x, output_shape, smart=True, name=None):
     return tf.reshape(x, output_shape, name)
 
 
-def flatten(x, name=None):
-    xshape = shape(x)
-    nshape = [xshape[0], -1]
-    return tf.reshape(x, nshape, name)
+#def flatten(x, name=None):
+#    xshape = shape(x)
+#    nshape = [xshape[0], -1]
+#    return tf.reshape(x, nshape, name)
 
 
 def tile(x, multiples, name=None):

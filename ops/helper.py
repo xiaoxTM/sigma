@@ -269,7 +269,7 @@ def norm_input_shape(input_tensor):
         will be assigned to Tensor as batch_size
     """
     input_shape = core.shape(input_tensor)
-    if input_shape[0] is None:
+    if len(input_shape) != 0 and input_shape[0] is None:
         input_shape[0] = core.tshape(input_tensor)[0]
     return input_shape
 
@@ -290,6 +290,35 @@ def check_input_shape(input_shape):
         raise ValueError('input shape `{}` contains both None and -1'
                          .format(colors.red(input_shape)))
 
+def check_shape_consistency(input_shapes):
+    if not isinstance(input_shapes, (list, tuple)):
+        raise TypeError('requires inputs as '
+                        '{}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(input_shapes))))
+    elif len(input_shapes) < 2:
+        raise ValueError('requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(input_shapes))))
+    output_shape = input_shapes[0]
+    check_input_shape(output_shape)
+    for idx, ip in enumerate(input_shapes[1:]):
+        check_input_shape(ip)
+        # ignore the batch-size dimension in case of value `None`
+        if len(output_shape) == 0:
+            if len(ip) != 0:
+                raise ValueError('shape of {}-input '
+                                 'has length {} while '
+                                 '0-input is scalar'
+                                 .format(colors.red(idx+1),
+                                         colors.red(len(ip)))
+                                )
+        if not np.all(output_shape[1:] == ip[1:]):
+            raise ValueError('shape of {}-input differ '
+                             'from first one. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
 
 def norm_input_1d(shape):
     """ norm input for 1d convolving operation

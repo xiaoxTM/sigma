@@ -618,7 +618,7 @@ def build_experiment(build_model_fun,
                      model_config=None,
                      generator_config=None,
                      optimizer_config=None,
-                     gpu_config=None):
+                     config=None):
     """ build experiment
         this will automatically add timestamp to checkpoints and logs
 
@@ -667,8 +667,8 @@ def build_experiment(build_model_fun,
                                parameters passed to build_reader_fun
             optimizer_config : dict
                                parameters passed to ops.optimizer.get
-            gpu_config : dict:
-                         gpu configuration
+            config : dict:
+                         configuration
     """
     if model_config is None:
         model_config = {}
@@ -795,7 +795,7 @@ def build_experiment(build_model_fun,
         train_op = {'optimizer':optimization_op, 'loss':loss_op}
         valid_op = {'loss':loss_op}
 
-        sess, saver, summarize, writer = session(config=gpu_config,
+        sess, saver, summarize, writer = session(config=config,
                                                  checkpoint=checkpoint,
                                                  log=log,
                                                  debug=args.debug,

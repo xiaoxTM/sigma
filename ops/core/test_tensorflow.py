@@ -48,6 +48,14 @@ class TensorFlowTest(unittest.TestCase):
         with self.subTest(idx=6):
             self.assertRaises(ValueError, lambda: stf.reshape(x, (3, None, None, 6), True))
 
+    #def test_flatten(self):
+    #    x = stf.placeholder(dtype=stf.int32, shape=(2,3,4))
+    #    x1 = stf.flatten(x)
+    #    y = np.random.randint(0, size=(2,3,4))
+    #    _y1 = y.flatten()
+    #    _x1 = stf.run(self.sess, x1, feed_dict={x:y})
+    #    self.assertTrue(np.all(_x1 == _y1))
+
 
     def test_max(self):
         x = [1, 4, 3, 9, 6]
