@@ -18,7 +18,7 @@ import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
-def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16):
+def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16, share_weights=False):
     # inputs shape :
     #    [batch-size, 28x28]
     # ops.core.summarize('inputs', inputs)
@@ -38,8 +38,10 @@ def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16):
     # we disable routing by setting iterations to 1
     # x shape:
     #  [batch-size, nrows, ncols, 32, 8]
+    # primaryCapsule Layer
     x, outshape = layers.capsules.conv2d(x, 32, pdim, 9, 1,
-                                         # stride=2,
+                                         share_weights=share_weights,
+                                         stride=2,
                                          # activation for pre-predictions
                                          # that is, u^{hat}_{j|i}
                                          #act='leaky_relu',
@@ -61,7 +63,8 @@ def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16):
                              outshape[-1]])
     #  [batch_size, nrows * ncols * 32, 8]
     #=>[batch_size, 10, 16]
-    x = layers.capsules.dense(x, 10, ddim, 3,
+    # digitCapsule Layer
+    x = layers.capsules.dense(x, 10, ddim, 3, share_weights=share_weights,
                               weight_initializer=initializer)
     # ops.core.summarize('fully_connected-0', x)
     # norm the output to represent the existance probabilities
@@ -86,7 +89,7 @@ def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16):
     # ops.core.summarize('acc', metric[0], 'scalar')
     return reconstruction, loss, metric
 
-def train(epochs=100, batchsize=100, checkpoint=None):
+def train(epochs=100, batchsize=100, checkpoint=None, mode=None):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.5
@@ -103,8 +106,13 @@ def train(epochs=100, batchsize=100, checkpoint=None):
     labels = layers.base.label_spec([None, 10])
     global_step = tf.Variable(0, trainable=False)
 
+    share_weights = False
+    if mode == 'share-weights':
+        share_weights = True
+
     with ops.core.device('/gpu:0'):
-        reconstruction_op, loss_op, metric_op = build_func(inputs, labels)
+        reconstruction_op, loss_op, metrics_op = build_func(inputs, labels, share_weights=share_weights)
+        metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
         learning_rate = tf.train.exponential_decay(0.01, global_step, mnist.train.num_examples / batchsize, 0.998)
         train_op = ops.optimizers.get('AdamOptimizer').minimize(loss_op, global_step=global_step)
 
@@ -112,59 +120,79 @@ def train(epochs=100, batchsize=100, checkpoint=None):
     if checkpoint is not None:
         sess, saver = helpers.load(sess, checkpoint, verbose=True)
 
-    base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
+    base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist/{}'.format(mode)
     with sess:
         tf.global_variables_initializer().run()
+        tf.local_variables_initializer().run()
 
-        losses = np.ones([epochs, 2])
+        mlog = np.ones([epochs, 5])
 
         for epoch in range(epochs):
             start = time.time()
             steps = int(mnist.train.num_examples / batchsize)
+            ops.core.run(sess, metric_variable_initialize_op)
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
                 train_feed = {inputs: xs, labels: ys}
-                _, loss = sess.run([train_op, loss_op], feed_dict=train_feed)
+                _, loss, _ = sess.run([train_op, loss_op, metric_update_op], feed_dict=train_feed)
+                metric = sess.run(metric_op)
                 if step % 20 == 0:
-                    print('train loss for {}-th iteration: {}'.format(step, loss))
+                    print('train for {}-th iteration: loss:{}, accuracy:{}'.format(step, loss, metric))
             end = time.time()
-            print("time cost:", end - start)
+            mlog[epoch][4] = end - start
+            #print("time cost:", mlog[epoch][4])
             valid_step = int(mnist.validation.num_examples / batchsize)
             validation_loss = []
+            validation_metric = []
+            ops.core.run(sess, metric_variable_initialize_op)
             for vstep in range(valid_step):
                 xs, ys = mnist.validation.next_batch(batchsize)
                 valid_feed = {inputs:xs, labels:ys}
-                loss = sess.run(loss_op, feed_dict=valid_feed)
+                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=valid_feed)
+                metric = ops.core.run(sess, metric_op)
                 validation_loss.append(loss)
+                validation_metric.append(metric)
             vloss = np.asarray(validation_loss).mean()
-            losses[epoch][0] = vloss
-            print('valid loss for {}-th epoch: {}'.format(epoch, vloss))
+            vmetric = np.asarray(validation_metric).mean()
+            mlog[epoch][0] = vloss
+            mlog[epoch][1] = vmetric
+            print('valid for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, vloss, vmetric))
 
             test_step = int(mnist.test.num_examples / batchsize)
             test_loss = []
+            test_metric = []
+            ops.core.run(sess, metric_variable_initialize_op)
             for tstep in range(test_step):
                 xs, ys = mnist.test.next_batch(batchsize)
                 test_feed = {inputs:xs, labels:ys}
-                reconstruction, loss = sess.run([reconstruction_op, loss_op], feed_dict=test_feed)
+                reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
+                metric = ops.core.run(sess, metric_op)
                 test_loss.append(loss)
-                #if epoch % 10 == 0:
-                #    for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
-                #        origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
-                #        predict = sk.img_as_ubyte(predict)
-                #        #print(origin.shape, predict.shape)
-                #        os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
-                #        images = np.concatenate([origin, predict], axis=1)
-                #        skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
+                test_metric.append(metric)
+                if epoch % 10 == 0:
+                    for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
+                        origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
+                        predict = sk.img_as_ubyte(predict)
+                        #print(origin.shape, predict.shape)
+                        os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
+                        images = np.concatenate([origin, predict], axis=1)
+                        skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
             tloss = np.asarray(test_loss).mean()
-            losses[epoch][1] = tloss
-            print('test loss for {}-th epoch: {}'.format(epoch, tloss))
+            tmetric = np.asarray(test_metric).mean()
+            mlog[epoch][2] = tloss
+            mlog[epoch][3] = tmetric
+            print('test for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, tloss, tmetric))
             if epoch % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True)
-    np.savetxt('loss.log', losses)
+    os.makedirs(mode, exist_ok=True)
+    np.savetxt('{}/log'.format(mode), mlog)
 
 
 if __name__=='__main__':
-    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/non-share-weights'
+    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing'
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-    checkpoint = os.path.join(exp, 'cache/checkpoint/ckpt')
-    train(checkpoint=checkpoint)
+    #mode = 'non-share-weights' # 'non-share-weights', 'share-weights'
+    mode = sys.argv[1]
+    os.makedirs('{}/{}/cache/checkpoint'.format(exp, mode), exist_ok=True)
+    checkpoint = os.path.join(exp, mode, 'cache/checkpoint/ckpt')
+    train(checkpoint=checkpoint, mode=mode)

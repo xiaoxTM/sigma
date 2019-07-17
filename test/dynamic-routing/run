@@ -1,0 +1,5 @@
+#! /usr/bin/env bash
+
+python3 dynamic_routing.py share-weights
+
+python3 dynamic_routing.py non-share-weights

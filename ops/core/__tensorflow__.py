@@ -1466,8 +1466,8 @@ def session(target='',
             sess = tf_debug.TensorBoardDebugWrapperSession(sess, address)
         else:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
-    sess.run([tf.global_variables_initializer(),
-              tf.local_variables_initializer()])
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     if initializers is not None:
         sess.run(initializers)
     return sess

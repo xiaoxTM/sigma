@@ -325,7 +325,7 @@ def cap_fully_connected(input_shape, nouts, caps_dims,
     bias_shape = [nouts, caps_dims]
     if share_weights:
         weight_shape = [incapdim, nouts, caps_dims]
-        weight = mm.malloc('weight',
+        weights = mm.malloc('weights',
                            name,
                            weight_shape,
                            dtype,
@@ -343,11 +343,11 @@ def cap_fully_connected(input_shape, nouts, caps_dims,
             # weight shape:
             #    [incapdim, nouts, caps_dims]
             # => [batch-size, incaps, nouts, caps_dims]
-            return core.tensordot(x, weight, [[2], [0]])
+            return core.tensordot(x, weights, [[2], [0]])
 
     else:
         weight_shape = [incaps, incapdim, nouts, caps_dims]
-        weights = mm.malloc('weight',
+        weights = mm.malloc('weights',
                            name,
                            weight_shape,
                            dtype,
@@ -360,42 +360,40 @@ def cap_fully_connected(input_shape, nouts, caps_dims,
                            reuse,
                            scope)
         def _body(idx, x, array):
-            # kernels shape : [incaps, incapdims, outcaps, outcapdims]
-            # kernel shape  : [incapdims, outcaps, outcapdims]
+            # kernels shape: [incaps, incapdims, outcaps, outcapdims]
+            # kernel shape : [incapdims, outcaps, outcapdims]
             weight = core.gather(weights, idx, axis=0)
-            # x shape       : [batch-size, incaps, incapdim]
-            # subx shape    : [batch-size, incapdim]
+            # x shape   : [batch-size, incaps, incapdim]
+            # subx shape: [batch-size, incapdim]
             subx = core.gather(x, idx, axis=1)
-            # dot_prod shape: [bathc-size, outcaps, outcapdims]
+            # dot_prod shape: [batch-size, outcaps, outcapdims]
             dot_prod = core.tensordot(subx, weight, [[1], [0]])
             array = array.write(idx, dot_prod)
-            return [idx + 1, x, array]
+            return [idx+1, x, array]
 
         def _fully_connected(x):
             """ capsule wise convolution in 2d
                 that is, convolve along `incaps` dimension
             """
             # x shape:
-            #     [batch-size, incaps, incapdim]
+            #    [batch-size, incaps, incapdim]
             iterations = input_shape[-2] # <- incaps
             idx = core.constant(0, core.int32)
-            array = core.TensorArray(dtype=core.float32,
-                                     size=iterations)
+            array = core.TensorArray(dtype=core.float32, size=iterations)
             _, x, array = core.while_loop(
-                lambda idx, x, array : idx < iterations,
-                _body,
-                loop_vars = [idx, x, array],
-                parallel_iterations=iterations
-            )
+                    lambda idx, x, array : idx < iterations,
+                    _body,
+                    loop_vars = [idx, x, array],
+                    parallel_iterations=iterations
+                    )
             # array should have the shape of:
-            # incaps * [batch-size, outcaps, outcapdims]
+            #   incaps * [batch-size, outcaps, outcapdims]
             # stack to
             # [incaps, batch-size, outcaps, outcapdims]
             array = array.stack()
             # then transpose to
             # [batch-size, incaps, outcaps, caps_dims]
-            array = core.transpose(array, (1, 0, 2, 3))
-            return array
+            return core.transpose(array, (1, 0, 2, 3))
 
     return cap_conv(_fully_connected,
                     bias_shape,
