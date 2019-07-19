@@ -59,3 +59,43 @@ def concat(inputs_shape,
         with ops_scope:
             return core.concat(x, axis)
     return _concat, output_shape
+
+# @helpers.typecheck(input_shape=list,
+#                    axis=int,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def stack(input_shape,
+          axis=-1,
+          reuse=False,
+          name=None,
+          scope=None):
+    """ stack multiple tensors into one
+        along with axis
+    """
+    if not isinstance(inputs_shape, (list, tuple)):
+        raise TypeError('concat requires inputs as '
+                        '{}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(inputs_shape))))
+    elif len(inputs_shape) < 2:
+        raise ValueError('concat requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(inputs_shape))))
+    output_shape = inputs_shape[0]
+    helper.check_input_shape(output_shape)
+    for idx, ip in enumerate(inputs_shape[1:]):
+        helper.check_input_shape(ip)
+        if not np.all(np.delete(output_shape, axis) == np.delete(ip, axis)):
+            raise ValueError('shape of {}-input differs from first'
+                             ' one besides {}-axis. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.green(axis),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
+        output_shape[axis] += ip[axis]
+    ops_scope, _, _ = helper.assign_scope(name, scope, 'concat', reuse)
+    def _concat(x):
+        with ops_scope:
+            return core.stack(x, axis)
+    return _concat, output_shape

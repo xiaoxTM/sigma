@@ -445,9 +445,11 @@ def layer(fun):
         name, reuse = kwargs.get('name', None), kwargs.get('reuse', False)
         if name is None:
             if reuse:
-                name = ops.helper.dispatch_name(fun.__name__, -1)
-            else:
-                name = ops.helper.dispatch_name(fun.__name__)
+                # in reuse mode, name must be given and unique
+                #name = ops.helper.dispatch_name(fun.__name__, -1)
+                raise ValueError('`name` cannot be None when reuse={}'
+                                 .format(colors.red('True')))
+            name = ops.helper.dispatch_name(fun.__name__)
             kwargs['name'] = name
         x = fun(**kwargs)
         outputs = x

@@ -163,7 +163,7 @@ def conditional_instance_norm(input_shape,
 
     def _conditional_instance_norm(x, labels):
         with ops_scope:
-            mean, variance = core.moments(x, axes, keep_dims=True)
+            mean, variance = core.moments(x, axes, keepdims=True)
             normalized = (x - mean) / core.sqrt(variance + epsilon)
             select_scale, select_offset = _condition_on(labels)
             if select_scale is not None:
@@ -282,7 +282,7 @@ def batch_norm(input_shape,
                             moving_mean_initializer,
                             None,
                             cpuid,
-                            trainable,
+                            False,
                             collections,
                             summary,
                             reuse,
@@ -296,14 +296,14 @@ def batch_norm(input_shape,
                                 moving_variance_initializer,
                                 None,
                                 cpuid,
-                                trainable,
+                                False,
                                 collections,
                                 summary,
                                 reuse,
                                 scope)
     act = actives.get(act)
     def _train(x):
-        if fused:
+        if fused is True:
             # fused_batch_norm(x, scale, offset, mean=None, variance=None,
             #                  epsionl=0.001, is_training=True, name=None)
             # x must be 4-d tensor
@@ -312,24 +312,27 @@ def batch_norm(input_shape,
             for _ in range(4 - x.get_shape().ndims):
                 x = core.expand_dims(x, 1)
             x, mean, variance = core.fused_batch_norm(x, scale,
-                                                      offset, epsilon=epsilon)
+                                                      offset,
+                                                      is_training=True,
+                                                      epsilon=epsilon)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = core.moments(x, axis, keep_dims=True)
+            mean, variance = core.moments(x, axis, keepdims=True)
             # batch_normalize(x, mean, variance, offset,
             #                 scale, variance_epsilon, name)
-            x = core.batch_normalization(x, mean, variance,
-                                         offset, scale, epsilon)
+            x = core.batch_norm(x, mean, variance,
+                                offset, scale, epsilon)
             mean = core.squeeze(mean)
             variance = core.squeeze(variance)
         if momentum is not None:
-            moving_mean.assign(moving_mean * momentum + mean * (1 - momentum))
-            moving_variance.assign(
-                       moving_variance * momentum + variance * (1 - momentum))
+            update_mean=core.moving_average_update(moving_mean, mean, momentum)
+            update_variance=core.moving_average_update(moving_variance, variance, momentum)
+            core.add_to_collection(core.Collections.update_ops, update_mean)
+            core.add_to_collection(core.Collections.update_ops, update_variance)
         return act(x)
 
     def _infer(x):
-        if fused:
+        if fused is True:
             x_shape = [-1] + core.shape(x)[1:]
             for _ in range(4 - x.get_shape().ndims):
                 x = core.expand_dims(x, 1)
@@ -338,17 +341,22 @@ def batch_norm(input_shape,
                                  epsilon, is_training=False)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = core.moments(x, axis, keep_dims=True)
-            x = core.batch_normalization(x, moving_mean, moving_variance,
+            mean, variance = core.moments(x, axis, keepdims=True)
+            x = core.batch_norm(x, moving_mean, moving_variance,
                                          offset, scale, epsilon)
+
         return act(x)
 
     def _batch_norm(x):
         with ops_scope:
-            x = core.cond(core.cast(status.is_training, core.boolean),
-                        lambda: _train(x),
-                        lambda: _infer(x))
+            #x = core.cond(core.cast(status.is_training, core.boolean),
+            #            lambda: _train(x),
+            #            lambda: _infer(x))
             # if update moving_mean and moving_variance
+            if status.is_training:
+                x = _train(x)
+            else:
+                x = _infer(x)
             return x
     return _batch_norm
 

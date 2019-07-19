@@ -23,6 +23,16 @@
 #    - batch-norm
 is_training = False
 
+def set_phase(phase):
+    global is_training
+    if phase == 'train':
+        is_training = True
+    else:
+        is_training = False
+
+def get_phase():
+    return is_training
+
 
 def get():
     return None

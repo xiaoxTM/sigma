@@ -45,6 +45,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] mean_absolute_error
     - [ ] winner_takes_all
     - [x] margin_loss
+    - [x] chamfer_loss
   - metrics
     - [x] accuracy
     - [ ] auc
@@ -59,6 +60,8 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] total_variation_regularize
   - merge
     - [x] concat
+    - [ ] stack
+  - math
     - [x] add (with weights)
     - [ ] mul
   - normalization
@@ -67,8 +70,10 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] batch_norm
     - [ ] dropout
   - pools
+    - [ ] avg_pool1d
     - [ ] avg_pool2d
     - [ ] avg_pool2d_global
+    - [ ] max_pool1d
     - [x] max_pool2d
     - [ ] max_pool2d_global
 
@@ -84,7 +89,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
   - [ ] predict
   - [x] build_experiment
     - experiment-level function to pack functions to do experiment
-  - [x] type check
+  - [x] typecheck
 
 # Advantages
   - seamless with original tensorflow library

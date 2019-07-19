@@ -166,6 +166,49 @@ def margin_loss(axis,
             return core.mean(ploss + downweight * nloss)
     return _margin_loss
 
+@loss
+def chamfer_loss(axis,
+                 from_logits=True,
+                 onehot=True,
+                 reuse=False,
+                 name=None,
+                 scope=None,
+                 metric=None):
+    if axis is None:
+        axis = 1
+    if metric is None:
+        metric = lambda inputs, targets: core.norm(inputs-targets, axis=axis)
+
+    def _chamfer_distance(inputs, targets):
+        ''' inputs and targets should have the shape:
+            [points, features]
+        '''
+        npoints, nfeatures = inputs.shape
+        inputs_expand = core.tile(inputs, (npoints, 1))
+        targets_expand = core.reshape(
+                core.tile(core.expand_dims(targets, 1),
+                          (1, npoints, 1)),
+                (-1, nfeatures))
+        distance = metric(inputs_expand, targets_expand)
+        distance = core.reshape(distance, (npoints, npoints))
+        distance = core.min(distance, axis=1)
+        distance = core.mean(distance)
+        return distance
+
+    def _chamfer_distance_sum(inputs):
+        inputs, targets = inputs
+        return _chamfer_distance(inputs, targets) + _chamfer_distance(targets, inputs)
+
+    def _chamfer_loss(x, labels):
+        ''' x and labels should have the shape:
+            [batchsizez, points, features]
+        '''
+        with scope:
+            return core.mean(
+                    core.map_func(_chamfer_distance_sum, elems=(x, labels), dtype=core.float64)
+                    )
+    return _chamfer_loss
+
 
 def get(l, **kwargs):
     """ get loss from None | string | callable function

@@ -59,6 +59,25 @@ def _pool_global(inputs,
         x = [x, output]
     return x
 
+# utilizing pool2d to stimuate pool1d
+@core.layer
+def avg_pool1d(inputs,
+               pshape=2,
+               stride=None,
+               padding=None,
+               return_shape=False,
+               reuse=False,
+               name='avg_pool1d',
+               scope=None):
+    return _pool(inputs,
+                 ops.pools.avg_pool2d,
+                 [pshape,1],
+                 stride,
+                 padding,
+                 return_shape,
+                 reuse,
+                 name,
+                 scope)
 
 @core.layer
 def avg_pool2d(inputs,
@@ -93,6 +112,25 @@ def avg_pool2d_global(inputs,
                         name,
                         scope)
 
+# utilizing pool2d to stimulate pool1d
+@core.layer
+def max_pool1d(inputs,
+               pshape=2,
+               stride=None,
+               padding='same',
+               return_shape=False,
+               reuse=False,
+               name='max_pool1d',
+               scope=None):
+    return _pool(inputs,
+                 ops.pools.max_pool2d,
+                 [pshape,1],
+                 stride,
+                 padding,
+                 return_shape,
+                 reuse,
+                 name,
+                 scope)
 
 @core.layer
 def max_pool2d(inputs,

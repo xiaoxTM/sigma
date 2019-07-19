@@ -150,6 +150,31 @@ def margin_loss(inputs,
                                   downweight)(inputs, labels)
 
 
+@core.layer
+def chamfer_loss(inputs,
+                 axis=None,
+                 metric=None,
+                 from_logits=True,
+                 onehot=True,
+                 reuse=False,
+                 name=None,
+                 scope=None):
+    """ chamfer distance as loss function
+        chamfer distance of two sets of points is the
+        MEAN MIN distance of each points in each set
+        that is:
+            mean(min(each point in setA, setB)) + mean(min(setA, each point in setB))
+    """
+    inputs, labels = core.split_inputs(inputs)
+    return ops.losses.chamfer_loss(axis,
+                                   from_logits,
+                                   onehot,
+                                   reuse,
+                                   name,
+                                   scope,
+                                   metric)(inputs, labels)
+
+
 # short alias for each losses
 bce = binary_cross_entropy
 cce = categorical_cross_entropy

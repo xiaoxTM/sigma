@@ -33,13 +33,13 @@ class HelperTest(unittest.TestCase):
             self.assertRaises(ValueError, lambda: helper.assign_scope(None, 'test', None))
         _, name_with_ltype, name = helper.assign_scope('dense-1', 'train', 'dense')
         with self.subTest(idx=11):
-            self.assertEqual(name_with_ltype, 'dense-1/dense')
+            self.assertEqual(name_with_ltype, '.dense-1./dense')
         with self.subTest(idx=12):
             self.assertEqual(name, 'dense-1')
 
         _, name_with_ltype, name = helper.assign_scope(None, 'train', 'dense')
         with self.subTest(idx=13):
-            self.assertEqual(name_with_ltype, 'dense-0/dense')
+            self.assertEqual(name_with_ltype, '.dense-0./dense')
         with self.subTest(idx=14):
             self.assertEqual(name, 'dense-0')
 
@@ -58,9 +58,9 @@ class HelperTest(unittest.TestCase):
         with self.subTest(idx=17):
             self.assertRaises(TypeError, lambda: helper.split_name(3.0))
         with self.subTest(idx=18):
-            self.assertEqual(helper.split_name('dense/dense/routing/logits:0', False), ['dense', 'dense', 'routing', 'logits'])
+            self.assertEqual(helper.split_name('dense/dense/.routing./logits:0', False), ['dense/dense', 'routing'])
         with self.subTest(idx=19):
-            self.assertEqual(helper.split_name('test/dense/dense/routing/logits:0'), 'dense')
+            self.assertEqual(helper.split_name('test/dense/.dense./routing/logits:0'), 'dense')
 
 
     def test_normalize_axes(self):

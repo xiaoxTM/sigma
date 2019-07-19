@@ -17,6 +17,7 @@
 """
 
 from . import status, ops, layers, helpers, engine, dbs, colors
+from .status import set_phase
 from .layers import defaults
 from .ops.core import placeholder, seed
 from .engine import session, predict, build_experiment, build_parser

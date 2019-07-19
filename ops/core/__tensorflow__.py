@@ -27,6 +27,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.examples.tutorials import mnist
 from tensorflow.python import debug as tf_debug
+from tensorflow.python.training import moving_averages
 
 from . import commons
 from sigma import colors
@@ -95,7 +96,7 @@ Optimizer = tf.train.Optimizer
   - [ ] TRAINABLE_RESOURCE_VARIABLES
   - [x] TRAINABLE_VARIABLES
   - [ ] TRAIN_OP
-  - [ ] UPDATE_OPS
+  - [X] UPDATE_OPS
   - [x] VARIABLES
   - [x] WEIGHTS
   - [ ] WHILE_CONTEXT
@@ -130,6 +131,11 @@ class Collections():
     @property
     def weights():
         return tf.GraphKeys.WEIGHTS
+
+    @staticmethod
+    @property
+    def update_ops():
+        return tf.GraphKeys.UPDATE_OPS
 
 
 def is_tensor(x):
@@ -194,6 +200,22 @@ def while_loop(cond,
                          swap_memory,
                          name,
                          **kwargs)
+
+def map_func(func, elems,
+             dtype=None,
+             parallel_iterations=None,
+             back_prop=True,
+             swap_memory=False,
+             infer_shape=True,
+             name=None):
+    return tf.map_fn(func,
+                     elems,
+                     dtype,
+                     parallel_iterations,
+                     back_prop,
+                     swap_memory,
+                     infer_shape,
+                     name)
 
 
 #----- tensorflow scop -----#
@@ -1257,13 +1279,13 @@ def batch_norm(x,
                scale,
                variance_epsilon,
                name=None):
-    return tf.nn.batch_norm(x,
-                            mean,
-                            variance,
-                            offset,
-                            scale,
-                            variance_epsilon,
-                            name)
+    return tf.nn.batch_normalization(x,
+                                     mean,
+                                     variance,
+                                     offset,
+                                     scale,
+                                     variance_epsilon,
+                                     name)
 
 
 #----- tensorflow save model / weights -----#
@@ -1506,3 +1528,19 @@ def add_summary(filewriter, summary, global_step=None):
 
 def device(name_or_function):
     return tf.device(name_or_function)
+
+
+def idle():
+    tf.no_op()
+
+
+def moving_average_update(x,
+                          value,
+                          decay,
+                          zero_debias=True,
+                          name=None):
+    return moving_averages.assign_moving_average(x,
+                                                 value,
+                                                 decay,
+                                                 zero_debias,
+                                                 name)
