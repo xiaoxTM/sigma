@@ -18,7 +18,7 @@
 
 import numpy as np
 from . import helper, core, mm
-from .. import helpers
+from .. import helpers, colors
 
 import tensorflow as tf
 
@@ -84,6 +84,36 @@ def reshape(output_shape,
         with ops_scope:
             return core.reshape(x, output_shape)
     return _reshape, output_shape
+
+
+# @heplers.typecheck(input_shape=list, conjugate=bool, name=str, scope=str)
+def transpose(input_shape,
+              perm,
+              conjugate=False,
+              reuse=False,
+              name=None,
+              scope=None):
+    helper.check_input_shape(input_shape)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'transpose',
+                                             reuse)
+    if not isinstance(perm, (list, tuple)):
+        raise TypeError('`perm` must be list/tuple, given `{}`'
+                        .format(colors.red(type(perm))))
+    if len(input_shape) != len(perm):
+        raise AttributeError('`input_shape` and `perm` must have same length. given `{}` vs `{}`'
+                             .format(colors.red(len(input_shape)), colors.blue(len(perm))))
+    output_shape = []
+    for p in perm:
+        output_shape.append(input_shape[p])
+    def _transpose(x):
+        with ops_scope:
+            return core.transpose(x,
+                                  perm=perm,
+                                  conjugate=conjugate,
+                                  name=name)
+    return _transpose, output_shape
 
 
 # @helpers.typecheck(input_shape=list, axis=int, reuse=bool, name=str, scope=str)

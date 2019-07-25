@@ -173,7 +173,9 @@ def chamfer_loss(axis,
                  reuse=False,
                  name=None,
                  scope=None,
-                 metric=None):
+                 dtype=core.float64,
+                 metric=None,
+                 alpha=0.5):
     if axis is None:
         axis = 1
     if metric is None:
@@ -197,7 +199,8 @@ def chamfer_loss(axis,
 
     def _chamfer_distance_sum(inputs):
         inputs, targets = inputs
-        return _chamfer_distance(inputs, targets) + _chamfer_distance(targets, inputs)
+        return _chamfer_distance(inputs, targets) * alpha \
+             + _chamfer_distance(targets, inputs) * (1-alpha)
 
     def _chamfer_loss(x, labels):
         ''' x and labels should have the shape:
@@ -205,7 +208,7 @@ def chamfer_loss(axis,
         '''
         with scope:
             return core.mean(
-                    core.map_func(_chamfer_distance_sum, elems=(x, labels), dtype=core.float64)
+                    core.map_func(_chamfer_distance_sum, elems=(x, labels), dtype=dtype)
                     )
     return _chamfer_loss
 

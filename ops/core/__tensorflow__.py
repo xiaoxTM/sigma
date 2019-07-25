@@ -35,6 +35,18 @@ from sigma import colors
 # backend version
 version = tf.__version__
 
+def version_convert(version):
+    major, mid, minor = version.split('.')
+    major = int(major)
+    mid = int(mid)
+    minor = int(minor)
+    return major * 100000 + mid * 100 + minor
+
+def version_compare(ver1, ver2):
+    v1 = version_convert(ver1)
+    v2 = version_convert(ver2)
+    return v1 > v2
+
 # floating data type
 float16 = tf.float16
 float32 = tf.float32
@@ -217,6 +229,9 @@ def map_func(func, elems,
                      infer_shape,
                      name)
 
+def stop_gradient(x, name):
+    return tf.stop_gradient(x, name)
+
 
 #----- tensorflow scop -----#
 def name_scope(name, default_name=None, values=None):
@@ -341,8 +356,11 @@ def unstack(x, num=None, axis=0, name='unstack'):
     return tf.unstack(x, num, axis, name)
 
 
-def transpose(x, orders):
-    return tf.transpose(x, orders)
+def transpose(x, perm, conjugate=False, name=None):
+    return tf.transpose(x,
+                        perm=perm,
+                        conjugate=conjugate,
+                        name=name)
 
 
 def concat(inputs, axis, name='concat'):
@@ -434,7 +452,7 @@ def argmax(x,
            axis=None,
            dtype=int64,
            name=None):
-    if tf.__version__ >= '1.4.0':
+    if version_compare(tf.__version__,'1.4.0'):
         return tf.argmax(x, axis=axis, output_type=dtype, name=name)
     return tf.argmax(x, axis=axis, name=name)
 
@@ -443,7 +461,7 @@ def argmin(x,
            axis=None,
            dtype=int64,
            name=None):
-    if tf.__version__ >= '1.4.0':
+    if version_comare(tf.__version__ ,'1.4.0'):
         return tf.argmin(x, axis=axis, output_type=dtype, name=name)
     return tf.argmin(x, axis=axis, name=name)
 
@@ -658,7 +676,7 @@ def selu(x,
 
 
 def leaky_relu(x, alpha=0.2, name=None):
-    if tf.__version__ >= '1.4.0':
+    if version_compare(tf.__version__, '1.4.0'):
         return tf.nn.leaky_relu(x, alpha, name)
     return tf.maximum(x, x * alpha, name)
 
@@ -687,6 +705,9 @@ def tanh(x, name=None):
 
 def seed(x):
     tf.set_random_seed(x)
+
+def group(*inputs, **kwargs):
+    return tf.group(*inputs, **kwargs)
 
 
 def random_normal(shape,
@@ -749,7 +770,7 @@ def embedding(params,
 @padnorm
 def conv1d(x, filters, stride, padding,
            use_cudnn_on_gpu=None,
-           data_format=commons.data_format,
+           data_format='NWC',
            name=None):
     return tf.nn.conv1d(x,
                         filters,
@@ -766,7 +787,7 @@ def conv2d(x, filters, strides, padding,
            data_format=commons.data_format,
            dilations=[1,1,1,1],
            name=None):
-    if tf.__version__ >= '1.5':
+    if version_compare(tf.__version__,'1.5.0'):
         return tf.nn.conv2d(x,
                             filters,
                             strides,
@@ -790,7 +811,7 @@ def conv3d(x, filters, strides, padding,
            data_format=commons.data_format,
            dilations=[1,1,1,1],
            name=None):
-    if tf.__version__ >= '1.5':
+    if version_compare(tf.__version__,'1.5.0'):
         return tf.nn.conv3d(x,
                             filters,
                             strides,
@@ -882,7 +903,7 @@ def softmax_cross_entropy_with_logits(labels=None,
                                       axis=commons.axis,
                                       name=None):
 
-    if tf.__version__ >= '1.5':
+    if version_compare(tf.__version__,'1.5.0'):
         return tf.nn.softmax_cross_entropy_with_logits_v2(_sentinel=None,
                                                           labels=labels,
                                                           logits=logits,
@@ -1141,17 +1162,148 @@ def metrics_recall(labels,
 
 
 #----- tensorflow optimizer -----#
+def AdadeltaOptimizer(learning_rate=0.001,
+                      rho=0.95,
+                      epsilon=1e-08,
+                      use_locking=False,
+                      name='Adadelta'):
+    return tf.train.AdadeltaOptimizer(learning_rate,
+                                      rho,
+                                      epsilon,
+                                      use_locking,
+                                      name)
+
+def AdagradOptimizer(learning_rate,
+                     initial_accumulator_value=0.1,
+                     use_locking=False,
+                     name='Adagrad'):
+    return tf.train.AdagradOptimizer(learning_rate,
+                                     initial_accumulator_value,
+                                     use_locking,
+                                     name)
+
+
+def AdagradDAOptimizer(learning_rate,
+                       global_step,
+                       initial_gradient_squared_accumulator_value=0.1,
+                       l1_regularization_strength=0.0,
+                       l2_regularization_strength=0.0,
+                       use_locking=False,
+                       name='AdagradDA'):
+    return tf.train.AdagradDAOptimizer(learning_rate,
+                                       global_step,
+                                       initial_gradient_squared_accumulator_value,
+                                       l1_regularization_strength,
+                                       l2_regularization_strength,
+                                       use_locking,
+                                       name)
+
+def AdamOptimizer(learning_rate=0.001,
+                  beta1=0.9,
+                  beta2=0.999,
+                  epsilon=1e-08,
+                  use_locking=False,
+                  name='Adam'):
+    return tf.train.AdamOptimizer(learning_rate,
+                                  beta1,
+                                  beta2,
+                                  epsilon,
+                                  use_locking,
+                                  name)
+
+def GradientDescentOptimizer(learning_rate,
+                             use_locking=False,
+                             name='GradientDescent'):
+    return tf.train.GradientDescentOptimizer(learning_rate,
+                                             use_locking,
+                                             name)
+
+def ProximalAdagradOptimizer(learning_rate=0.1,
+                             initial_accumulator_value=0.1,
+                             l1_regularization_strength=0.0,
+                             l2_regularization_strength=0.0,
+                             use_locking=False,
+                             name='ProximalAdagrad'):
+    return tf.train.ProximalAdagradOptimizer(learning_rate,
+                                             initial_accumulator_value,
+                                             l1_regularization_strength,
+                                             l2_regularization_strength,
+                                             use_locking,
+                                             name)
+
+def ProximalGradientDescentOptimizer(learning_rate,
+                                     l1_regularization_strength=0.0,
+                                     l2_regularization_strength=0.0,
+                                     use_locking=False,
+                                     name='ProximalGradientDescent'):
+    return tf.train.ProximalGradientDescentOptimizer(learning_rate,
+                                                     l1_regularization_strength,
+                                                     l2_regularization_strength,
+                                                     use_locking,
+                                                     name)
+
+def RMSPropOptimizer(learning_rate,
+                     decay=0.9,
+                     momentum=0.0,
+                     epsilon=1e-10,
+                     use_locking=False,
+                     centered=False,
+                     name='RMSProp'):
+    return tf.train.RMSPropOptimizer(learning_rate,
+                                     decay,
+                                     momentum,
+                                     epsilon,
+                                     use_locking,
+                                     centered,
+                                     name)
+
+def MomentumOptimizer(learning_rate,
+                      momentum,
+                      use_locking=False,
+                      name='Momentum',
+                      use_nesterov=False):
+    return tf.train.MomentumOptimizer(learning_rate,
+                                      momentum,
+                                      use_locking,
+                                      name,
+                                      use_nesterov)
+
+def FtrlOptimizer(learning_rate,
+                  learning_rate_power=-0.5,
+                  initial_accumulator_value=0.1,
+                  l1_regularization_strength=0.0,
+                  l2_regularization_strength=0.0,
+                  use_locking=False,
+                  name='Ftrl',
+                  accum_name=None,
+                  linear_name=None,
+                  l2_shrinkage_regularization_strength=0.0):
+    return tf.train.FtrlOptimizer(learning_rate,
+                                  learning_rate_power,
+                                  initial_accumulator_value,
+                                  l1_regularization_strength,
+                                  l2_regularization_strength,
+                                  use_locking,
+                                  name,
+                                  accum_name,
+                                  linear_name,
+                                  l2_shrinkage_regularization_strength)
+
+
 def get_optimizer(optimizer, **kwargs):
-    if optimizer not in ['Optimizer', 'GradientDescentOptimizer',
-                         'AdadeltaOptimizer', 'AdagradOptimizer',
-                         'AdagradDAOptimizer', 'MomentumOptimizer',
-                         'AdamOptimizer', 'FtrlOptimizer',
+    if optimizer not in ['GradientDescentOptimizer',
+                         'AdadeltaOptimizer',
+                         'AdagradOptimizer',
+                         'AdagradDAOptimizer',
+                         'MomentumOptimizer',
+                         'AdamOptimizer',
+                         'FtrlOptimizer',
                          'ProximalGradientDescentOptimizer',
                          'ProximalAdagradOptimizer',
                          'RMSPropOptimizer']:
         raise NotImplementedError('optimizer `{}` not implemented'
                                   .format(optimizer))
-    return eval('tf.train.{}(**kwargs)'.format(optimizer))
+    return eval('{}(**kwargs)'.format(optimizer))
 
 
 #------ tensorflow pooling -----#
@@ -1305,7 +1457,7 @@ def load(session, checkpoint,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
     sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
-    if version >= '1.5':
+    if version_compare(tf.__version__, '1.12.0'):
         sessions.append(tf_debug.TensorBoardDebugWrapperSession)
     if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
@@ -1341,7 +1493,7 @@ def save(session,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
     sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
-    if version >= '1.5':
+    if version_compare(tf.__version__, '1.12.0'):
         sessions.append(tf_debug.TensorBoardDebugWrapperSession)
     if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
@@ -1485,7 +1637,9 @@ def session(target='',
     sess = tf.Session(target, graph, config)
     if debug:
         if address is not None:
-            sess = tf_debug.TensorBoardDebugWrapperSession(sess, address)
+            sess = tf_debug.TensorBoardDebugWrapperSession(sess,
+                                                           address,
+                                                           send_traceback_and_source_code=False)
         else:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
     sess.run(tf.global_variables_initializer())

@@ -25,7 +25,7 @@ def chamfer_distance_numpy(a1, a2):
         ad1 = array2samples_distance(a1[i], a2[i])
         ad2 = array2samples_distance(a2[i], a1[i])
         dist = dist + (ad1 + ad2) / batchsize
-    return dist
+    return dist / 2.0
 
 class LossesTest(unittest.TestCase):
 

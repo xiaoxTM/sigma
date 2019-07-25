@@ -21,7 +21,8 @@ from .. import ops
 from . import core
 
 @core.layer
-def embedding(inputs, table_size,
+def embedding(inputs,
+              table_size,
               strategy='mod',
               dtype=ops.core.float32,
               initializer='glorot_uniform',
@@ -70,7 +71,8 @@ def flatten(inputs,
 
 
 @core.layer
-def reshape(inputs, output_shape,
+def reshape(inputs,
+            output_shape,
             return_shape=False,
             reuse=False,
             name=None,
@@ -87,6 +89,35 @@ def reshape(inputs, output_shape,
     if return_shape:
         x = [x, output]
     return x
+
+
+@core.layer
+def transpose(inputs,
+              perm,
+              conjugate=False,
+              return_shape=False,
+              reuse=False,
+              name=None,
+              scope=None):
+    input_shape = ops.helper.norm_input_shape(inputs)
+    fun, output = ops.base.transpose(input_shape,
+                                     perm,
+                                     conjugate,
+                                     reuse,
+                                     name,
+                                     scope)
+    x = fun(inputs)
+    xshape = ops.core.shape(x)
+    if output[1:] != xshape[1:]:
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {} vs {}'
+                         .format(colors.red(output),
+                                 colors.green(xshape)))
+    if return_shape:
+        x = [x, output]
+    return x
+
+
 
 
 @core.layer

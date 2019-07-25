@@ -153,7 +153,9 @@ def margin_loss(inputs,
 @core.layer
 def chamfer_loss(inputs,
                  axis=None,
+                 dtype=ops.core.float64,
                  metric=None,
+                 alpha=0.5,
                  from_logits=True,
                  onehot=True,
                  reuse=False,
@@ -172,7 +174,9 @@ def chamfer_loss(inputs,
                                    reuse,
                                    name,
                                    scope,
-                                   metric)(inputs, labels)
+                                   dtype,
+                                   metric,
+                                   alpha)(inputs, labels)
 
 
 # short alias for each losses

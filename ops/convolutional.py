@@ -205,7 +205,7 @@ def conv1d(input_shape, nouts, kshape,
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
     kshape = helper.norm_input_1d(kshape)
-    stride = helper.norm_input_id(stride)
+    stride = helper.norm_input_1d(stride)
     # helper.get_output_shape requires all inputs (except padding)
     # to have same length and be all list / tuple
     output_shape = helper.get_output_shape(input_shape, nouts,
