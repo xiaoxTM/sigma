@@ -25,7 +25,7 @@ def instance_norm(input_shape,
                   offset_regularizer=None,
                   scale_regularizer=None,
                   cpuid=0,
-                  epsilon=core.epsilon,
+                  epsilon=1e-5,
                   act=None,
                   trainable=True,
                   collections=None,
@@ -101,7 +101,7 @@ def conditional_instance_norm(input_shape,
                               offset_regularizer=None,
                               scale_regularizer=None,
                               cpuid=0,
-                              epsilon=core.epsilon,
+                              epsilon=1e-5,
                               act=None,
                               trainable=True,
                               collections=None,
@@ -184,6 +184,7 @@ def conditional_instance_norm(input_shape,
 #                    name=str,
 #                    scope=str)
 def batch_norm(input_shape,
+               is_training,
                momentum=0.99,
                offset_initializer='zeros',
                scale_initializer='ones',
@@ -192,7 +193,7 @@ def batch_norm(input_shape,
                moving_mean_initializer='zeros',
                moving_variance_initializer='ones',
                cpuid=0,
-               epsilon=core.epsilon,
+               epsilon=1e-5,
                act=None,
                trainable=True,
                fused=False,
@@ -241,7 +242,7 @@ def batch_norm(input_shape,
         axis = [0 ,1, 2]
     # if not isinstance(axis, (list, tuple)):
     #     axis = [axis]
-    neurons = input_shape[core.axis]
+    neurons = input_shape[core.caxis]
 
     offset = None
     if not isinstance(offset_initializer, bool) or \
@@ -347,17 +348,16 @@ def batch_norm(input_shape,
 
         return act(x)
 
+    if is_training:
+        def _process(x):
+            return _train(x)
+    else:
+        def _process(x):
+            return _infer(x)
+
     def _batch_norm(x):
         with ops_scope:
-            #x = core.cond(core.cast(status.is_training, core.boolean),
-            #            lambda: _train(x),
-            #            lambda: _infer(x))
-            # if update moving_mean and moving_variance
-            if status.is_training:
-                x = _train(x)
-            else:
-                x = _infer(x)
-            return x
+            return _process(x)
     return _batch_norm
 
 

@@ -49,7 +49,7 @@ def binary_cross_entropy(axis,
             if not from_logits:
                 # source code borrowed from:
                 #     @keras.backend.tensorflow_backend.py
-                x = core.clip(x, statis.epsilon, 1- statis.epsilon)
+                x = core.clip(x, 1e-5, 1- 1e-5)
                 x = core.log(x / (1-x))
             return core.mean(
                 core.sigmoid_cross_entropy_with_logits(labels=labels,
@@ -81,7 +81,7 @@ def categorical_cross_entropy(axis,
                 x /= core.sum(x,
                               len(x.get_shape())-1,
                               True)
-                x = core.clip(x, statis.epsilon, 1-statis.epsilon)
+                x = core.clip(x, 1e-5, 1-1e-5)
             return -core.sum(label * core.log(x),
                              len(output.get_shape())-1)
     return _categorical_cross_entropy
@@ -151,7 +151,7 @@ def margin_loss(axis,
                 negative_margin=0.1,
                 downweight=0.5):
     if axis is None:
-        axis = core.axis
+        axis = core.caxis
     def _margin_loss(x, labels):
         with scope:
             if not onehot:

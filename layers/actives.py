@@ -25,12 +25,13 @@ from . import core
 """
 @core.layer
 def squash(inputs,
-           epsilon=ops.core.epsilon,
-           safe=False,
+           axis,
+           epsilon=1e-5,
+           safe=True,
            reuse=False,
            name=None,
            scope=None):
-    return ops.actives.squash(epsilon, safe, True, reuse, name, scope)(inputs)
+    return ops.actives.squash(axis, epsilon, safe, True, reuse, name, scope)(inputs)
 
 
 @core.layer

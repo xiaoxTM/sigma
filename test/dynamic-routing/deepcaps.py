@@ -19,7 +19,7 @@ import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
-def build_func(inputs, labels, initializer='glorot_uniform', share_weights=False):
+def build_func(inputs, labels, initializer='glorot_uniform'):
     # inputs shape :
     #    [batch-size, 28x28]
     #ops.core.summarize('inputs', inputs)
@@ -51,9 +51,9 @@ def build_func(inputs, labels, initializer='glorot_uniform', share_weights=False
     #=>[batch_size, 16, 10]
     # a.k.a [batch-size, 1=capsules of each channel, 16=capsule atoms/dims, 10=channels]
     # digitCapsule Layer
-    randm_normal = initializers.get('random_normal', stddev=0.01)
+    random_normal = ops.initializers.get('random_normal', stddev=0.01)
     x = layers.capsules.dense(x, 10, 16, 3,
-                              share_weights=share_weights,
+                              share_weights=False,
                               name='capdense-0',
                               safe=True,
                               epsilon=1e-9,
@@ -89,7 +89,7 @@ def build_func(inputs, labels, initializer='glorot_uniform', share_weights=False
     #return reconstruction, loss, metric
     return None, loss, metric
 
-def train(epochs=100, batchsize=100, checkpoint=None, logdir=None, mode=None):
+def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.5
@@ -106,12 +106,8 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None, mode=None):
     labels = layers.base.label_spec([None, 10])
     global_step = tf.Variable(0, trainable=False)
 
-    share_weights = False
-    if mode == 'share-weights':
-        share_weights = True
-
     with ops.core.device('/gpu:0'):
-        reconstruction_op, loss_op, metrics_op = build_func(inputs, labels, share_weights=share_weights)
+        reconstruction_op, loss_op, metrics_op = build_func(inputs, labels)
         metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
         learning_rate = tf.train.exponential_decay(0.001, global_step, mnist.train.num_examples / batchsize, 0.998)
         train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(loss_op, global_step=global_step)
@@ -126,7 +122,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None, mode=None):
                                                     #address='172.31.234.152:2666',
                                                     log=logdir)
 
-    base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist/{}'.format(mode)
+    base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
     with sess:
         #tf.global_variables_initializer().run()
         #tf.local_variables_initializer().run()
@@ -194,17 +190,15 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None, mode=None):
             if epoch % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True)
         ops.core.close_summary_writer(writer)
-        os.makedirs(mode, exist_ok=True)
-        np.savetxt('{}/log'.format(mode), mlog)
+        np.savetxt('log', mlog)
 
 
 if __name__=='__main__':
-    exp = '/home/xiaox/studio/exp/sigma/capsules/deepcaps'
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
     #mode = 'non-share-weights' # 'non-share-weights', 'share-weights'
-    mode = sys.argv[1]
-    os.makedirs('{}/{}/cache/checkpoint'.format(exp, mode), exist_ok=True)
-    os.makedirs('{}/{}/cache/log'.format(exp, mode), exist_ok=True)
-    checkpoint = os.path.join(exp, mode, 'cache/checkpoint/ckpt')
-    log = os.path.join(exp, mode, 'cache/log')
-    train(checkpoint=checkpoint, logdir=log, mode=mode)
+    os.makedirs('{}/cache/checkpoint'.format(exp), exist_ok=True)
+    os.makedirs('{}/cache/log'.format(exp), exist_ok=True)
+    checkpoint = os.path.join(exp, 'cache/checkpoint/ckpt')
+    log = os.path.join(exp, 'cache/log')
+    train(checkpoint=checkpoint, logdir=log)

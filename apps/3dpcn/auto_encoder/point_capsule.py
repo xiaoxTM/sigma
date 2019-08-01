@@ -12,6 +12,7 @@ from .encoder import encode
 from .decoder import decode
 
 def point_capsule_net(inputs,
+                      is_training,
                       batchsize,
                       primary_size=16,
                       num_latent=64,
@@ -24,20 +25,21 @@ def point_capsule_net(inputs,
 
     # inputs: [batch-size, N, 3]
     #=>    x: [batch-size, 1024, primary-size]
-    x = encode('pcn_encode', inputs, primary_size, reuse=reuse)
+    x = encode('pcn_encode', inputs, primary_size, reuse=reuse, is_training=is_training)
 
     #      x: [batch-size, 1024, primary-size]
     #=>    x: [batch-size, 64, 64]
-    latent_capsules = layers.capsules.dense(x, num_latent, vec_latent, name='pcn_encode_dense', reuse=reuse)
+    latent_capsules = layers.capsules.dense(x, num_latent, vec_latent, name='pcn_encode_dense', reuse=reuse, epsilon=1e-10)
     ops.core.summarize('pcn_encode_dense', latent_capsules)
 
     #      x: [batch-size, 64, 64]
     #=>    x: [batch-size, num_points, 3]
-    x = decode('pcn_decode', latent_capsules, batchsize, num_points, channels=channels, reuse=reuse)
+    x = decode('pcn_decode', latent_capsules, batchsize, num_points, channels=channels, reuse=reuse, is_training=is_training)
     return latent_capsules, x
 
 
 def point_capsule_seg(inputs,
+                      is_training,
                       primary_size=16,
                       num_latent=64,
                       vec_latent=64,
@@ -49,7 +51,7 @@ def point_capsule_seg(inputs,
 
     # inputs: [batch-size, N, 3]
     #=>    x: [batch-size, 1024, primary-size]
-    x = encode('pcs_encode', inputs, primary_size, reuse=reuse)
+    x = encode('pcs_encode', inputs, primary_size, reuse=reuse, is_training=is_training)
 
     #      x: [batch-size, 1024, primary-size]
     #=>    x: [batch-size, 64, 64]

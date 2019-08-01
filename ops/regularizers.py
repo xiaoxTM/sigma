@@ -50,7 +50,7 @@ def regularize(l1=0.0, l2=0.0):
 """
 def total_variation_regularizer(shape, reuse=False, name=None, scope=None):
     axes = list(range(len(shape)))
-    del axes[core.axis]
+    del axes[core.caxis]
     del axes[0]
     indices = [np.arange(s) for s in shape]
     ops_scope, _, name = helper.assign_scope(name,

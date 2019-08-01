@@ -18,9 +18,11 @@
 
 import numpy as np
 
-epsilon = 1e-5
-data_format = 'NHWC'
-axis = -1
+# 'NC' for fully connected
+# 'NWC' for 1d
+# 'NHWC' for 2d
+data_format = ['NC', 'NWC', 'NHWC', 'NDHWC']
+caxis = -1 # channel axis
 
 def shape_statistics(shape):
     """ statistics shapes in shape_list

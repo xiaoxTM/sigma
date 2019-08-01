@@ -27,7 +27,7 @@ def base_pool2d(input_shape, fun, pshape, stride,
     stride = helper.norm_input_2d(stride)
     pshape = helper.norm_input_2d(pshape)
     out_shape = helper.get_output_shape(input_shape,
-                                        input_shape[core.axis],
+                                        input_shape[core.caxis],
                                         pshape,
                                         stride,
                                         padding)
@@ -41,7 +41,7 @@ def base_pool2d(input_shape, fun, pshape, stride,
     def _base_pool2d(x):
         with ops_scope:
             return fun(x, pshape, stride, padding.upper(),
-                       data_format=core.data_format,
+                       data_format=core.data_format[2],
                        name=name)
     return _base_pool2d, out_shape
 
@@ -57,12 +57,12 @@ def base_pool2d_global(input_shape, fun, reuse, name, scope):
         ltype = ltype[0]
     ops_scope, _, name = helper.assign_scope(name, scope, ltype, reuse)
     axes = [idx for idx, _ in enumerate(input_shape)]
-    del axes[core.axis]
+    del axes[core.caxis]
     del axes[0]
     def _base_pool2d_global(x):
         with ops_scope:
             return fun(x, axis=axes, name=name)
-    return _base_pool2d_global, [input_shape[0], input_shape[core.axis]]
+    return _base_pool2d_global, [input_shape[0], input_shape[core.caxis]]
 
 
 # @helpers.typecheck(input_shape=list,

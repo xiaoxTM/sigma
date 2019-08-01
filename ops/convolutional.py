@@ -54,6 +54,7 @@ def conv(convop, kernel_shape,
          dtype=core.float32,
          bias_axis=-1,
          collections=None,
+         data_format=None,
          summary='histogram',
          reuse=False,
          name=None,
@@ -100,7 +101,7 @@ def conv(convop, kernel_shape,
         with ops_scope:
             x = convop(x, weight)
             if bias:
-                x = core.bias_add(x, bias, core.data_format)
+                x = core.bias_add(x, bias)
             x = act(x)
             return x
     return _conv
@@ -159,6 +160,7 @@ def fully_connected(input_shape, nouts,
                 dtype,
                 -1,
                 collections,
+                core.data_format[0],
                 summary,
                 reuse,
                 name,
@@ -228,6 +230,7 @@ def conv1d(input_shape, nouts, kshape,
                 dtype,
                 -1,
                 collections,
+                core.data_format[1],
                 summary,
                 reuse,
                 name,
@@ -277,7 +280,7 @@ def conv2d(input_shape, nouts, kshape,
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    kernel_shape = kshape[1:-1] + [input_shape[core.axis], nouts]
+    kernel_shape = kshape[1:-1] + [input_shape[core.caxis], nouts]
     def _conv2d(x, weight):
         return core.conv2d(x, weight, stride, padding.upper())
     return conv(_conv2d,
@@ -292,6 +295,7 @@ def conv2d(input_shape, nouts, kshape,
                 dtype,
                 -1,
                 collections,
+                core.data_format[2],
                 summary,
                 reuse,
                 name,
@@ -356,6 +360,7 @@ def conv3d(input_shape, nouts,
                 dtype,
                 -1,
                 collections,
+                core.data_format[3],
                 summary,
                 reuse,
                 name,
@@ -447,6 +452,7 @@ def deconv2d(input_shape, output_shape, nout,
                 dtype,
                 -2,
                 collections,
+                core.data_format[2],
                 summary,
                 reuse,
                 name,
@@ -970,6 +976,7 @@ def sepconv(sepconvop,
             dtype=core.float32,
             caxis=-1,
             collections=None,
+            data_format=None,
             summary='histogram',
             reuse=False,
             name=None,
@@ -1011,7 +1018,7 @@ def sepconv(sepconvop,
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          name,
-                         (pointwise_kernel[core.axis],),
+                         (pointwise_kernel[core.caxis],),
                          dtype,
                          bias_initializer,
                          bias_regularizer,
@@ -1027,7 +1034,7 @@ def sepconv(sepconvop,
         with ops_scope:
             x = sepconvop(x, depthwise, pointwise)
             if bias:
-                x = core.bias_add(x, bias)
+                x = core.bias_add(x, bias, data_format)
             x = act(x)
         return x
     return _sepconv
@@ -1079,10 +1086,10 @@ def sepconv2d(input_shape, nouts,
     stride = helper.norm_input_2d(stride)
     output_shape = helper.get_output_shape(input_shape, nouts,
                                            kshape, stride, padding)
-    depthwise_kernel = kshape[1:-1] + [input_shape[core.axis],
+    depthwise_kernel = kshape[1:-1] + [input_shape[core.caxis],
                                        channel_multiplier]
     pointwise_kernel = [1, 1,
-                        input_shape[core.axis]*channel_multiplier,
+                        input_shape[core.caxis]*channel_multiplier,
                         nouts]
     """
         input: 4-D Tensor with shape according to data_format.
@@ -1121,6 +1128,7 @@ def sepconv2d(input_shape, nouts,
                    trainable,
                    dtype,
                    collections,
+                   core.data_format[2],
                    summary,
                    reuse,
                    name,

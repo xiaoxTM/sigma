@@ -153,10 +153,10 @@ def maskout(inputs,
             scope=None):
     """ maskout specificated features given by `indices`
         NOTE this layer will drop if `drop` is True the other indices
-        > inputs: [batch-size, nclass, depth]
-        > outputs: [batch-size, len(indices), depth] if indices
+        > inputs : [batch-size, dims=feature length, channels]
+        > outputs: [batch-size, len(indices), channels] if indices
           have more than one indices
-        > outputs: [batch-size, depth] if indices have only one indices
+        > outputs: [batch-size, channels] if indices have only one indices
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.maskout(input_shape,

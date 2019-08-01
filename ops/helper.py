@@ -92,12 +92,12 @@ def is_tensor(x):
 
 
 def depth(x):
-    return core.shape(x)[core.axis]
+    return core.shape(x)[core.caxis]
 
 
 def feature_dims(x):
     dims = list(range(core.rank(x)))
-    shape.pop(core.axis)
+    shape.pop(core.caxis)
     shape.pop(0)
     return shape
 
@@ -187,7 +187,7 @@ def scope_name(names):
     for example: tensor shape [batch size, rows, cols, channels], axis = -1
         return axis=3
 """
-def normalize_axes(shape, axis=core.axis):
+def normalize_axes(shape, axis=core.caxis):
     if not isinstance(shape, (list, tuple)):
         raise TypeError('shape must be list/tuple, given {}[{}]'
                         .format(colors.red(type(shape)), shape))

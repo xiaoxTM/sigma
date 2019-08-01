@@ -19,8 +19,9 @@
 from .. import colors
 from . import helper, core
 
-def squash(epsilon=core.epsilon,
-           safe=False,
+def squash(axis,
+           epsilon=1e-5,
+           safe=True,
            aslayer=False,
            reuse=False,
            name=None,
@@ -41,7 +42,8 @@ def squash(epsilon=core.epsilon,
     """
     def _squash(x):
         with helper.maybe_layer(aslayer, name, scope, 'squash', reuse):
-            norm, squared_norm = core.norm(x, -1,
+            norm, squared_norm = core.norm(x,
+                                           axis,
                                            safe=safe,
                                            epsilon=epsilon,
                                            return_squared=True,

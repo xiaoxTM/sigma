@@ -213,6 +213,11 @@ def while_loop(cond,
                          name,
                          **kwargs)
 
+
+def control_dependencies(inputs):
+    return tf.control_dependencies(inputs)
+
+
 def map_func(func, elems,
              dtype=None,
              parallel_iterations=None,
@@ -540,11 +545,11 @@ def sqrt(x, name=None):
 
 
 def norm(x,
-         axis=None,
+         axis,
          keepdims=False,
          ord='euclidean',
-         epsilon=1e-8,
-         safe=False,
+         epsilon=1e-5,
+         safe=True,
          return_squared=False,
          name=None):
     if not safe:
@@ -770,7 +775,7 @@ def embedding(params,
 @padnorm
 def conv1d(x, filters, stride, padding,
            use_cudnn_on_gpu=None,
-           data_format='NWC',
+           data_format=commons.data_format[1],
            name=None):
     return tf.nn.conv1d(x,
                         filters,
@@ -784,7 +789,7 @@ def conv1d(x, filters, stride, padding,
 @padnorm
 def conv2d(x, filters, strides, padding,
            use_cudnn_on_gpu=None,
-           data_format=commons.data_format,
+           data_format=commons.data_format[2],
            dilations=[1,1,1,1],
            name=None):
     if version_compare(tf.__version__,'1.5.0'):
@@ -808,7 +813,7 @@ def conv2d(x, filters, strides, padding,
 @padnorm
 def conv3d(x, filters, strides, padding,
            use_cudnn_on_gpu=None,
-           data_format=commons.data_format,
+           data_format=commons.data_format[3],
            dilations=[1,1,1,1],
            name=None):
     if version_compare(tf.__version__,'1.5.0'):
@@ -835,7 +840,7 @@ def deconv2d(x,
              output_shape,
              strides,
              padding='SAME',
-             data_format=commons.data_format,
+             data_format=commons.data_format[2],
              name=None):
     return tf.nn.conv2d_transpose(x,
                                   filters,
@@ -849,7 +854,7 @@ def deconv2d(x,
 @padnorm
 def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
               rate=None,
-              data_format=commons.data_format,
+              data_format=commons.data_format[2],
               name=None):
     return tf.nn.separable_conv2d(x,
                                   depthwise_filter,
@@ -864,7 +869,7 @@ def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
 @padnorm
 def depthwise_conv2d(x, kernels, strides, padding,
                      rate=None,
-                     data_format=commons.data_format,
+                     data_format=commons.data_format[2],
                      name=None):
     return tf.nn.depthwise_conv2d(x,
                                   kernels,
@@ -900,7 +905,7 @@ def tensordot(a, b, axes, name=None):
 #----- tensorflow losses -----#
 def softmax_cross_entropy_with_logits(labels=None,
                                       logits=None,
-                                      axis=commons.axis,
+                                      axis=commons.caxis,
                                       name=None):
 
     if version_compare(tf.__version__,'1.5.0'):
@@ -1309,7 +1314,7 @@ def get_optimizer(optimizer, **kwargs):
 #------ tensorflow pooling -----#
 @padnorm
 def avg_pool(x, ksize, strides, padding,
-             data_format=commons.data_format,
+             data_format=commons.data_format[2],
              name=None):
     return tf.nn.avg_pool(x,
                           ksize,
@@ -1321,7 +1326,7 @@ def avg_pool(x, ksize, strides, padding,
 
 @padnorm
 def max_pool(x, ksize, strides, padding,
-            data_format=commons.data_format,
+            data_format=commons.data_format[2],
             name=None):
     return tf.nn.max_pool(x,
                           ksize,
@@ -1409,8 +1414,8 @@ def fused_batch_norm(x,
                      offset,
                      mean=None,
                      variance=None,
-                     epsilon=commons.epsilon,
-                     data_format=commons.data_format,
+                     epsilon=0.001,
+                     data_format=commons.data_format[2],
                      is_training=True,
                      name=None):
     return tf.nn.fused_batch_norm(x,
@@ -1556,7 +1561,7 @@ def export_weights(filename, session,
         if graph is None:
             graph = session.graph
         f.attrs['sigma_version'] = sigma.__version__.encode('utf-8')
-        f.attrs['data_format'] = commons.data_format.encode('utf-8')
+        f.attrs['data_format'] = ' '.join(map(str,commons.data_format)).encode('utf-8')
         if collections is None:
             collections = graph.get_all_collection_keys()
         elif isinstance(collections, str):
@@ -1686,6 +1691,19 @@ def device(name_or_function):
 
 def idle():
     tf.no_op()
+
+def extract_patches(x,
+                    ksize,
+                    strides,
+                    rates,
+                    padding,
+                    name=None):
+    return tf.extract_patches(x,
+                              ksize,
+                              strides,
+                              rates,
+                              padding,
+                              name)
 
 
 def moving_average_update(x,
