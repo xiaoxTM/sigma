@@ -10,6 +10,7 @@ def decode(name, inputs, batchsize, num_points=2048, grid_size=2, channels=1, re
         outs = []
         num_latent, vec_latent = ops.core.shape(inputs)[1:]
         parts = int(num_points / num_latent)
+        print('total parts:', parts)
         for idx in range(parts):
             # random to generate grid with shape of
             #=>  [batch-size, num-latent, grid-size]

@@ -6,6 +6,7 @@ from sigma import layers, dbs, ops, engine, colors, helpers
 import os.path
 import numpy as np
 import tensorflow as tf
+from tensorflow.python import debug as tfdbg
 import logging
 import os
 
@@ -18,78 +19,78 @@ import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
-def build_func(inputs, labels, initializer='glorot_normal', pdim=8, ddim=16, share_weights=False):
+def build_func(inputs, labels, initializer='glorot_uniform'):
     # inputs shape :
     #    [batch-size, 28x28]
-    # ops.core.summarize('inputs', inputs)
+    ops.core.summarize('inputs', inputs)
     image = layers.base.reshape(inputs, [-1, 28, 28, 1])
     x = layers.convs.conv2d(image, 256, 9,
+                            stride=1,
                             padding='valid',
                             act='relu',
+                            name='conv2d-0',
                             weight_initializer=initializer)
-    # ops.core.summarize('conv2d-0', x)
-    #  [batch-size, rows, cols, 256]
-    #=>[batch-size, rows, cols, 1, 256]
-    x = layers.base.expand_dims(x, -2)
-    # no routing between conv1 and primary caps
-    # routing means:
-    #     `reaching a agreement for all capsules in lower layer`
-    # since the lower contains ONLY one capsule
-    # we disable routing by setting iterations to 1
-    # x shape:
-    #  [batch-size, nrows, ncols, 32, 8]
-    # primaryCapsule Layer
-    x, outshape = layers.capsules.conv2d(x, 32, pdim, 9, 1,
-                                         share_weights=share_weights,
-                                         stride=2,
-                                         # activation for pre-predictions
-                                         # that is, u^{hat}_{j|i}
-                                         #act='leaky_relu',
-                                         safe=True,
-                                         weight_initializer=initializer,
-                                         return_shape=True)
-    # ops.core.summarize('conv2d-1', x)
-    # x, outshape = layers.capsules.conv2d(x, 64, 32, 5, 1,
-    #                                      stride=2,
-    #                                      weight_initializer=initializer,
-    #                                      return_shape=True)
-    # ops.core.summarize('conv2d-2', x)
+    ops.core.summarize('conv2d-0', x)
+    #   [batch-size, 20, 20, 256]
+    #=> [batch-size, 6, 6, 256]
+    x = layers.convs.conv2d(x, 32*8, 9,
+                            stride=2,
+                            act='relu',
+                            padding='valid',
+                            name='conv2d-1',
+                            weight_initializer=initializer)
+    ops.core.summarize('conv2d-1', x)
+    #   [batch-size, 6, 6, 256]
+    #=> [batch-size, 6 * 6 * 32, 8]
+    #=> [batch-size, 8, 6 * 6 * 32]
+    x = layers.base.reshape(x, [-1, 6*6*32, 8])
+    x = layers.base.transpose(x, (0, 2, 1))
+    x = layers.actives.squash(x, axis=1, epsilon=1e-9, name='squash-actives')
+    ops.core.summarize('squash-actives', x)
 
-    #  [batch-size, nrows, ncols, 32, 8]
-    #+>[batch_size, nrows * ncols * 32, 8]
-    x = layers.base.reshape(x,
-                            [outshape[0],
-                             np.prod(outshape[1:-1]),
-                             outshape[-1]])
     #  [batch_size, nrows * ncols * 32, 8]
-    #=>[batch_size, 10, 16]
+    #=>[batch_size, 16, 10]
+    # a.k.a [batch-size, 1=capsules of each channel, 16=capsule atoms/dims, 10=channels]
     # digitCapsule Layer
-    x = layers.capsules.dense(x, 10, ddim, 3, share_weights=share_weights,
-                              weight_initializer=initializer)
-    # ops.core.summarize('fully_connected-0', x)
+    random_normal = ops.initializers.get('random_normal', stddev=0.01)
+    x = layers.capsules.dense(x, 10, 16, 3,
+                              share_weights=False,
+                              name='capdense-0',
+                              safe=True,
+                              epsilon=1e-9,
+                              weight_initializer=random_normal)
+    ops.core.summarize('capdense-0', x)
     # norm the output to represent the existance probabilities
     # of each class
-    classification = layers.capsules.norm(x, safe=True)
-    # ops.core.summarize('norm-0', classification)
+    # classification:
+    #    [batch-size, caps_dims, incaps=channels]
+    #=>  [batch-size, incaps=channels=10]
+    classification = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9)
+    ops.core.summarize('norm-0', classification)
     class_loss = layers.losses.get('margin_loss', classification, labels)
     #loss = class_loss
-    #tf.summary.scalar('classification-loss', class_loss)
+    tf.summary.scalar('classification-loss', class_loss)
     ## reconstruction
     x = layers.base.maskout(x, index=labels)
-    x = layers.convs.dense(x, 512, act='relu')
-    x = layers.convs.dense(x, 1024, act='relu')
-    x = layers.convs.dense(x, 784, act='sigmoid')
+    ops.core.summarize('maskout', x)
+    x = layers.convs.dense(x, 512, act='relu', name='dense-0')
+    ops.core.summarize('dense-0', x)
+    x = layers.convs.dense(x, 1024, act='relu', name='dense-1')
+    ops.core.summarize('dense-1', x)
+    x = layers.convs.dense(x, 784, act='sigmoid', name='dense-2')
+    ops.core.summarize('dense-2', x)
     reconstruction = layers.base.reshape(x, [-1, 28, 28, 1])
-    #tf.summary.image('reconstruction', reconstruction, max_outputs=10)
+    tf.summary.image('reconstruction', reconstruction, max_outputs=10)
     recon_loss = layers.losses.mse([reconstruction, image])
-    #tf.summary.scalar('reconstruction-loss', recon_loss)
+    tf.summary.scalar('reconstruction-loss', recon_loss)
     loss = layers.math.add([class_loss, recon_loss], [1, 0.005])
     metric = layers.metrics.accuracy([classification, labels])
-    # ops.core.summarize('loss', loss, 'scalar')
-    # ops.core.summarize('acc', metric[0], 'scalar')
+    ops.core.summarize('loss', loss, 'scalar')
+    ops.core.summarize('acc', metric[0], 'scalar')
     return reconstruction, loss, metric
+    #return None, loss, metric
 
-def train(epochs=100, batchsize=100, checkpoint=None, mode=None):
+def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.5
@@ -106,41 +107,45 @@ def train(epochs=100, batchsize=100, checkpoint=None, mode=None):
     labels = layers.base.label_spec([None, 10])
     global_step = tf.Variable(0, trainable=False)
 
-    share_weights = False
-    if mode == 'share-weights':
-        share_weights = True
-
     with ops.core.device('/gpu:0'):
-        reconstruction_op, loss_op, metrics_op = build_func(inputs, labels, share_weights=share_weights)
+        reconstruction_op, loss_op, metrics_op = build_func(inputs, labels)
         metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
-        learning_rate = tf.train.exponential_decay(0.01, global_step, mnist.train.num_examples / batchsize, 0.998)
-        train_op = ops.optimizers.get('AdamOptimizer').minimize(loss_op, global_step=global_step)
+        learning_rate = tf.train.exponential_decay(0.001, global_step, mnist.train.num_examples / batchsize, 0.998)
+        train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(loss_op, global_step=global_step)
+        #trainable_variables = tf.trainable_variables()
+        #grads = tf.gradient(loss_op, trainables)
+        #optimizer = ops.optimizers.get('AdamOptimizer')
+        #train_op = optimizer.apply_gradients(zip(grad, trainable_variables))
 
-    sess = tf.Session(config=config)
-    if checkpoint is not None:
-        sess, saver = helpers.load(sess, checkpoint, verbose=True)
+    sess, saver, summarize, writer = engine.session(config=config,
+                                                    checkpoint=checkpoint,
+                                                    debug=False,
+                                                    #address='172.31.234.152:2666',
+                                                    log=logdir)
 
-    base = '/home/xiaox/studio/exp/sigma/capsules/tmp/dynamic-routing/mnist/{}'.format(mode)
+    base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
     with sess:
-        tf.global_variables_initializer().run()
-        tf.local_variables_initializer().run()
+        #tf.global_variables_initializer().run()
+        #tf.local_variables_initializer().run()
 
         mlog = np.ones([epochs, 5])
 
+        steps = int(mnist.train.num_examples / batchsize)
         for epoch in range(epochs):
             start = time.time()
-            steps = int(mnist.train.num_examples / batchsize)
             ops.core.run(sess, metric_variable_initialize_op)
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
                 train_feed = {inputs: xs, labels: ys}
-                _, loss, _ = sess.run([train_op, loss_op, metric_update_op], feed_dict=train_feed)
+                _, loss, _, summary = ops.core.run(sess, [train_op, loss_op, metric_update_op, summarize], feed_dict=train_feed)
+                #loss, _, summary = sess.run([loss_op, metric_update_op, summarize], feed_dict=train_feed)
                 metric = sess.run(metric_op)
+                ops.core.add_summary(writer, summary, global_step=(epoch * steps) + step)
                 if step % 20 == 0:
                     print('train for {}-th iteration: loss:{}, accuracy:{}'.format(step, loss, metric))
             end = time.time()
             mlog[epoch][4] = end - start
-            #print("time cost:", mlog[epoch][4])
+            print("time cost:", mlog[epoch][4])
             valid_step = int(mnist.validation.num_examples / batchsize)
             validation_loss = []
             validation_metric = []
@@ -165,6 +170,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, mode=None):
             for tstep in range(test_step):
                 xs, ys = mnist.test.next_batch(batchsize)
                 test_feed = {inputs:xs, labels:ys}
+                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=test_feed)
                 reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
                 metric = ops.core.run(sess, metric_op)
                 test_loss.append(loss)
@@ -184,15 +190,29 @@ def train(epochs=100, batchsize=100, checkpoint=None, mode=None):
             print('test for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, tloss, tmetric))
             if epoch % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True)
-    os.makedirs(mode, exist_ok=True)
-    np.savetxt('{}/log'.format(mode), mlog)
+        ops.core.close_summary_writer(writer)
+        np.savetxt('log', mlog)
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--checkpoint', '-c', type=str, default=None)
+parser.add_argument('--log', '-l', type=str, default=None)
+parser.add_argument('--timestamp', '-t', type=bool, default=True)
+parser.add_argument('--epochs', '-e', type=int, default=100)
+parser.add_argument('--batch-size', '-b', type=int, default=100)
 
 if __name__=='__main__':
-    exp = '/home/xiaox/studio/exp/sigma/capsules/tmp/dynamic-routing'
+    args = parser.parse_args()
+    exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing'
+    if args.timestamp:
+        exp = os.path.join(exp, helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None))
     os.environ['CUDA_VISIBLE_DEVICES'] = '3'
-    #mode = 'non-share-weights' # 'non-share-weights', 'share-weights'
-    mode = sys.argv[1]
-    os.makedirs('{}/{}/cache/checkpoint'.format(exp, mode), exist_ok=True)
-    checkpoint = os.path.join(exp, mode, 'cache/checkpoint/ckpt')
-    train(checkpoint=checkpoint, mode=mode)
+    checkpoint = None
+    log = None
+    if args.checkpoint is not None:
+        os.makedirs('{}/{}'.format(exp, args.checkpoint), exist_ok=True)
+        checkpoint = os.path.join(exp, args.checkpoint, 'ckpt')
+    if args.log is not None:
+        os.makedirs('{}/{}'.format(exp, args.log), exist_ok=True)
+        log = os.path.join(exp, args.log)
+    train(args.epochs, args.batch_size, checkpoint=checkpoint, logdir=log)

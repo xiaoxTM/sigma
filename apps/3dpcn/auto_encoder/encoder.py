@@ -22,15 +22,13 @@ def encode(name, inputs, primary_size=16, reuse=False, is_training=True):
 
         #       x: [batch-size, 1, 1024] * primary_size (by max_pool1d)
         #=>     x: [batch-size, primary_size, 1024]
-        #x = layers.merge.stack(capsules, axis=2)
         x = layers.merge.concat(capsules, axis=1, name='{}_concat'.format(name))
         #ops.core.summarize('{}_concat'.format(name), x)
 
         #       x: [batch-size, primary_size, 1024]
         #=>     x: [batch-size, 1024, primary_size]
-        #x = ops.core.squeeze(x)
         x = layers.base.transpose(x, (0, 2, 1), name='{}_transpose'.format(name))
-        x = layers.actives.squash(x, 1, name='{}_squash'.format(name))
+        x = layers.actives.squash(x, 1, name='{}_squash'.format(name), epsilon=1e-9)
         #ops.core.summarize('{}_squash'.format(name), x)
 
         return x

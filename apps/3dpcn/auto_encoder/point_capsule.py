@@ -37,6 +37,32 @@ def point_capsule_net(inputs,
     x = decode('pcn_decode', latent_capsules, batchsize, num_points, channels=channels, reuse=reuse, is_training=is_training)
     return latent_capsules, x
 
+def point_capsule_rec(inputs,
+                      is_training,
+                      primary_size=16,
+                      vec_latent=64,
+                      nclass=8,
+                      channels=1,
+                      reuse=False):
+
+    # inputs should have the shape of
+    #  [batch-size, N, 3]
+    num_points = ops.core.shape(inputs)[1]
+
+    # inputs: [batch-size, N, 3]
+    #=>    x: [batch-size, 1024, primary-size]
+    x = encode('pcn_encode', inputs, primary_size, reuse=reuse, is_training=is_training)
+
+    #      x: [batch-size, 1024, primary-size]
+    #=>    x: [batch-size, vec_latent, nclass]
+    latent_capsules = layers.capsules.dense(x, nclass, vec_latent, name='pcn_encode_dense', reuse=reuse, epsilon=1e-10)
+    ops.core.summarize('pcn_encode_dense', latent_capsules)
+
+    #      x: [batch-size, vec_latent, nclass]
+    #=>    x: [batch-size, nclass]
+    prediction = layers.capsules.norm(latent_capsules, axis=1, safe=True, epsilon=1e-9)
+    return prediction
+
 
 def point_capsule_seg(inputs,
                       is_training,

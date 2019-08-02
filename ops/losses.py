@@ -175,7 +175,8 @@ def chamfer_loss(axis,
                  scope=None,
                  dtype=core.float64,
                  metric=None,
-                 alpha=0.5):
+                 alpha=0.5,
+                 belta=0.5):
     if axis is None:
         axis = 1
     if metric is None:
@@ -200,7 +201,7 @@ def chamfer_loss(axis,
     def _chamfer_distance_sum(inputs):
         inputs, targets = inputs
         return _chamfer_distance(inputs, targets) * alpha \
-             + _chamfer_distance(targets, inputs) * (1-alpha)
+             + _chamfer_distance(targets, inputs) * belta
 
     def _chamfer_loss(x, labels):
         ''' x and labels should have the shape:

@@ -26,7 +26,7 @@ from . import core
 @core.layer
 def squash(inputs,
            axis,
-           epsilon=core.epsilon,
+           epsilon=ops.core.epsilon,
            safe=True,
            reuse=False,
            name=None,

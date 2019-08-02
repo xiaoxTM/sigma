@@ -8,11 +8,16 @@ fold2id = None
 npoints=None
 normalization=None
 
+def one_hot(x, nclass):
+    y = np.zeros(nclass)
+    y[x] = 1
+    return y
+
 def load(filename):
     splits = filename.rsplit('/')
     points = np.loadtxt(os.path.join(global_root, splits[0], 'points', splits[1]+'.pts'))
     parts  = np.loadtxt(os.path.join(global_root, splits[0], 'points_label', splits[1]+'.seg'))
-    category = fold2id[splits[0]]
+    category = one_hot(fold2id[splits[0]])
     size = len(parts)
     if size < npoints:
         points = np.concatenate((points, np.zeros((npoints-size, 3))), axis=0)

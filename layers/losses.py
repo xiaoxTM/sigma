@@ -156,6 +156,7 @@ def chamfer_loss(inputs,
                  dtype=ops.core.float64,
                  metric=None,
                  alpha=0.5,
+                 belta=0.5,
                  from_logits=True,
                  onehot=True,
                  reuse=False,
@@ -176,7 +177,8 @@ def chamfer_loss(inputs,
                                    scope,
                                    dtype,
                                    metric,
-                                   alpha)(inputs, labels)
+                                   alpha,
+                                   belta)(inputs, labels)
 
 
 # short alias for each losses
