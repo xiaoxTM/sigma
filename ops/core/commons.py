@@ -23,6 +23,7 @@ import numpy as np
 # 'NHWC' for 2d
 data_format = ['NC', 'NWC', 'NHWC', 'NDHWC']
 caxis = -1 # channel axis
+epsilon=1e-9
 
 def shape_statistics(shape):
     """ statistics shapes in shape_list

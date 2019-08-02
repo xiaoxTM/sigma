@@ -20,7 +20,7 @@ from .. import colors
 from . import helper, core
 
 def squash(axis,
-           epsilon=1e-5,
+           epsilon=core.epsilon,
            safe=True,
            aslayer=False,
            reuse=False,

@@ -34,14 +34,17 @@ from . import metrics
 from .core import trainable_parameters
 
 def get():
-    return {'data_format' : core.data_format}
+    return {'data_format' : core.data_format,
+                    'epsilon': core.epsilon}
 
 
 def set(config):
     if config is not None:
         core.data_format = config.get('data_format', ['NC', 'NWC', 'NHWC', 'NDHWC'])
+        core.epsilon = config.get('epsilon', 1e-9)
     else:
         core.data_format = ['NC', 'NWC', 'NHWC', 'NDHWC']
+        core.epsilon = 1e-9
     core.caxis = -1
     if core.data_format[1] == 'NCW':
         core.caxis = 1
