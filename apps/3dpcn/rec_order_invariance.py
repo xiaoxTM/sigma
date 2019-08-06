@@ -14,7 +14,7 @@ curd = os.path.dirname(os.path.abspath(__file__))
 root = os.path.realpath(os.path.join(curd, '../../../../'))
 sys.path.append(root)
 
-from auto_encoder import point_capsule_rec
+from models import point_capsule_rec, orit
 from sigma import layers, engine, ops, status, helpers
 from dataset import shapenet_part
 import argparse
@@ -49,14 +49,14 @@ parser.add_argument('--shuffle', default=True, type=bool)
 #                          reuse=reuse)
 #    return inputs, x
 
-
 def train_net(args):
     engine.set_print(None)
     inputs = layers.base.input_spec([None, args.num_points, 3])
     labels = layers.base.label_spec([None, args.nclass])
     ops.core.summarize('inputs', inputs)
     def _build_net(reuse, is_training):
-        return point_capsule_rec(inputs,
+        x = orit.order_invariance_transform(inputs, args.num_points, 3, reuse=reuse)
+        return point_capsule_rec(x,
                                  is_training,
                                  args.primary_size,
                                  args.vec_latent,

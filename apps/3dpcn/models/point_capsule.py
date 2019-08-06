@@ -8,8 +8,18 @@ sys.path.append(root)
 
 from sigma import layers, ops
 
+from .block import _block
 from .encoder import encode
 from .decoder import decode
+
+def point_capsule_tio(inputs,
+                      is_training,
+                      batchsize,
+                      nclass=8,
+                      reuse=False):
+    npoints = ops.core.shape(inputs)[1]
+    x = layers.convs.order_invariance_transform(inputs, npoints, 32, act='relu', name='tio')
+    x = _block('block-1', x, )
 
 def point_capsule_net(inputs,
                       is_training,

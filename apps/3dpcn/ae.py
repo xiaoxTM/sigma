@@ -89,7 +89,7 @@ def train_net(args):
         train_net = _build_net(reuse=False, is_training=True)
         _, train_reconstruction = train_net
         loss_op = layers.losses.chamfer_loss([inputs, train_reconstruction], dtype=ops.core.float32, alpha=1, belta=1)
-        learning_rate = tf.train.exponential_decay(0.00001, global_step, train_iters, 0.9)
+        learning_rate = tf.train.exponential_decay(0.001, global_step, train_iters, 0.9)
         update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(loss_op, global_step=global_step)
