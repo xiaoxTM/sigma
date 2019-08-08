@@ -192,7 +192,8 @@ def conv1d(inputs, nouts,
 """ 2-D convolutional operation
 """
 @core.layer
-def conv2d(inputs, nouts,
+def conv2d(inputs,
+           channels,
            kshape=3,
            stride=1,
            padding=core.__defaults__['padding'],
@@ -213,7 +214,7 @@ def conv2d(inputs, nouts,
            scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.conv2d(input_shape,
-                                   nouts,
+                                   channels,
                                    kshape,
                                    stride, padding,
                                    weight_initializer,

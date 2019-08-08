@@ -1716,3 +1716,23 @@ def moving_average_update(x,
                                                  decay,
                                                  zero_debias,
                                                  name)
+
+def int64_feature(value):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+
+def float_feature(value):
+    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+
+def bytes_feature(value):
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+
+def make_feature(features):
+    example = tf.train.Example(features=tf.train.Features(feature=features))
+    return example.SerializeToString()
+
+def feature_writer(filename):
+    return tf.python_io.TFRecordWriter(filename)
+
+def feature_reader(filenames):
+    reader = tf.TFRecordReader()
+    return reader

@@ -24,6 +24,17 @@ import collections
 import os.path
 from contextlib import contextmanager
 
+def normalize_name(x):
+    if x is None:
+        raise ValueError('`x` must be non None for name normalize')
+    if not isinstance(x, str):
+        raise TypeError('`x` muset be string for name normalize. given `{}`'.format(type(x)))
+    if x[0] == '.':
+        x = '.'+x
+    if x[-1] == '.':
+        x = x+'.'
+    return x
+
 def name_space():
     name_maps = collections.OrderedDict()
     def _name_space(x=None, index=None):
@@ -36,21 +47,21 @@ def name_space():
             raise TypeError('index space requires int but given {}'
                            .format(type(index)))
         if x is None:
-            return '{}-{}'.format(*list(name_maps.items())[index])
+            return normalize_name('{}-{}'.format(*list(name_maps.items())[index]))
         else:
             if index is None:
                 if x not in name_maps.keys():
                     name_maps[x] = -1
                 nid = name_maps[x] + 1
                 name_maps[x] = nid
-                return '{}-{}'.format(x, nid)
+                return normalize_name('{}-{}'.format(x, nid))
             else:
                 if x not in name_maps.keys():
                     raise ValueError('`{}` not in name maps for indexing {}'
                                      .format(x, index))
                 size = name_maps[x] + 1
                 nid = (size + index) % size
-                return '{}-{}'.format(x, nid)
+                return normalize_name('{}-{}'.format(x, nid))
     return _name_space
 
 
@@ -69,7 +80,8 @@ def assign_scope(name, scope, ltype, reuse=False):
             name = dispatch_name(ltype, -1)
         else:
             name = dispatch_name(ltype)
-    name_with_ltype = '.{}./{}'.format(name, ltype)
+    name = normalize_name(name)
+    name_with_ltype = '{}/{}'.format(name, ltype)
     if scope is None:
         ops_scope = core.name_scope('{}'.format(name_with_ltype))
     else:
@@ -81,7 +93,7 @@ def assign_scope(name, scope, ltype, reuse=False):
 @contextmanager
 def maybe_layer(aslayer=False, name=None, scope=None, ltype=None, reuse=False):
     if aslayer:
-        ops_scope = assign_scope(name, scope, ltype, reuse)
+        ops_scope, _, _ = assign_scope(name, scope, ltype, reuse)
         yield ops_scope
     else:
         yield

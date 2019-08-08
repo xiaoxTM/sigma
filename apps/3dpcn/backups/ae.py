@@ -31,6 +31,7 @@ parser.add_argument('--primary-size', default=16, type=int)
 parser.add_argument('--nclass', default=8, type=int)
 parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/checkpoint/model.ckpt', type=str)
 parser.add_argument('--logdir', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
+#parser.add_argument('--address', default=None)
 parser.add_argument('--address', default='172.31.234.152:2666')
 parser.add_argument('--dataset',
         default='/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_benchmark_v0', type=str)

@@ -8,18 +8,53 @@ sys.path.append(root)
 
 from sigma import layers, ops
 
-from .block import _block
+from .block import _block, _block_conv2d
 from .encoder import encode
 from .decoder import decode
 
 def point_capsule_tio(inputs,
                       is_training,
-                      batchsize,
                       nclass=8,
                       reuse=False):
+    #    [batch-size, npoints, 3]
     npoints = ops.core.shape(inputs)[1]
-    x = layers.convs.order_invariance_transform(inputs, npoints, 32, act='relu', name='tio')
-    x = _block('block-1', x, )
+    #    [batch-size, npoints, 3]
+    #=>  [batch-size, 3, npoints]; `npoints` capsules, each of which has 3 dims
+    x = layers.base.transpose(inputs, (0, 2, 1), reuse=reuse, name='transpose-0')
+    x = layers.capsules.order_invariance_transform(x, npoints, 9, act='squash', name='tio', reuse=reuse)
+    #    [batch-size, 9, npoints]
+    #=>  [batch-size, npoints, 9]
+    x = layers.base.transpose(x, (0, 2, 1), reuse=reuse, name='transpose-1')
+    #    [batch-size, npoints, 9, 1]
+    x = layers.base.reshape(x, [-1, npoints, 9, 1], name='reshape', reuse=reuse)
+    #    [batch-size, npoints, 3, 16]
+    #x = _block_conv2d(x, 16, reuse=reuse, is_training=is_training, act='relu', name='block_1')
+    #    [batch-size, npoints, 3, 64]
+    #x = _block_conv2d(x, 64, reuse=reuse, is_training=is_training, act='relu', name='block_2')
+    #    [batch-size, npoints, 3, 128]
+    #x = _block_conv2d(x, 128, reuse=reuse, is_training=is_training, act='relu', name='block_3')
+    ##    [batch-size, npoints, 3, 256]
+    #x = _block_conv2d(x, 256, reuse=reuse, is_training=is_training, act='relu', name='block_4')
+    ##    [batch-size, npoints, 3, 128]
+    #x = _block_conv2d(x, 128, reuse=reuse, is_training=is_training, act='relu', name='block_5')
+    #    [batch-size, npoints, 3, 64]
+    #x = _block_conv2d(x, 64, reuse=reuse, is_training=is_training, act='relu', name='block_6')
+    #    [batch-size, npoints, 3, 16]
+    #x = _block_conv2d(x, 16, reuse=reuse, is_training=is_training, act='relu', name='block_7')
+    #    [batch-size, npoints, 3, 6]
+    #x = _block_conv2d(x, 6, reuse=reuse, is_training=is_training, act='relu', name='block_8')
+    #    [batch-size, npoints, 3, 6]
+    x = _block_conv2d(x, 8, kshape=9, reuse=reuse, is_training=is_training, act='relu', name='block_9', reshape=False)
+    #    [batch-size, npoints, 18]
+    #=>  [batch-size, 18, npoints]
+    x = layers.base.transpose(x, (0, 2, 1), reuse=reuse, name='transpose-2')
+    x = layers.actives.squash(x, axis=1, epsilon=1e-9, reuse=reuse, safe=True, name='squash')
+    x = layers.capsules.dense(x, nclass, 18, name='capsules', reuse=reuse, epsilon=1e-10, act='squash')
+    #    [batch-size, 18, nclass]
+    x = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-10)
+    #    [batch-size, 18, nclass]
+    return x
+
 
 def point_capsule_net(inputs,
                       is_training,

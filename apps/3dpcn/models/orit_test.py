@@ -6,14 +6,14 @@ import numpy as np
 
 
 if __name__ == '__main__':
-    inputs = layers.base.input_spec([None, 10, 3])
-    y = layers.convs.order_invariance_transform(inputs, 10, 3)
+    inputs = layers.base.input_spec([None, 3, 10])
+    y = layers.capsules.order_invariance_transform(inputs, 3, 10)
 
     sess, _, _, _ = engine.session();
 
     with sess:
         for i in range(10):
-            x = np.random.randn(1, 10, 3)
+            x = np.random.randn(1, 3, 10)
             xs = []
             for j in range(5):
                 np.random.shuffle(x)

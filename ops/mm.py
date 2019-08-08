@@ -50,6 +50,7 @@ def malloc(name,
     with core.variable_scope(variable_scope, reuse=reuse):
         variable = core.get_variable(name, shape, dtype, initializer,
                                      regularizer, trainable, collections)
+    #print('done')
     if add_to_collect and not reuse:
         core.add_to_collection(scope, variable)
     if summary is not None and not reuse:

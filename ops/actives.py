@@ -19,7 +19,7 @@
 from .. import colors
 from . import helper, core
 
-def squash(axis,
+def squash(axis=-2,
            epsilon=core.epsilon,
            safe=True,
            aslayer=False,
@@ -226,7 +226,7 @@ def get(act, **kwargs):
         return linear(**kwargs)
     if isinstance(act, str):
         if act not in ['relu', 'crelu', 'relu6', 'elu', 'selu',
-                       'leaky_relu', 'softmax', 'sigmoid',
+                       'leaky_relu', 'softmax', 'sigmoid', 'squash',
                        'softplus', 'softsign', 'tanh', 'linear']:
             raise ValueError('activation function `{}` not support.'
                             .format(colors.red(act)))

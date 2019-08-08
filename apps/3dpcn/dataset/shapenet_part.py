@@ -7,10 +7,44 @@ import multiprocessing as mp
 import os.path
 import json
 
+import tensorflow as tf
+
 global_root = None
 fold2id = None
 npoints=None
 normalization=None
+
+def cutpoints(points, rows, num_points):
+    indices = tf.range(rows, dtype=tf.int32)
+    indices = tf.random.shuffle(indices)
+    points = tf.gather(points, indices)
+    slices = np.arange(num_points, dtype=np.int32)
+    points = tf.gather(points, slices)
+    def _cut():
+        return points
+    return _cut
+
+def parse(num_points):
+    def _parse(record):
+        features = tf.parse_single_example(
+                record,
+                features={
+                    'rows': tf.FixedLenFeature([], tf.int64),
+                    'cols': tf.FixedLenFeature([], tf.int64),
+                    'points': tf.VarLenFeature(tf.float32),
+                    'part_labels': tf.VarLenFeature(tf.int64),
+                    'category_label': tf.FixedLenFeature([], tf.int64),
+                    }
+                )
+        points = tf.sparse_tensor_to_dense(features['points'])
+        category = tf.cast(features['category_label'], tf.int32)
+        rows = tf.cast(features['rows'], tf.int32)
+        cols = tf.cast(features['cols'], tf.int32)
+        points = tf.reshape(points, [rows, cols])
+        points = tf.cond(tf.greater(rows, num_points), cutpoints(points, rows, num_points), lambda :points)
+        points = tf.reshape(points, [num_points, 3])
+        return points, tf.one_hot(category, 16)
+    return _parse
 
 def one_hot(x, nclass):
     y = np.zeros(nclass, dtype=np.int64)
@@ -21,7 +55,7 @@ def one_hot(x, nclass):
 def _load(root, filename, fold2id, normalization, npoints=2048):
     print('filename:', filename)
     splits = filename.rsplit('/')
-    points = np.loadtxt(os.path.join(root, splits[0], 'points', splits[1]+'.pts'))
+    points = np.loadtxt(os.path.join(root, splits[0], 'points', splits[1]+'.pts'), dtype=np.float64)
     if normalization:
         centroid = points.mean(axis=0)
         points -= centroid
@@ -30,7 +64,7 @@ def _load(root, filename, fold2id, normalization, npoints=2048):
     size = len(points)
     if size < npoints:
         points = np.concatenate((points, np.zeros((npoints-size, 3))), axis=0)
-        parts = np.concatenate((parts, np.zeros((npoints-size,))), axis=0)
+        parts = np.concatenate((parts, np.zeros((npoints-size,), dtype=np.int64)-1), axis=0)
     category = fold2id[splits[0]]
     return points, parts, category
 
@@ -52,8 +86,8 @@ def create_records(filename,
         example = core.make_feature({
             'rows':core.int64_feature([len(points)]),
             'cols':core.int64_feature([3]),
-            'points':core.bytes_feature([points.tostring()]),
-            'part_labels':core.bytes_feature([part_labels.tostring()]),
+            'points':core.float_feature(points.flatten()),
+            'part_labels':core.int64_feature(part_labels.flatten()),
             'category_label':core.int64_feature([category_label]),
             })
         writer.write(example)
@@ -62,8 +96,8 @@ def create_records(filename,
 
 def load(filename):
     splits = filename.rsplit('/')
-    points = np.loadtxt(os.path.join(global_root, splits[0], 'points', splits[1]+'.pts'))
-    parts  = np.loadtxt(os.path.join(global_root, splits[0], 'points_label', splits[1]+'.seg'))
+    points = np.loadtxt(os.path.join(global_root, splits[0], 'points', splits[1]+'.pts'), dtype=np.float32)
+    parts  = np.loadtxt(os.path.join(global_root, splits[0], 'points_label', splits[1]+'.seg'), dtype=np.int64)
     category = one_hot(fold2id[splits[0]], len(fold2id))
     size = len(parts)
     if size < npoints:

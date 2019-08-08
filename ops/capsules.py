@@ -69,6 +69,7 @@ def _agreement_routing(prediction,
                        logits_shape,
                        iterations,
                        bias, #[channels, 1]
+                       act='squash',
                        leaky=False, # not used in current version
                        epsilon=core.epsilon,
                        safe=True):
@@ -116,7 +117,7 @@ def _agreement_routing(prediction,
                                    size=iterations,
                                    clear_after_read=False)
     logits = core.zeros(logits_shape, dtype=core.float32)
-    act = actives.squash(-2, epsilon, safe, aslayer=False)
+    act = actives.get(act)
     idx = core.constant(0, dtype=core.int32)
     # softmax along with `outcaps` axis
 
@@ -224,12 +225,15 @@ def cap_norm(input_shape,
     return _norm, output_shape
 
 
-def cap_conv(convop, bias_shape, logits_shape, iterations,
+def cap_conv(convop,
+             bias_shape,
+             logits_shape,
+             iterations,
              leaky=False,
              bias_initializer='zeros',
              bias_regularizer=None,
              cpuid=0,
-             act=None,
+             act='squash',
              trainable=True,
              dtype=core.float32,
              epsilon=core.epsilon,
@@ -246,7 +250,6 @@ def cap_conv(convop, bias_shape, logits_shape, iterations,
                                              scope,
                                              'caps'+convop.__name__,
                                              reuse)
-    act = actives.get(act)
     if not isinstance(bias_initializer, bool) or bias_initializer is True:
         bias = mm.malloc('bias',
                          name,
@@ -267,7 +270,7 @@ def cap_conv(convop, bias_shape, logits_shape, iterations,
             #  [batch-size, rows, cols, incaps, incapdim]
             # /*x [incapdim, outcaps, outcapdim]*/
             #=>[batch-size, nrows, ncols, incaps, outcaps, outcapdim]
-            x = act(convop(x))
+            x = convop(x)
             # now x is the pre-predictions denoting u^{\hat}_{j|i}
             # x shape:
             # for fully-connected:
@@ -277,8 +280,14 @@ def cap_conv(convop, bias_shape, logits_shape, iterations,
             # for 2d:
             #     [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
             with core.name_scope('agreement_routing'):
-                x = _agreement_routing(x, logits_shape, iterations,
-                                       bias, leaky, epsilon, safe)
+                x = _agreement_routing(x,
+                                       logits_shape,
+                                       iterations,
+                                       bias,
+                                       act,
+                                       leaky,
+                                       epsilon,
+                                       safe)
             return x
     return _conv
 
@@ -294,7 +303,9 @@ def cap_conv(convop, bias_shape, logits_shape, iterations,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_fully_connected(input_shape, channels, caps_dims,
+def cap_fully_connected(input_shape,
+                        channels,
+                        caps_dims,
                         iterations=2,
                         leaky=False,
                         share_weights=False,
@@ -303,7 +314,7 @@ def cap_fully_connected(input_shape, channels, caps_dims,
                         bias_initializer='zeros',
                         bias_regularizer=None,
                         cpuid=0,
-                        act=None,
+                        act='squash',
                         trainable=True,
                         dtype=core.float32,
                         epsilon=core.epsilon,
@@ -342,7 +353,7 @@ def cap_fully_connected(input_shape, channels, caps_dims,
     else:
         weight_shape = [1, incapdim, caps_dims * channels, incaps]
     weights = mm.malloc('weights',
-                        name,
+                        helper.normalize_name(name),
                         weight_shape,
                         dtype,
                         weight_initializer,
@@ -384,6 +395,102 @@ def cap_fully_connected(input_shape, channels, caps_dims,
                     name,
                     scope), output_shape
 
+""" order invarnace transformation operation
+"""
+# @helpers.typecheck(input_shape=list,
+#                    dims=int,
+#                    channels=int,
+#                    kshape=[int, list],
+#                    stride=[int, list],
+#                    padding=str,
+#                    trainable=bool,
+#                    iterations=int,
+#                    collections=str,
+#                    summary=str,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def order_invariance_transform(input_shape,
+                               channels,
+                               dims,
+                               mode='max',
+                               weight_initializer='glorot_uniform',
+                               weight_regularizer=None,
+                               bias_initializer='zeros',
+                               bias_regularizer=None,
+                               cpuid=0,
+                               act=None,
+                               trainable=True,
+                               dtype=core.float32,
+                               collections=None,
+                               summary='histogram',
+                               reuse=False,
+                               name=None,
+                               scope=None):
+    helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
+    if len(input_shape) != 3:
+        raise ValueError('fully_conv require input shape {}[batch-size,'
+                         ' dims, channels]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
+    batch_size, indims, _ = input_shape
+    weight_shape = [1, indims, dims*channels, 1] # get rid of batch_size axis
+    bias_shape = [channels]
+    output_shape = [input_shape[0], dims, channels]
+    if mode == 'max':
+        def _extract(x):
+            return core.max(x, axis=2)
+    elif mode == 'mean':
+        def _extract(x):
+            return core.mean(x, axis=2)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'order_invariance_transform',
+                                             reuse)
+    act = actives.get(act)
+    weights = mm.malloc('weights',
+                        name,
+                        weight_shape,
+                        dtype,
+                        weight_initializer,
+                        weight_regularizer,
+                        cpuid,
+                        trainable,
+                        collections,
+                        summary,
+                        reuse,
+                        scope)
+    if not isinstance(bias_initializer, bool) or bias_initializer is True:
+        bias = mm.malloc('bias',
+                         name,
+                         bias_shape,
+                         dtype,
+                         bias_initializer,
+                         bias_regularizer,
+                         cpuid,
+                         trainable,
+                         collections,
+                         summary,
+                         reuse,
+                         scope)
+    else:
+        bias = 0
+    def _order_invariance_transform(x):
+        with ops_scope:
+            #    [batch-size, indims, incaps]
+            #=>  [batch-size, indims, 1, incaps]
+            x = core.expand_dims(x, 2)
+            #    [batch-size, indims, 1, incaps]
+            #  * [1, indims, dims*channels, 1]
+            #=>  [batch-size, indims, dims*channels, incaps] (*)
+            #=>  [batch-size, dims*channels, incaps] (sum)
+            #=>  [batch-size, dims*channels] (max/mean)
+            #=>  [batch-size, dims, channels] (reshape)
+            x = _extract(core.sum(x * weights, axis=1))
+            return act(core.reshape(x, output_shape) + bias)
+    return _order_invariance_transform, output_shape
 
 # @helpers.typecheck(input_shape=list,
 #                    nouts=int,
@@ -412,7 +519,7 @@ def cap_conv1d(input_shape,
                bias_initializer='zeros',
                bias_regularizer=None,
                cpuid=0,
-               act=None,
+               act='squash',
                trainable=True,
                dtype=core.float32,
                epsilon=core.epsilon,
@@ -474,7 +581,7 @@ def cap_conv1d(input_shape,
     else:
         weight_shape = [neurons, caps_dims, channels, kshape[1]*kshape[2], inchannels]
     weights = mm.malloc('weights',
-                        name,
+                        helper.normalize_name(name),
                         kernel_shape,
                         dtype,
                         weight_initializer,
@@ -546,7 +653,7 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
                bias_initializer='zeros',
                bias_regularizer=None,
                cpuid=0,
-               act=None,
+               act='squash',
                trainable=True,
                dtype=core.float32,
                epsilon=core.epsilon,
@@ -604,7 +711,7 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
         # [krow, kcol, incapdims, outcaps * outcapdims]
         kernel_shape = kshape[1:-1] + [incapdim, nouts * caps_dims]
         weights = mm.malloc('weights',
-                            name,
+                            helper.normalize_name(name),
                             kernel_shape,
                             dtype,
                             weight_initializer,
@@ -634,7 +741,7 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
         # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
         kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
         weights = mm.malloc('weights',
-                            name,
+                            helper.normalize_name(name),
                             kernel_shape,
                             dtype,
                             weight_initializer,

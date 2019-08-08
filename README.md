@@ -27,7 +27,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] embedding
   - convolutional
     - [x] fully_connected [aka. dense]
-    - [ ] conv1d
+    - [x] conv1d
     - [x] conv2d
     - [x] conv3d
     - [x] deconv2d
@@ -63,14 +63,14 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [ ] stack
   - math
     - [x] add (with weights)
-    - [ ] mul
+    - [x] mul
   - normalization
     - [x] instance_norm
     - [ ] conditional_instance_norm
     - [x] batch_norm
     - [ ] dropout
   - pools
-    - [ ] avg_pool1d
+    - [x] avg_pool1d
     - [ ] avg_pool2d
     - [ ] avg_pool2d_global
     - [ ] max_pool1d

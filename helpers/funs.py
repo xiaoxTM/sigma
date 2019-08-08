@@ -89,6 +89,45 @@ def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S', split='-'):
         return datetime.strptime(date, fmt)
 
 
+def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', split=None):
+    ''' add time stamp to string
+        targets has form of {string: position}
+        typically, string is a path, and position indicates the position to insert time stamp
+        e.g., {'/path/to/your/string': 2} will become:
+              {'/path/timestamp/to/your/string'}
+    '''
+    if not isinstance(targets, dict):
+        raise TypeError('`targets` for stampit must be dict. given {}'.format(type(targets)))
+    def _stampit(fun):
+        def _wrap(*args, **kwargs):
+            ts = timestamp(date, fmt, split)
+            signature = inspect.signature(fun)
+            items = list(signature.parameters.items())
+            for idx, arg in enumerate(args):
+                kwargs[items[idx][0]] = arg
+            for key, value in kwargs.items():
+                if isinstance(value, str):
+                    if key in targets.keys():
+                        splits = value.split('/')
+                        pos = targets[key]
+                        npos = pos
+                        if npos < 0:
+                            npos = len(splits) + pos
+                        if len(splits) <= npos or npos < 0:
+                            raise ValueError('npos `{}({})` must be shorter than splits({})'.format(npos, pos, len(splits)))
+                        if splits[npos] == '':
+                            splits[npos] = ts
+                            if npos == 0:
+                                splits.insert(0, '')
+                            elif (npos+1) == len(splits):
+                                splits.insert(npos+1, '')
+                        else:
+                            splits.insert(npos, ts)
+                        kwargs[key] = '/'.join(splits)
+            return fun(**kwargs)
+        return _wrap
+    return _stampit
+
 # @typecheck(x=int)
 def intsize(x, cminus=False):
     if x > 0:

@@ -11,10 +11,10 @@ import tensorflow as tf
 
 # add sigma to sys path
 curd = os.path.dirname(os.path.abspath(__file__))
-root = os.path.realpath(os.path.join(curd, '../../../../'))
+root = os.path.realpath(os.path.join(curd, '../../../'))
+print(root)
 sys.path.append(root)
 
-from models import point_capsule_rec, point_capsule_tio
 from sigma import layers, engine, ops, status, helpers
 import argparse
 
@@ -29,13 +29,42 @@ parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
 parser.add_argument('--database', default='shapenet_part', type=str)
-parser.add_argument('--gpu', default='0', type=str)
+parser.add_argument('--gpu', default='1', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--shuffle', default=True, type=bool)
 parser.add_argument('--learning-rate', default=0.05, type=float)
 
-
+def build_net(inputs, nclass=16, reuse=False):
+    #inputs: [batch-size, 2048, 3]
+    #=>      [batch-size, 3, 2048]
+    x = layers.base.transpose(inputs, (0, 2, 1))
+    #        [batch-size, 3, 2048]
+    #=>      [batch-size, 6,  512]
+    if not reuse:
+        ops.core.summarize('inputs', x)
+    x = layers.capsules.order_invariance_transform(x, 512, 16, 'max', reuse=reuse, name='order_invariance_transform', act='squash')
+    #if not reuse:
+    #    ops.core.summarize('order_invariance_transform', x)
+    #x = layers.capsules.dense(x, 256, 12, reuse=reuse, epsilon=1e-9, name='dense-1', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-1', x)
+    #x = layers.capsules.dense(x, 128, 24, reuse=reuse, epsilon=1e-9, name='dense-2', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-2', x)
+    #x = layers.capsules.dense(x,  64, 48, reuse=reuse, epsilon=1e-9, name='dense-3', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-3', x)
+    #x = layers.capsules.dense(x,  32, 96, reuse=reuse, epsilon=1e-9, name='dense-4', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-4', x)
+    x = layers.capsules.dense(x,  nclass, 24, reuse=reuse, epsilon=1e-9, name='dense-5', act='squash')
+    if not reuse:
+        ops.core.summarize('dense-5', x)
+    x = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9, name='norm', reuse=reuse)
+    if not reuse:
+        ops.core.summarize('norm', x)
+    return x
 
 def get_tfrecord_size(filename):
     count = 0
@@ -73,12 +102,6 @@ def train_net(batch_size=8,
     iterator = dataset.make_initializable_iterator()
     inputs, labels = iterator.get_next()
     #ops.core.summarize('inputs', inputs)
-    def _build_net(inputs, reuse, is_training):
-        return point_capsule_tio(inputs,
-                                 is_training,
-                                 nclass,
-                                 reuse=reuse)
-
     global_step = ops.core.get_variable('global-step',
                                         initializer=0,
                                         trainable=False)
@@ -89,9 +112,7 @@ def train_net(batch_size=8,
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
     config.allow_soft_placement = True
     with ops.core.device('/gpu:0'):
-        trainp = _build_net(inputs, reuse=False, is_training=True)
-        print(ops.core.shape(trainp))
-        print(ops.core.shape(labels))
+        trainp = build_net(inputs)
         train_loss_op = layers.losses.get('margin_loss', trainp, labels)
         train_metric = layers.metrics.accuracy([trainp, labels])
         train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
@@ -101,7 +122,7 @@ def train_net(batch_size=8,
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
 
-        validp = _build_net(inputs, reuse=True, is_training=False)
+        validp = build_net(inputs, reuse=True)
         valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
