@@ -20,14 +20,15 @@ from .. import ops
 from .. import colors
 from . import core
 
-def _merge(fun, inputs, output, typename, return_shape):
+def _merge(fun, inputs, output, typename, return_shape, check_output_shape):
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(colors.green(output),
-                                 colors.red(xshape)))
+    if check_output_shape:
+        xshape = ops.core.shape(x)
+        if output[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the '
+                             'real output shape not match. {} vs {}'
+                             .format(colors.green(output),
+                                     colors.red(xshape)))
     if return_shape:
         x = [x, output]
     return x
@@ -37,20 +38,24 @@ def _merge(fun, inputs, output, typename, return_shape):
 def concat(inputs,
            axis=-1,
            return_shape=False,
+           check_output_shape=True,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
     inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
-    fun, output = ops.merge.concat(inputs_shape, axis, reuse, name, scope)
-    return _merge(fun, inputs, output, 'concat', return_shape)
+    fun, output = ops.merge.concat(inputs_shape, axis, check_input_shape, reuse, name, scope)
+    return _merge(fun, inputs, output, 'concat', return_shape, check_output_shape)
 
 @core.layer
 def stack(inputs,
            axis=-1,
            return_shape=False,
+           check_output_shape=True,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
     inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
-    fun, output = ops.merge.stack(inputs_shape, axis, reuse, name, scope)
-    return _merge(fun, inputs, output, 'stack', return_shape)
+    fun, output = ops.merge.stack(inputs_shape, axis, check_input_shape, reuse, name, scope)
+    return _merge(fun, inputs, output, 'stack', return_shape, check_output_shape)

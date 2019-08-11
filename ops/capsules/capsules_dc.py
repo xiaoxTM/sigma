@@ -54,7 +54,7 @@ def _leaky_routing(logits):
                  `softmax` or `sigmoid`
     """
     shape = core.shape(logits)
-    nouts = shape[core.axis]
+    channels = shape[core.axis]
     shape[core.axis] = 1
     leak = core.zeros(shape)
     # add an extra dimension to routes
@@ -62,7 +62,7 @@ def _leaky_routing(logits):
     # routes to capsules who has max probability
     leaky_routs = core.softmax(leaky_logits, axis=core.axis)
     # remove added dimension
-    return core.split(leaky_routs, [1, nouts], axis=core.axis)[1]
+    return core.split(leaky_routs, [1, channels], axis=core.axis)[1]
 
 
 def _agreement_routing(prediction,
@@ -182,49 +182,6 @@ def _agreement_routing(prediction,
     return core.squeeze(activations.read(iterations-1), axis=-1)
 
 
-# @helpers.typecheck(input_shape=list,
-#                    axis=int,
-#                    keepdims=bool,
-#                    ord=str,
-#                    epsilon=float,
-#                    safe=bool,
-#                    reuse=bool,
-#                    name=str,
-#                    scope=str)
-def cap_norm(input_shape,
-             axis=None,
-             keepdims=False,
-             ord='euclidean',
-             epsilon=core.epsilon,
-             safe=True,
-             act=None,
-             reuse=None,
-             name=None,
-             scope=None):
-    """ classically,  inputs_shape is in the form of
-        [batch-size, capdims, channels]
-        this function calculates the norm of each capsule
-        along capsdims dimension
-    """
-    if helper.is_tensor(input_shape):
-        input_shape = input_shape.as_list()
-    ops_scope, _, _ = helper.assign_scope(name, scope, 'caps_norm', reuse)
-    if axis is None:
-        axis = -2
-    act = actives.get(act)
-    output_shape = input_shape[:]
-    output_shape.pop(axis)
-    def _norm(x):
-        with ops_scope:
-            # the length (norm) of the activity vector of each
-            # capsule in digit_caps layer indicates presence
-            # of an instance of each class
-            #   [batch-size, rows, cols, capdim, channels]
-            # =>[batch-size, rows, cols, channels]
-            return act(core.norm(x, axis, keepdims, ord, epsilon, safe))
-    return _norm, output_shape
-
-
 def cap_conv(convop,
              bias_shape,
              logits_shape,
@@ -274,11 +231,11 @@ def cap_conv(convop,
             # now x is the pre-predictions denoting u^{\hat}_{j|i}
             # x shape:
             # for fully-connected:
-            #     [batch-size, incaps, outcaps, caps_dims]
+            #     [batch-size, incaps, outcaps, dims]
             # for 1d:
-            #     [batch-size, neurons, incaps, outcaps, caps_dims]
+            #     [batch-size, neurons, incaps, outcaps, dims]
             # for 2d:
-            #     [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
+            #     [batch-size, nrows, ncols, incaps, outcaps, dims]
             with core.name_scope('agreement_routing'):
                 x = _agreement_routing(x,
                                        logits_shape,
@@ -293,8 +250,8 @@ def cap_conv(convop,
 
 
 # @helpers.typecheck(input_shape=list,
-#                    nouts=int,
-#                    caps_dims=int,
+#                    channels=int,
+#                    dims=int,
 #                    iterations=int,
 #                    leaky=bool,
 #                    keepdims=bool,
@@ -305,7 +262,7 @@ def cap_conv(convop,
 #                    scope=str)
 def cap_fully_connected(input_shape,
                         channels,
-                        caps_dims,
+                        dims,
                         iterations=2,
                         leaky=False,
                         share_weights=False,
@@ -321,6 +278,7 @@ def cap_fully_connected(input_shape,
                         safe=True,
                         collections=None,
                         summary='histogram',
+                        check_input_shape=True,
                         reuse=False,
                         name=None,
                         scope=None):
@@ -330,12 +288,13 @@ def cap_fully_connected(input_shape,
         input_shape : list / tuple
                       input tensor shape. Should in form of:
                       [batch-size, incapdim, channels]
-        nouts : int
+        channels : int
                 output number of capsules
-        caps_dims : int
+        dims : int
                     output capsule dimension
     """
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -344,14 +303,14 @@ def cap_fully_connected(input_shape,
                          ' incaps, incapdim]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
-    output_shape = [batch_size, caps_dims, channels]
+    output_shape = [batch_size, dims, channels]
     incapdim, incaps = input_shape[-2:]
     logits_shape = [batch_size, 1, channels, incaps]
-    bias_shape = [caps_dims, channels, 1]
+    bias_shape = [dims, channels, 1]
     if share_weights:
-        weight_shape = [1, incapdim, caps_dims * channels, 1]
+        weight_shape = [1, incapdim, dims * channels, 1]
     else:
-        weight_shape = [1, incapdim, caps_dims * channels, incaps]
+        weight_shape = [1, incapdim, dims * channels, incaps]
     weights = mm.malloc('weights',
                         helper.normalize_name(name),
                         weight_shape,
@@ -374,7 +333,7 @@ def cap_fully_connected(input_shape,
         #=>        [batch-size, outdims * channels, incaps] (sum along indims)
         x = core.sum(x * weights, axis=1)
         #=>        [batch-size, outdims, channels, incaps]
-        return core.reshape(x, [-1, caps_dims, channels, incaps])
+        return core.reshape(x, [-1, dims, channels, incaps])
 
     return cap_conv(_fully_connected,
                     bias_shape,
@@ -395,7 +354,7 @@ def cap_fully_connected(input_shape,
                     name,
                     scope), output_shape
 
-""" order invarnace transformation operation
+""" permutation invarnace transformation operation
 """
 # @helpers.typecheck(input_shape=list,
 #                    dims=int,
@@ -410,24 +369,26 @@ def cap_fully_connected(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def order_invariance_transform(input_shape,
-                               channels,
-                               dims,
-                               mode='max',
-                               weight_initializer='glorot_uniform',
-                               weight_regularizer=None,
-                               bias_initializer='zeros',
-                               bias_regularizer=None,
-                               cpuid=0,
-                               act=None,
-                               trainable=True,
-                               dtype=core.float32,
-                               collections=None,
-                               summary='histogram',
-                               reuse=False,
-                               name=None,
-                               scope=None):
-    helper.check_input_shape(input_shape)
+def cap_permutation_transform(input_shape,
+                              channels,
+                              dims,
+                              mode='max',
+                              weight_initializer='glorot_uniform',
+                              weight_regularizer=None,
+                              bias_initializer='zeros',
+                              bias_regularizer=None,
+                              cpuid=0,
+                              act=None,
+                              trainable=True,
+                              dtype=core.float32,
+                              collections=None,
+                              summary='histogram',
+                              check_input_shape=True,
+                              reuse=False,
+                              name=None,
+                              scope=None):
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
     if len(input_shape) != 3:
@@ -447,7 +408,7 @@ def order_invariance_transform(input_shape,
             return core.mean(x, axis=2)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
-                                             'order_invariance_transform',
+                                             'permutation_transform',
                                              reuse)
     act = actives.get(act)
     weights = mm.malloc('weights',
@@ -477,7 +438,7 @@ def order_invariance_transform(input_shape,
                          scope)
     else:
         bias = 0
-    def _order_invariance_transform(x):
+    def _cap_permutation_transform(x):
         with ops_scope:
             #    [batch-size, indims, incaps]
             #=>  [batch-size, indims, 1, incaps]
@@ -490,11 +451,11 @@ def order_invariance_transform(input_shape,
             #=>  [batch-size, dims, channels] (reshape)
             x = _extract(core.sum(x * weights, axis=1))
             return act(core.reshape(x, output_shape) + bias)
-    return _order_invariance_transform, output_shape
+    return _cap_permutation_transform, output_shape
 
 # @helpers.typecheck(input_shape=list,
-#                    nouts=int,
-#                    caps_dims=int,
+#                    channels=int,
+#                    dims=int,
 #                    kshape=[int, list],
 #                    stride=[int, list],
 #                    padding=str,
@@ -507,7 +468,7 @@ def order_invariance_transform(input_shape,
 #                    scope=str)
 def cap_conv1d(input_shape,
                channels,
-               caps_dims,
+               dims,
                kshape,
                iterations=3,
                leaky=False,
@@ -526,6 +487,7 @@ def cap_conv1d(input_shape,
                safe=True,
                collections=None,
                summary='histogram',
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -538,14 +500,15 @@ def cap_conv1d(input_shape,
                       where `neurons` denotes the hidden layer units
                       `incaps` denotes the vector size of each capsule
                       (as depth channels)
-        nouts : int
+        channels : int
                 number of output capsules
-        caps_dims : int
+        dims : int
                     output capsule vector size (aka. outcapdim)
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size, neurons, incap_dims, inchannels = input_shape
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -568,18 +531,18 @@ def cap_conv1d(input_shape,
     input_nshape[core.axis] *= input_nshape[-2]
     input_nshape.pop(-2)
     # output shape may be not right
-    output_shape = helper.get_output_shape(input_nshape, channels * caps_dims,
+    output_shape = helper.get_output_shape(input_nshape, channels * dims,
                                            kshape, stride, padding)
     output_shape[0] = batch_size
     # output shape must be:
-    #    [batch-size, out_neurons, caps_dims, channels]
-    output_shape = output_shape[:-1] + [caps_dims, channels]
+    #    [batch-size, out_neurons, dims, channels]
+    output_shape = output_shape[:-1] + [dims, channels]
     logits_shape = [batch_size, output_shape[1], 1, channels, inchannels]
-    bias_shape = [output_shape[1], caps_dims, channels, 1]
+    bias_shape = [output_shape[1], dims, channels, 1]
     if share_weights:
-        weight_shape = [1, caps_dims, channels, kshape[1]*kshape[2], inchannels]
+        weight_shape = [1, dims, channels, kshape[1]*kshape[2], inchannels]
     else:
-        weight_shape = [neurons, caps_dims, channels, kshape[1]*kshape[2], inchannels]
+        weight_shape = [neurons, dims, channels, kshape[1]*kshape[2], inchannels]
     weights = mm.malloc('weights',
                         helper.normalize_name(name),
                         kernel_shape,
@@ -605,8 +568,8 @@ def cap_conv1d(input_shape,
         #=>   [batch-size, out_neurons, 1, 1, kr * kc, incaps]
         x = core.reshape(x, [batch-size, 1, 1, kshape[0] * kshape[1], inchannels])
         #     [batch-size, out_neurons, 1, 1, kr * kc, incaps]
-        #=>   [batch-size, out_neurons, caps_dims, channels, kr * kc, incaps]
-        #=>   [batch-size, out_neurons, caps_dims, channels, incaps]
+        #=>   [batch-size, out_neurons, dims, channels, kr * kc, incaps]
+        #=>   [batch-size, out_neurons, dims, channels, incaps]
         return core.sum(x * weights, axis=-2, keepdims=False)
 
     return cap_conv(_conv1d,
@@ -630,8 +593,8 @@ def cap_conv1d(input_shape,
 
 
 # @helpers.typecheck(input_shape=list,
-#                    nouts=int,
-#                    caps_dims=int,
+#                    channels=int,
+#                    dims=int,
 #                    kshape=[int, list],
 #                    stride=[int, list],
 #                    padding=str,
@@ -642,7 +605,10 @@ def cap_conv1d(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_conv2d(input_shape, nouts, caps_dims, kshape,
+def cap_conv2d(input_shape,
+               channels,
+               dims,
+               kshape,
                iterations=3,
                leaky=False,
                stride=1,
@@ -660,6 +626,7 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
                safe=True,
                collections=None,
                summary='histogram',
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -673,14 +640,15 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
                       `incaps_dim` denotes the vector size of each capsule
                       (as depth channels)
                       `incaps` means the number of capsules
-        nouts : int
+        channels : int
                 number of output capsules
-        caps_dims : int
+        dims : int
                     output capsule vector size (aka. outcapdim)
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -697,19 +665,19 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
     #=>[batch-size, rows, cols, incpas * incapdim]
     input_nshape[core.axis] *= input_nshape[-2]
     input_nshape.pop(-2)
-    # output shape [batch-size, nrows, ncols, nouts, caps_dims]
-    output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,
+    # output shape [batch-size, nrows, ncols, channels, dims]
+    output_shape = helper.get_output_shape(input_nshape, channels * dims,
                                            kshape, stride, padding)
     output_shape[0] = batch_size
-    output_shape = output_shape[:-1] + [nouts, caps_dims]
+    output_shape = output_shape[:-1] + [channels, dims]
     batch_size, rows, cols, incaps, incapdim = input_shape
-    logits_shape = output_shape[:3] + [incaps, nouts, 1]
-    bias_shape = [nouts, caps_dims]
+    logits_shape = output_shape[:3] + [incaps, channels, 1]
+    bias_shape = [channels, dims]
     if share_weights:
         # share filter for capsules along incaps
         # kernel shape:
-        # [krow, kcol, incapdims, outcaps * outcapdims]
-        kernel_shape = kshape[1:-1] + [incapdim, nouts * caps_dims]
+        # [krow, kcol, indims, outcaps * outcapdims]
+        kernel_shape = kshape[1:-1] + [incapdim, channels * dims]
         weights = mm.malloc('weights',
                             helper.normalize_name(name),
                             kernel_shape,
@@ -730,16 +698,16 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
             #=>[batch-size * incaps, rows, cols, incapdim]
             x = core.reshape(x, (-1, rows, cols, incapdim))
             x = core.conv2d(x, weights, stride, padding)
-            #  [batch-size * incaps, nrows, ncols, outcaps * caps_dims]
-            #=>[batch-size, incaps, nrows, ncols, outcaps, caps_dims]
+            #  [batch-size * incaps, nrows, ncols, outcaps * dims]
+            #=>[batch-size, incaps, nrows, ncols, outcaps, dims]
             x = core.reshape(x, [-1, incaps] + output_shape[1:])
-            #  [batch-size, incaps, nrows, ncols, outcaps, caps_dims]
-            #=>[batch-size, nrows, ncols, incaps, outcaps, caps_dims]
+            #  [batch-size, incaps, nrows, ncols, outcaps, dims]
+            #=>[batch-size, nrows, ncols, incaps, outcaps, dims]
             return core.transpose(x, (0, 2, 3, 1, 4, 5))
     else:
         # kernel shape:
-        # [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-        kernel_shape = kshape[1:-1] + input_shape[-2:] + [nouts * caps_dims]
+        # [krow, kcol, incaps, indims, outcaps * outcapdims]
+        kernel_shape = kshape[1:-1] + input_shape[-2:] + [channels * dims]
         weights = mm.malloc('weights',
                             helper.normalize_name(name),
                             kernel_shape,
@@ -753,8 +721,8 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
                             reuse,
                             scope)
         def _body(idx, x, array):
-            # kernels shape : [krow, kcol, incaps, incapdims, outcaps * outcapdims]
-            # kernel shape  : [krow, kcol, incapdims, outcaps * outcapdims]
+            # kernels shape : [krow, kcol, incaps, indims, outcaps * outcapdims]
+            # kernel shape  : [krow, kcol, indims, outcaps * outcapdims]
             weight = core.gather(weights, idx, axis=-3)
             # x shape    : [batch-size, rows, cols, incaps, incapdim]
             # subx shape : [batch-size, rows, cols, incapdim]
@@ -789,10 +757,10 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
             array = array.stack()
             # then reshape to
             # [incaps, batch-size, nrows, ncols, outcaps, outcapdims]
-            newshape = [iterations] + core.shape(array)[1:-1] + [nouts, caps_dims]
+            newshape = [iterations] + core.shape(array)[1:-1] + [channels, dims]
             array = core.reshape(array, newshape)
             # then transpose to
-            # [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
+            # [batch-size, nrows, ncols, incaps, outcaps, dims]
             array = core.transpose(array, (1, 2, 3, 0, 4, 5))
             return array
 

@@ -26,17 +26,20 @@ def _pool(inputs,
           stride,
           padding,
           return_shape,
+          check_output_shape,
+          check_input_shape,
           reuse,
           name,
           scope):
     fun, output = op(ops.core.shape(inputs), pshape,
-                     stride, padding, reuse, name, scope)
+                     stride, padding, check_input_shape, reuse, name, scope)
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(output, xshape))
+    if check_output_shape:
+        xshape = ops.core.shape(x)
+        if output[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the '
+                             'real output shape not match. {} vs {}'
+                             .format(output, xshape))
     if return_shape:
         x = [x, output]
     return x
@@ -45,16 +48,19 @@ def _pool(inputs,
 def _pool_global(inputs,
                  op,
                  return_shape,
+                 check_output_shape,
+                 check_input_shape,
                  reuse,
                  name,
                  scope):
-    fun, output = op(ops.helper.norm_input_shape(inputs), reuse, name, scope)
+    fun, output = op(ops.helper.norm_input_shape(inputs), check_input_shape, reuse, name, scope)
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(output, xshape))
+    if check_output_shape:
+        xshape = ops.core.shape(x)
+        if output[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the '
+                             'real output shape not match. {} vs {}'
+                             .format(output, xshape))
     if return_shape:
         x = [x, output]
     return x
@@ -66,6 +72,8 @@ def avg_pool1d(inputs,
                stride=None,
                padding=None,
                return_shape=False,
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name='avg_pool1d',
                scope=None):
@@ -76,6 +84,8 @@ def avg_pool1d(inputs,
               stride,
               padding,
               return_shape,
+              check_output_shape,
+              check_input_shape,
               reuse,
               name,
               scope)
@@ -87,6 +97,8 @@ def avg_pool2d(inputs,
                stride=None,
                padding=None,
                return_shape=False,
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name='avg_pool2d',
                scope=None):
@@ -96,6 +108,8 @@ def avg_pool2d(inputs,
                  stride,
                  padding,
                  return_shape,
+                 check_output_shape,
+                 check_input_shape,
                  reuse,
                  name,
                  scope)
@@ -104,12 +118,16 @@ def avg_pool2d(inputs,
 @core.layer
 def avg_pool2d_global(inputs,
                       return_shape=False,
+                      check_output_shape=True,
+                      check_input_shape=True,
                       reuse=False,
                       name='avg_pool2d_global',
                       scope=None):
     return _pool_global(inputs,
                         ops.pools.avg_pool2d_global,
                         return_shape,
+                        check_output_shape,
+                        check_input_shape,
                         reuse,
                         name,
                         scope)
@@ -121,6 +139,8 @@ def max_pool1d(inputs,
                stride=None,
                padding='same',
                return_shape=False,
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name='max_pool1d',
                scope=None):
@@ -131,6 +151,8 @@ def max_pool1d(inputs,
               stride,
               padding,
               return_shape,
+              check_output_shape,
+              check_input_shape,
               reuse,
               name,
               scope)
@@ -142,6 +164,8 @@ def max_pool2d(inputs,
                stride=None,
                padding='same',
                return_shape=False,
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name='max_pool2d',
                scope=None):
@@ -151,6 +175,8 @@ def max_pool2d(inputs,
                  stride,
                  padding,
                  return_shape,
+                 check_output_shape,
+                 check_input_shape,
                  reuse,
                  name,
                  scope)
@@ -159,12 +185,16 @@ def max_pool2d(inputs,
 @core.layer
 def max_pool2d_global(inputs,
                       return_shape=False,
+                      check_output_shape=True,
+                      check_input_shape=True,
                       reuse=False,
                       name='max_pool2d_global',
                       scope=None):
     return _pool_global(inputs,
                         ops.pools.max_pool2d_global,
                         return_shape,
+                        check_output_shape,
+                        check_input_shape,
                         reuse,
                         name,
                         scope)

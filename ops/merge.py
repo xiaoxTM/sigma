@@ -27,6 +27,7 @@ from . import helper, core
 #                    scope=str)
 def concat(inputs_shape,
            axis=-1,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
@@ -43,9 +44,11 @@ def concat(inputs_shape,
                          .format(colors.fg.green, colors.reset,
                                  colors.red(len(inputs_shape))))
     output_shape = inputs_shape[0]
-    helper.check_input_shape(output_shape)
+    if check_input_shape:
+        helper.check_input_shape(output_shape)
     for idx, ip in enumerate(inputs_shape[1:]):
-        helper.check_input_shape(ip)
+        if check_input_shape:
+            helper.check_input_shape(ip)
         if not np.all(np.delete(output_shape, axis)[1:] == np.delete(ip, axis)[1:]):
             raise ValueError('shape of {}-input differs from first'
                              ' one besides {}-axis. {} vs {}'
@@ -67,6 +70,7 @@ def concat(inputs_shape,
 #                    scope=str)
 def stack(inputs_shape,
           axis=-1,
+          check_input_shape=True
           reuse=False,
           name=None,
           scope=None):
@@ -86,9 +90,11 @@ def stack(inputs_shape,
     output_shape = input_shape[:]
     axis = helper.normalize_axes(input_shape, axis)
     output_shape.insert(axis, len(inputs_shape))
-    helper.check_input_shape(output_shape)
+    if check_input_shape:
+        helper.check_input_shape(output_shape)
     for idx, ip in enumerate(inputs_shape[1:]):
-        helper.check_input_shape(ip)
+        if check_input_shape:
+            helper.check_input_shape(ip)
         if not np.all(input_shape[1:] == ip[1:]):
             raise ValueError('shape of {}-input differs from first'
                              ' one besides {}-axis. {} vs {}'

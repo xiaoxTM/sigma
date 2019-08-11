@@ -214,13 +214,13 @@ def normalize_axes(shape, axis=core.caxis):
     return axis
 
 
-def get_output_shape(input_shape, nouts, kshape, stride, padding):
+def get_output_shape(input_shape, channels, kshape, stride, padding):
     """ get the corresponding output shape given tensor shape
         Attributes
         ==========
             input_shape : list / tuple
                           input tensor shape
-            nouts : int
+            channels : int
                     number of output feature maps
             kshape : list / tuple
                      kernel shape for convolving operation
@@ -271,7 +271,7 @@ def get_output_shape(input_shape, nouts, kshape, stride, padding):
               np.ceil(
                 float(input_shape[idx] - kshape[idx] + 1) / float(stride[idx])
             ))
-    out_shape[-1] = nouts
+    out_shape[-1] = channels
     return out_shape
 
 

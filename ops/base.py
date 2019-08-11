@@ -212,3 +212,35 @@ def maskout(input_shape,
                     x = core.reshape(x, output_shape)
                 return x
     return _maskout, output_shape
+
+
+
+# @helpers.typecheck(kpeep=float,
+#                    noise_shape=list,
+#                    aslayer=bool,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def dropout(pkeep,
+            noise_shape=None,
+            seed=None,
+            aslayer=False,
+            reuse=False,
+            name=None,
+            scope=None):
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name,
+    #                                              scope,
+    #                                              'dropout',
+    #                                              reuse)
+    #     def _dropout(x):
+    #         with ops_scope:
+    #             return core.dropout(x, pkeep, noise_shape, seed, name)
+    # else:
+    #     def _dropout(x):
+    #         return core.dropout(x, pkeep, noise_shape, seed, name)
+    # return _dropout
+    def _dropout(x):
+        with helper.maybe_layer(aslayer, name, scope, 'dropout', reuse):
+            return core.dropout(x, pkeep, noise_shape, seed, name)
+    return _dropout

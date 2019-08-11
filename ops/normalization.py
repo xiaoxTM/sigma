@@ -30,6 +30,8 @@ def instance_norm(input_shape,
                   trainable=True,
                   collections=None,
                   summary='histogram',
+                  check_output_shape=True,
+                  check_input_shape=True,
                   reuse=False,
                   name=None,
                   scope=None):
@@ -106,6 +108,8 @@ def conditional_instance_norm(input_shape,
                               trainable=True,
                               collections=None,
                               summary='histogram',
+                              check_output_shape=True,
+                              check_input_shape=True,
                               reuse=False,
                               name=None,
                               scope=None):
@@ -199,6 +203,8 @@ def batch_norm(input_shape,
                fused=False,
                collections=None,
                summary='histogram',
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -359,34 +365,3 @@ def batch_norm(input_shape,
         with ops_scope:
             return _process(x)
     return _batch_norm
-
-
-# @helpers.typecheck(kpeep=float,
-#                    noise_shape=list,
-#                    aslayer=bool,
-#                    reuse=bool,
-#                    name=str,
-#                    scope=str)
-def dropout(pkeep,
-            noise_shape=None,
-            seed=None,
-            aslayer=False,
-            reuse=False,
-            name=None,
-            scope=None):
-    # if aslayer:
-    #     ops_scope, _, name = helper.assign_scope(name,
-    #                                              scope,
-    #                                              'dropout',
-    #                                              reuse)
-    #     def _dropout(x):
-    #         with ops_scope:
-    #             return core.dropout(x, pkeep, noise_shape, seed, name)
-    # else:
-    #     def _dropout(x):
-    #         return core.dropout(x, pkeep, noise_shape, seed, name)
-    # return _dropout
-    def _dropout(x):
-        with helper.maybe_layer(aslayer, name, scope, 'dropout', reuse):
-            return core.dropout(x, pkeep, noise_shape, seed, name)
-    return _dropout

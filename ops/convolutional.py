@@ -124,7 +124,7 @@ def conv(convop,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def fully_connected(input_shape, nouts,
+def fully_connected(input_shape, channels,
                     weight_initializer='glorot_uniform',
                     weight_regularizer=None,
                     bias_initializer='zeros',
@@ -135,10 +135,12 @@ def fully_connected(input_shape, nouts,
                     dtype=core.float32,
                     collections=None,
                     summary='histogram',
+                    check_input_shape=True,
                     reuse=False,
                     name=None,
                     scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -147,8 +149,8 @@ def fully_connected(input_shape, nouts,
                          ' channels]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
-    kernel_shape = [input_shape[1], nouts] # get rid of batch_size axis
-    output_shape = [input_shape[0], nouts]
+    kernel_shape = [input_shape[1], channels] # get rid of batch_size axis
+    output_shape = [input_shape[0], channels]
     def _fully_connected(x, weight):
         return core.matmul(x, weight)
     return conv(_fully_connected,
@@ -184,7 +186,7 @@ def fully_connected(input_shape, nouts,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def conv1d(input_shape, nouts, kshape,
+def conv1d(input_shape, channels, kshape,
            stride=1,
            padding='valid',
            weight_initializer='glorot_uniform',
@@ -197,10 +199,12 @@ def conv1d(input_shape, nouts, kshape,
            dtype=core.float32,
            collections=None,
            summary='histogram',
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -213,9 +217,9 @@ def conv1d(input_shape, nouts, kshape,
     stride = helper.norm_input_1d(stride)
     # helper.get_output_shape requires all inputs (except padding)
     # to have same length and be all list / tuple
-    output_shape = helper.get_output_shape(input_shape, nouts,
+    output_shape = helper.get_output_shape(input_shape, channels,
                                            kshape, stride, padding)
-    kernel_shape = [kshape[1], input_shape[-1], nouts]
+    kernel_shape = [kshape[1], input_shape[-1], channels]
     # conv1d requires stride to be integer
     # collapse dimension into scalar
     stride = stride[1]
@@ -269,10 +273,12 @@ def conv2d(input_shape,
            dtype=core.float32,
            collections=None,
            summary='histogram',
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -321,7 +327,7 @@ def conv2d(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def conv3d(input_shape, nouts,
+def conv3d(input_shape, channels,
            kshape=3,
            stride=1,
            padding='valid',
@@ -335,10 +341,12 @@ def conv3d(input_shape, nouts,
            dtype=core.float32,
            collections=None,
            summary='histogram',
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -348,9 +356,9 @@ def conv3d(input_shape, nouts,
                          .format(colors.fg.red, input_shape, colors.reset))
     kshape = helper.norm_input_3d(kshape)
     stride = helper.norm_input_3d(stride)
-    output_shape = helper.get_output_shape(input_shape, nouts,
+    output_shape = helper.get_output_shape(input_shape, channels,
                                            kshape, stride, padding)
-    kernel_shape = kshape[1:-1] +[input_shape[-1], nouts]
+    kernel_shape = kshape[1:-1] +[input_shape[-1], channels]
     def _conv3d(x, weight):
         return core.conv3d(x, weight, stride, padding)
     return conv(_conv3d,
@@ -387,7 +395,7 @@ def conv3d(input_shape, nouts,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def deconv2d(input_shape, output_shape, nout,
+def deconv2d(input_shape, output_shape, channels,
              kshape=3,
              stride=1,
              padding='valid',
@@ -401,6 +409,7 @@ def deconv2d(input_shape, output_shape, nout,
              dtype=core.float32,
              collections=None,
              summary='histogram',
+             check_input_shape=True,
              reuse=False,
              name=None,
              scope=None):
@@ -413,7 +422,8 @@ def deconv2d(input_shape, output_shape, nout,
     #           [batch-size, ceil((output_shape[1:-1] - kshape[1:-1] + 1) / stride[1:-1])]
     #       else:
     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -423,7 +433,7 @@ def deconv2d(input_shape, output_shape, nout,
                          .format(colors.fg.red, input_shape, colors.reset))
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
-    kernel_shape = kshape[1:-1] +[nout, input_shape[-1]]
+    kernel_shape = kshape[1:-1] +[channels, input_shape[-1]]
     out_shape = output_shape
     if out_shape is None:
         out_shape = input_shape
@@ -433,12 +443,12 @@ def deconv2d(input_shape, output_shape, nout,
         out_shape[3] = nout
     elif isinstance(out_shape, (list, tuple)):
         if len(out_shape) == 2:
-            out_shape = [batch_size] + out_shape + [nout]
+            out_shape = [batch_size] + out_shape + [channels]
         elif len(out_shape) == 4 and \
-             (out_shape[0] != batch_size or out_shape[-1] != nout):
+             (out_shape[0] != batch_size or out_shape[-1] != channels):
             raise ValueError('output shape{} not match'
                              ' input_shape{} or hidden units{}'
-                             .format(output_shape, input_shape, nout))
+                             .format(output_shape, input_shape, channels))
     else:
         raise TypeError('out_shape with type `{}` not support'
                         .format(type(out_shape)))
@@ -497,6 +507,7 @@ def soft_conv(input_shape,
               dtype=core.float32,
               collections=None,
               summary='histogram',
+              check_input_shape=True,
               reuse=False,
               name=None,
               scope=None):
@@ -504,7 +515,8 @@ def soft_conv(input_shape,
     # batch_size = input_shape[0]
     # if helper.is_tensor(input_shape):
     #     input_shape = input_shape.as_list()
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'soft_conv',
@@ -563,7 +575,7 @@ def soft_conv(input_shape,
                          ' given {}'.format(mode))
     kwargs = {
         'input_shape':input_shape,
-        'nouts':nkernels * dimlen,
+        'channels':nkernels * dimlen,
         'kshape':kshape,
         'stride':stride,
         'padding':padding,
@@ -823,7 +835,7 @@ def soft_conv(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def soft_conv2d(input_shape, nouts,
+def soft_conv2d(input_shape, channels,
                 kshape=3,
                 stride=1,
                 padding='valid',
@@ -842,10 +854,12 @@ def soft_conv2d(input_shape, nouts,
                 dtype=core.float32,
                 collections=None,
                 summary='histogram',
+                check_input_shape=True,
                 reuse=False,
                 name=None,
                 scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -857,9 +871,9 @@ def soft_conv2d(input_shape, nouts,
 
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
-    output_shape = helper.get_output_shape(input_shape, nouts,
+    output_shape = helper.get_output_shape(input_shape, channels,
                                            kshape, stride, padding)
-    kernel_shape = kshape[1:-1] + [input_shape[-1], nouts]
+    kernel_shape = kshape[1:-1] + [input_shape[-1], channels]
     return soft_conv(input_shape,
                      kernel_shape,
                      stride,
@@ -1065,7 +1079,7 @@ def sepconv(sepconvop,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def sepconv2d(input_shape, nouts,
+def sepconv2d(input_shape, channels,
               kshape=3,
               stride=1,
               padding='valid',
@@ -1081,10 +1095,12 @@ def sepconv2d(input_shape, nouts,
               dtype=core.float32,
               collections=None,
               summary='histogram',
+              check_input_shape=True,
               reuse=False,
               name=None,
               scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -1096,13 +1112,13 @@ def sepconv2d(input_shape, nouts,
 
     kshape = helper.norm_input_2d(kshape)
     stride = helper.norm_input_2d(stride)
-    output_shape = helper.get_output_shape(input_shape, nouts,
+    output_shape = helper.get_output_shape(input_shape, channels,
                                            kshape, stride, padding)
     depthwise_kernel = kshape[1:-1] + [input_shape[core.caxis],
                                        channel_multiplier]
     pointwise_kernel = [1, 1,
                         input_shape[core.caxis]*channel_multiplier,
-                        nouts]
+                        channels]
     """
         input: 4-D Tensor with shape according to data_format.
         depthwise_filter: 4-D Tensor with shape

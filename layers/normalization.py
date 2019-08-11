@@ -31,6 +31,8 @@ def instance_norm(inputs,
                   trainable=True,
                   collections=None,
                   summary=None,
+                  check_output_shape=True,
+                  check_input_shape=True,
                   reuse=False,
                   name=None,
                   scope=None):
@@ -46,16 +48,18 @@ def instance_norm(inputs,
                                   trainable,
                                   collections,
                                   summary,
+                                  check_input_shape,
                                   reuse,
                                   name,
                                   scope)
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if input_shape[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(colors.green(input_shape),
-                                 colors.red(xshape)))
+    if check_output_shape:
+        xshape = ops.core.shape(x)
+        if input_shape[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the '
+                             'real output shape not match. {} vs {}'
+                             .format(colors.green(input_shape),
+                                     colors.red(xshape)))
     return x
 
 
@@ -72,6 +76,8 @@ def conditional_instance_norm(inputs,
                               trainable=True,
                               collections=None,
                               summary=None,
+                              check_output_shape=True,
+                              check_input_shape=True,
                               reuse=False,
                               name=None,
                               scope=None):
@@ -88,16 +94,18 @@ def conditional_instance_norm(inputs,
                                               trainable,
                                               collections,
                                               summary,
+                                              check_input_shape,
                                               reuse,
                                               name,
                                               scope)
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if input_shape[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(colors.green(input_shape),
-                                 colors.red(xshape)))
+    if check_output_shape:
+        xshape = ops.core.shape(x)
+        if input_shape[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the '
+                             'real output shape not match. {} vs {}'
+                             .format(colors.green(input_shape),
+                                     colors.red(xshape)))
     return x
 
 
@@ -118,6 +126,8 @@ def batch_norm(inputs,
                fused=True,
                collections=None,
                summary=None,
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -138,30 +148,16 @@ def batch_norm(inputs,
                                fused,
                                collections,
                                summary,
+                               check_input_shape,
                                reuse,
                                name,
                                scope)
     x = fun(inputs)
-    xshape = ops.core.shape(x)
-    if input_shape[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(colors.green(input_shape),
-                                 colors.red(xshape)))
+    if check_output_shape:
+        xshape = ops.core.shape(x)
+        if input_shape[1:] != xshape[1:]:
+            raise ValueError('the predicted output shape and the '
+                             'real output shape not match. {} vs {}'
+                             .format(colors.green(input_shape),
+                                     colors.red(xshape)))
     return x
-
-
-@core.layer
-def dropout(inputs, pkeep,
-            noise_shape=None,
-            seed=None,
-            reuse=False,
-            name=None,
-            scope=None):
-    return ops.norms.dropout(pkeep,
-                             noise_shape,
-                             seed,
-                             True, #interpret as layer
-                             reuse,
-                             name,
-                             scope)(inputs)
