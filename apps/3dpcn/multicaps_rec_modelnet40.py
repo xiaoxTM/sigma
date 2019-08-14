@@ -20,22 +20,94 @@ import argparse
 
 parser = argparse.ArgumentParser(description='3D point capsule network implementation with TensorFlow')
 parser.add_argument('--phase', default='train', type=str, help='"train" or "eval" mode switch')
-parser.add_argument('--batch-size', default=8, type=int)
+parser.add_argument('--batch-size', default=4, type=int)
 parser.add_argument('--epochs', default=200, type=int)
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--num-points', default=2048, type=int)
-parser.add_argument('--nclass', default=16, type=int)
+parser.add_argument('--nclass', default=40, type=int)
 parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/checkpoint/model.ckpt', type=str)
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
-parser.add_argument('--database', default='shapenet_part', type=str)
-parser.add_argument('--gpu', default='0', type=str)
+parser.add_argument('--database', default='modelnet40', type=str)
+parser.add_argument('--gpu', default='2', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--shuffle', default=True, type=bool)
 parser.add_argument('--learning-rate', default=0.05, type=float)
 
-def build_net(inputs, nclass=16, reuse=False):
+def order_invariance_transform(inputs,
+                               dims,
+                               weight_initializer='glorot_uniform',
+                               weight_regularizer=None,
+                               bias_initializer='zeros',
+                               bias_regularizer=None,
+                               cpuid=0,
+                               act=None,
+                               trainable=True,
+                               dtype=ops.core.float32,
+                               collections=None,
+                               summary='histogram',
+                               reuse=False,
+                               name=None,
+                               scope=None):
+    input_shape = ops.core.shape(inputs)
+    ops.helper.check_input_shape(input_shape)
+    if ops.helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
+    if len(input_shape) != 3:
+        raise ValueError('fully_conv require input shape {}[batch-size,'
+                         ' dims, channels]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
+    batch_size, indims, incaps = input_shape
+    weight_shape = [1, indims, dims, 1] # get rid of batch_size axis
+    bias_shape = [incaps]
+    ops_scope, _, name = ops.helper.assign_scope(name,
+                                             scope,
+                                             'order_invariance_transform',
+                                             reuse)
+    act = ops.actives.get(act)
+    weights = ops.mm.malloc('weights',
+                        name,
+                        weight_shape,
+                        dtype,
+                        weight_initializer,
+                        weight_regularizer,
+                        cpuid,
+                        trainable,
+                        collections,
+                        summary,
+                        reuse,
+                        scope)
+    if not isinstance(bias_initializer, bool) or bias_initializer is True:
+        bias = ops.mm.malloc('bias',
+                         name,
+                         bias_shape,
+                         dtype,
+                         bias_initializer,
+                         bias_regularizer,
+                         cpuid,
+                         trainable,
+                         collections,
+                         summary,
+                         reuse,
+                         scope)
+    else:
+        bias = 0
+    def _order_invariance_transform(x):
+        with ops_scope:
+            #    [batch-size, indims, incaps]
+            #=>  [batch-size, indims, 1, incaps]
+            x = ops.core.expand_dims(x, 2)
+            #    [batch-size, indims, 1, incaps]
+            #  * [1, indims, dims, 1]
+            #=>  [batch-size, indims, dims, incaps] (*)
+            #=>  [batch-size, dims, incaps] (sum)
+            x = ops.core.sum(x * weights, axis=1) + bias
+            return act(x)
+    return _order_invariance_transform(inputs)
+
+def build_net(inputs, nclass=40, reuse=False):
     #inputs: [batch-size, 2048, 3]
     #=>      [batch-size, 3, 2048]
     x = layers.base.transpose(inputs, (0, 2, 1))
@@ -44,6 +116,7 @@ def build_net(inputs, nclass=16, reuse=False):
     if not reuse:
         ops.core.summarize('inputs', x)
     x = layers.capsules.order_invariance_transform(x, 512, 16, 'max', reuse=reuse, name='order_invariance_transform', act='squash')
+    x = order_invariance_transform(x, 32, reuse=reuse, name='projection', act='squash')
     #if not reuse:
     #    ops.core.summarize('order_invariance_transform', x)
     #x = layers.capsules.dense(x, 256, 12, reuse=reuse, epsilon=1e-9, name='dense-1', act='relu')
@@ -77,7 +150,7 @@ def train_net(batch_size=8,
               epochs=1000,
               num_points=2048,
               lr=0.02,
-              nclass=16,
+              nclass=40,
               debug=False,
               address=None,
               checkpoint=None,
@@ -90,9 +163,16 @@ def train_net(batch_size=8,
         from dataset.modelnet40 import parse
 
     engine.set_print(False)
-    train_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized.tfrecord'
-    valid_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_valid.tfrecord'
-    tests_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_test.tfrecord'
+    if database == 'shapenet_part':
+        from dataset.shapenet_part import parse
+        train_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized.tfrecord'
+        valid_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_valid.tfrecord'
+        tests_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_test.tfrecord'
+    else:
+        from dataset.modelnet40 import parse
+        train_filename = '/home/xiaox/studio/db/modelnet/train_normalize.tfrecord'
+        valid_filename = None
+        tests_filename = '/home/xiaox/studio/db/modelnet/test_normalize.tfrecord'
 
     filename = tf.placeholder(tf.string, shape=[])
     dataset = tf.data.TFRecordDataset(filename)
@@ -126,7 +206,8 @@ def train_net(batch_size=8,
         valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
-        valid_iters = int(get_tfrecord_size(valid_filename) / batch_size)
+        if valid_filename is not None:
+            valid_iters = int(get_tfrecord_size(valid_filename) / batch_size)
         test_iters  = int(get_tfrecord_size(tests_filename) / batch_size)
     sess, saver, summarize, writer = engine.session(checkpoint=checkpoint,
                                                     config=config,
@@ -149,19 +230,20 @@ def train_net(batch_size=8,
             end = time.time()
             print('time cost:', end-start)
             # validation
-            valid_loss = []
-            valid_acc = []
-            ops.core.run(sess, [valid_metric_initialize_op, iterator.initializer], feed_dict={filename: valid_filename})
-            for iters in range(valid_iters):
-                loss, _ = ops.core.run(sess, [valid_loss_op, valid_metric_update_op])
-                accuracy = ops.core.run(sess, valid_metric_op)
-                valid_loss.append(loss)
-                valid_acc.append(accuracy)
-            vloss = np.mean(valid_loss)
-            vacc = np.mean(valid_acc)
-            losses[epoch][0] = vloss
-            losses[epoch][1] = vacc
-            print('valid for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, vloss, vacc))
+            if valid_filename is not None:
+                valid_loss = []
+                valid_acc = []
+                ops.core.run(sess, [valid_metric_initialize_op, iterator.initializer], feed_dict={filename: valid_filename})
+                for iters in range(valid_iters):
+                    loss, _ = ops.core.run(sess, [valid_loss_op, valid_metric_update_op])
+                    accuracy = ops.core.run(sess, valid_metric_op)
+                    valid_loss.append(loss)
+                    valid_acc.append(accuracy)
+                vloss = np.mean(valid_loss)
+                vacc = np.mean(valid_acc)
+                losses[epoch][0] = vloss
+                losses[epoch][1] = vacc
+                print('valid for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, vloss, vacc))
             # test
             test_loss = []
             test_acc = []
@@ -178,7 +260,7 @@ def train_net(batch_size=8,
             print('test for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, tloss, tacc))
             if epoch % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True, global_step=epoch)
-        np.savetxt('caps_rec_losses.log', losses)
+        np.savetxt('caps_rec_modelnet40.log', losses)
         ops.core.close_summary_writer(writer)
 
 def eval_net(args):

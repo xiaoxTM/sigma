@@ -67,7 +67,7 @@ def flatten(input_shape,
             scope=None):
     helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'flatten', reuse)
-    output_shape = [-1, np.prod(input_shape[1:])]
+    output_shape = [input_shape[0], np.prod(input_shape[1:])]
     def _flatten(x):
         with ops_scope:
             return core.reshape(x, output_shape)
@@ -93,7 +93,7 @@ def transpose(input_shape,
               reuse=False,
               name=None,
               scope=None):
-    helper.check_input_shape(input_shape)
+    #helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'transpose',

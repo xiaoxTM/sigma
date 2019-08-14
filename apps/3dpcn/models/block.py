@@ -18,11 +18,12 @@ def _block_conv2d(inputs, channels, kshape=3, stride=1, padding='valid', act=Non
     with sigma.defaults(reuse=reuse):
         #    [batch-size, npoints, 3, channels]
         #=>  [batch-size, npoints-2, 1, 3*channels]
-        x = layers.convs.conv2d(inputs, 3*channels, kshape=kshape, stride=stride, padding=padding, act=act, name='{}_conv2d'.format(name))
+        x, shape = layers.convs.conv2d(inputs, 3*channels, kshape=kshape, stride=stride, padding=padding, act=act, name='{}_conv2d'.format(name), return_shape=True)
+        print(shape)
         x = layers.norms.batch_norm(x, is_training, act=act, name='{}_batchnorm'.format(name))
         if reshape:
-            x = layers.base.reshape(x, [-1, npoints-kshape+1, 3, channels], name='{}_reshape'.format(name))
+            x = layers.base.reshape(x, [-1, shape[1], 3, channels], name='{}_reshape'.format(name))
         else:
             # [batch-size, npoints, 1, 3*channels]
-            x = layers.base.reshape(x, [-1, npoints-kshape+1, 3*channels], name='{}_reshape'.format(name))
+            x = layers.base.reshape(x, [-1, shape[1], 3*channels], name='{}_reshape'.format(name))
     return x

@@ -54,18 +54,18 @@ def _leaky_routing(logits):
                  `softmax` or `sigmoid`
     """
     shape = core.shape(logits)
-    nouts = shape[core.axis]
-    shape[core.axis] = 1
+    nouts = shape[core.caxis]
+    shape[core.caxis] = 1
     leak = core.zeros(shape)
     # add an extra dimension to routes
-    leaky_logits = core.concat([leak, logits], axis=core.axis)
+    leaky_logits = core.concat([leak, logits], axis=core.caxis)
     # routes to capsules who has max probability
-    leaky_routs = core.softmax(leaky_logits, axis=core.axis)
+    leaky_routs = core.softmax(leaky_logits, axis=core.caxis)
     # remove added dimension
-    return core.split(leaky_routs, [1, nouts], axis=core.axis)[1]
+    return core.split(leaky_routs, [1, nouts], axis=core.caxis)[1]
 
 
-def _agreement_routing(prediction,
+def dynamic_routing(prediction,
                        logits_shape,
                        iterations,
                        bias, #[channels, 1]
@@ -80,20 +80,20 @@ def _agreement_routing(prediction,
                      predictions from previous layers
                      denotes u^{\hat}_{j|i} in paper
                      with the shape of
-                     [batch-size, outcapdim, outcaps, incaps]
+                     [batch-size, outcapdim, channels, incaps]
                      for fully_connected, and
-                     [batch-size, neurons, outcapdim, outcaps, incaps]
+                     [batch-size, neurons, dims, channels, incaps]
                      for conv1d, and
-                     [batch-size, rows, cols, outcapdim, outcaps, incaps]
+                     [batch-size, rows, cols, dims, channels, incaps]
                      for conv2d
         logits_shape : Tensor
                        denotes b_{i,j} in paper
                        with the shape of
-                       [batch-size, 1, outcaps, incaps]
+                       [batch-size, 1, channels, incaps]
                        for fully_connected, and
-                       [batch-size, 1, 1, outcaps, incaps]
+                       [batch-size, 1, 1, channels, incaps]
                        for conv1d, and
-                       [batch-size, 1, 1, 1, outcaps, incaps]
+                       [batch-size, 1, 1, 1, channels, incaps]
                        for conv2d
         iterations : int
                      iteration times to adjust c_{i, j}.
@@ -105,11 +105,11 @@ def _agreement_routing(prediction,
         ==========
         Activated tensor of the output layer. That is v_j
         with shape of
-        [batch-size, outcapdims, outcaps]
+        [batch-size, dims, channels]
         for fully_connected
-        [batch-size, neurons, outcapdims, outcaps]
+        [batch-size, neurons, dims, channels]
         for conv1d
-        [batch-size, rows, cols, outcapdims, outcaps]
+        [batch-size, rows, cols, dims, channels]
         for conv2d
     """
     # restore v_j
@@ -117,58 +117,96 @@ def _agreement_routing(prediction,
                                    size=iterations,
                                    clear_after_read=False)
     logits = core.zeros(logits_shape, dtype=core.float32)
-    act = actives.get(act)
+    if isinstance(act, str) and act == 'squash':
+        act = actives.get(act, axis=-2)
+    else:
+        act = actives.get(act)
     idx = core.constant(0, dtype=core.int32)
-    # softmax along with `outcaps` axis
-
+    # softmax along with `channels` axis
     no_grad_prediction = core.stop_gradient(prediction, name='stop_gradient')
+
+    def last(idx, activations, logits):
+        # softmax along with `channels` axis
+        # that is, `agree` on some capsule
+        # a.k.a., which capsule in higher layer to activate
+        #        logits: [batch-size, 1, channels, incaps]
+        #              / [batch-size, neurons, 1, channels, incaps]
+        #              / [batch-size, rows, cols, 1, channels, incaps]
+        #=>coefficients: [batch-size, 1, channels, incaps]
+        #              / [batch-size, neurons, 1, channels, incaps]
+        #              / [batch-size, rows, cols, 1, channels, incaps]
+        coefficients = core.softmax(logits, axis=-2)
+        # bias: [dims, channels, 1]
+        # coefficients * prediction:
+        #=> [batch-size, dims, channels, incaps] (i.e., elements in the same capsules shares bias)
+        # sum operation (i.e., preactivate):
+        #=> [batch-size, dims, channels, 1]
+        preactive = core.sum(coefficients * prediction,
+                             axis=-1,
+                             keepdims=True) + bias
+        activation = act(preactive)
+        activations = activations.write(idx, activation)
+        return activations, logits
+
+    def call(idx, activations, logits):
+        coefficients = core.softmax(logits, axis=-2)
+        preactive = core.sum(coefficients * no_grad_prediction,
+                             axis=-1,
+                             keepdims=True) + bias
+        activation = act(preactive)
+        activations = activations.write(idx, activation)
+        # sum up along `dims`
+        # prediction * activation:
+        #=> [batch-size, dims, channels, incaps]
+        # * [batch-size, dims, channels, 1]
+        #=> [batch-size, dims, channels, incaps]
+        # sum:
+        #=> [batch-size, 1, channels, incaps]
+        distance = core.sum(prediction * activation,
+                            axis=-3,
+                            keepdims=True)
+        logits += distance
+        return activations, logits
 
     def _update(i, logits, activations):
         """ dynamic routing to update coefficiences (c_{i, j})
-            logits : [batch-size, /*rows, cols,*/ incaps, outcaps, 1]
+            logits : [batch-size, /*rows, cols,*/ incaps, channels, 1]
         """
-        # softmax along with `outcaps` axis
-        # that is, `agree` on some capsule
-        # a.k.a., which capsule in higher layer to activate
-        #        logits: [batch-size, 1, outcaps, incaps]
-        #              / [batch-size, neurons, 1, outcaps, incaps]
-        #              / [batch-size, rows, cols, 1, outcaps, incaps]
-        #=>coefficients: [batch-size, 1, outcaps, incaps]
-        #              / [batch-size, neurons, 1, outcaps, incaps]
-        #              / [batch-size, rows, cols, 1, outcaps, incaps]
-        coefficients = core.softmax(logits, axis=-2)
+        activations, logits = core.cond(core.eq(i+1, iterations),
+                lambda: last(i, activations, logits),
+                lambda: call(i, activations, logits))
         # average all lower capsules's prediction to higher capsule
         # e.g., sum along with `incaps` axis
         # that is, agreements from all capsules in lower layer
-        if i == iterations - 1:
-            # bias: [outdims, outcaps, 1]
-            # coefficients * prediction:
-            #=> [batch-size, outdims, outcaps, incaps] (i.e., elements in the same capsules shares bias)
-            # sum operation (i.e., preactivate):
-            #=> [batch-size, outdims, outcaps, 1]
-            preactivate = core.sum(coefficients * prediction,
-                                   axis=-1,
-                                   keepdims=True) + bias
-            activation = act(preactivate)
-            activations = activations.write(i, activation)
-        else:
-            preactivate = core.sum(coefficients * no_grad_prediction,
-                                   axis=-1,
-                                   keepdims=True) + bias
-            # typically, squash
-            activation = act(preactivate)
-            activations = activations.write(i, activation)
-            # sum up along `outcapdim`
-            # prediction * activation:
-            #=> [batch-size, outdims, outcaps, incaps]
-            # * [batch-size, outdims, outcaps, 1]
-            #=> [batch-size, outdims, outcaps, incaps]
-            # sum:
-            #=> [batch-size, 1, outcaps, incaps]
-            distance = core.sum(prediction * activation,
-                                axis=-3,
-                                keepdims=True)
-            logits += distance
+        #if i == iterations - 1:
+        #    # bias: [dims, channels, 1]
+        #    # coefficients * prediction:
+        #    #=> [batch-size, dims, channels, incaps] (i.e., elements in the same capsules shares bias)
+        #    # sum operation (i.e., preactivate):
+        #    #=> [batch-size, dims, channels, 1]
+        #    preactivate = core.sum(coefficients * prediction,
+        #                           axis=-1,
+        #                           keepdims=True) + bias
+        #    activation = act(preactivate)
+        #    activations = activations.write(i, activation)
+        #else:
+        #    preactivate = core.sum(coefficients * no_grad_prediction,
+        #                           axis=-1,
+        #                           keepdims=True) + bias
+        #    # typically, squash
+        #    activation = act(preactivate)
+        #    activations = activations.write(i, activation)
+        #    # sum up along `dims`
+        #    # prediction * activation:
+        #    #=> [batch-size, dims, channels, incaps]
+        #    # * [batch-size, dims, channels, 1]
+        #    #=> [batch-size, dims, channels, incaps]
+        #    # sum:
+        #    #=> [batch-size, 1, channels, incaps]
+        #    distance = core.sum(prediction * activation,
+        #                        axis=-3,
+        #                        keepdims=True)
+        #    logits += distance
         return (i+1, logits, activations)
 
     _, logits, activations = core.while_loop(
@@ -176,9 +214,9 @@ def _agreement_routing(prediction,
         _update,
         loop_vars=[idx, logits, activations],
         swap_memory=True)
-    #   [batch-size, nrows, ncols, 1, outcaps, outcapdim]
-    # =>[batch-size, nrows, ncols, outcaps, outcapdim]
-    # activate: [batch-size, outdims, outcaps, 1]
+    #   [batch-size, nrows, ncols, 1, channels, outcapdim]
+    # =>[batch-size, nrows, ncols, channels, outcapdim]
+    # activate: [batch-size, dims, channels, 1]
     return core.squeeze(activations.read(iterations-1), axis=-1)
 
 
@@ -192,7 +230,7 @@ def _agreement_routing(prediction,
 #                    name=str,
 #                    scope=str)
 def cap_norm(input_shape,
-             axis=None,
+             axis=-2,
              keepdims=False,
              ord='euclidean',
              epsilon=core.epsilon,
@@ -202,7 +240,7 @@ def cap_norm(input_shape,
              name=None,
              scope=None):
     """ classically,  inputs_shape is in the form of
-        [batch-size, capdims, channels]
+        [batch-size, dims, channels]
         this function calculates the norm of each capsule
         along capsdims dimension
     """
@@ -219,7 +257,7 @@ def cap_norm(input_shape,
             # the length (norm) of the activity vector of each
             # capsule in digit_caps layer indicates presence
             # of an instance of each class
-            #   [batch-size, rows, cols, capdim, channels]
+            #   [batch-size, rows, cols, dims, channels]
             # =>[batch-size, rows, cols, channels]
             return act(core.norm(x, axis, keepdims, ord, epsilon, safe))
     return _norm, output_shape
@@ -267,27 +305,27 @@ def cap_conv(convop,
         bias = 0
     def _conv(x):
         with ops_scope:
-            #  [batch-size, rows, cols, incaps, incapdim]
+            #  [batch-size, rows, cols, indims, incaps]
             # /*x [incapdim, outcaps, outcapdim]*/
-            #=>[batch-size, nrows, ncols, incaps, outcaps, outcapdim]
+            #=>[batch-size, nrows, ncols, dims, channels]
             x = convop(x)
             # now x is the pre-predictions denoting u^{\hat}_{j|i}
             # x shape:
             # for fully-connected:
-            #     [batch-size, incaps, outcaps, caps_dims]
+            #     [batch-size, dims, channels, incaps]
             # for 1d:
-            #     [batch-size, neurons, incaps, outcaps, caps_dims]
+            #     [batch-size, neurons, dims, channels, incaps]
             # for 2d:
-            #     [batch-size, nrows, ncols, incaps, outcaps, caps_dims]
+            #     [batch-size, nrows, ncols, dims, channels, incaps]
             with core.name_scope('agreement_routing'):
-                x = _agreement_routing(x,
-                                       logits_shape,
-                                       iterations,
-                                       bias,
-                                       act,
-                                       leaky,
-                                       epsilon,
-                                       safe)
+                x = dynamic_routing(x,
+                                    logits_shape,
+                                    iterations,
+                                    bias,
+                                    act,
+                                    leaky,
+                                    epsilon,
+                                    safe)
             return x
     return _conv
 
@@ -305,7 +343,7 @@ def cap_conv(convop,
 #                    scope=str)
 def cap_fully_connected(input_shape,
                         channels,
-                        caps_dims,
+                        dims,
                         iterations=2,
                         leaky=False,
                         share_weights=False,
@@ -344,14 +382,14 @@ def cap_fully_connected(input_shape,
                          ' incaps, incapdim]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
-    output_shape = [batch_size, caps_dims, channels]
-    incapdim, incaps = input_shape[-2:]
+    output_shape = [batch_size, dims, channels]
+    indim, incaps = input_shape[-2:]
     logits_shape = [batch_size, 1, channels, incaps]
-    bias_shape = [caps_dims, channels, 1]
+    bias_shape = [dims, channels, 1]
     if share_weights:
-        weight_shape = [1, incapdim, caps_dims * channels, 1]
+        weight_shape = [1, indim, dims * channels, 1]
     else:
-        weight_shape = [1, incapdim, caps_dims * channels, incaps]
+        weight_shape = [1, indim, dims * channels, incaps]
     weights = mm.malloc('weights',
                         helper.normalize_name(name),
                         weight_shape,
@@ -369,12 +407,12 @@ def cap_fully_connected(input_shape,
         #=>        [batch-size, indims, 1, inchannels]
         x = core.expand_dims(x, 2)
         #       x: [batch-size, indims, 1, incaps]
-        # weights: [1, indims, outdims * channels, incaps]
-        #=>        [batch-size, indims, outdims * channels, incaps] (element-wise multiply)
-        #=>        [batch-size, outdims * channels, incaps] (sum along indims)
+        # weights: [1, indims, dims * channels, incaps]
+        #=>        [batch-size, indims, dims * channels, incaps] (element-wise multiply)
+        #=>        [batch-size, dims * channels, incaps] (sum along indims)
         x = core.sum(x * weights, axis=1)
-        #=>        [batch-size, outdims, channels, incaps]
-        return core.reshape(x, [-1, caps_dims, channels, incaps])
+        #=>        [batch-size, dims, channels, incaps]
+        return core.reshape(x, [batch_size, dims, channels, incaps])
 
     return cap_conv(_fully_connected,
                     bias_shape,
@@ -427,7 +465,7 @@ def order_invariance_transform(input_shape,
                                reuse=False,
                                name=None,
                                scope=None):
-    helper.check_input_shape(input_shape)
+    #helper.check_input_shape(input_shape)
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
     if len(input_shape) != 3:
@@ -560,29 +598,21 @@ def cap_conv1d(input_shape,
     stride = helper.norm_input_2d(stride)
     stride[2] = incap_dims
 
-    input_nshape = input_shape[:]
-    input_nshape[0] = batch_size
-    #  [batch-size, neurons, incapdim, incaps]
-    #=>[batch-size, neurons, incpas * incapdim]
-    # //FUTURE: remove hard-coding of number of `-2`
-    input_nshape[core.axis] *= input_nshape[-2]
-    input_nshape.pop(-2)
-    # output shape may be not right
-    output_shape = helper.get_output_shape(input_nshape, channels * caps_dims,
+    output_shape = helper.get_output_shape(input_shape, channels * caps_dims,
                                            kshape, stride, padding)
     output_shape[0] = batch_size
     # output shape must be:
     #    [batch-size, out_neurons, caps_dims, channels]
-    output_shape = output_shape[:-1] + [caps_dims, channels]
+    output_shape = output_shape[:2] + [caps_dims, channels]
     logits_shape = [batch_size, output_shape[1], 1, channels, inchannels]
     bias_shape = [output_shape[1], caps_dims, channels, 1]
     if share_weights:
         weight_shape = [1, caps_dims, channels, kshape[1]*kshape[2], inchannels]
     else:
-        weight_shape = [neurons, caps_dims, channels, kshape[1]*kshape[2], inchannels]
+        weight_shape = [output_shape[1], caps_dims, channels, kshape[1]*kshape[2], inchannels]
     weights = mm.malloc('weights',
                         helper.normalize_name(name),
-                        kernel_shape,
+                        weight_shape,
                         dtype,
                         weight_initializer,
                         weight_regularizer,
@@ -596,18 +626,19 @@ def cap_conv1d(input_shape,
         """ capsule wise convolution in 1d
         """
         # x shape:
-        #     [batch-size, neurons, incapdim, incaps]
-        #=>   [batch-size, out_neurons, 1, kr * kc * incaps]
-        x = core.extract_patches(x, kshape, stride, [1,1,1,1], padding)
-        #=>   [batch-size, out_neurons, 1, 1, kr * kc * incaps]
+        #     [batch-size, neurons, incapdim, channels]
+        #=>   [batch-size, out_neurons, 1, kr * kc * channels]
+        x = core.extract_patches(x, kshape, stride, [1,1,1,1], padding.upper())
+        #=>   [batch-size, out_neurons, 1, 1, kr * kc * channels]
         x = core.expand_dims(x, 3)
-        #     [batch-size, out_neurons, 1, 1, kr * kc * incaps]
-        #=>   [batch-size, out_neurons, 1, 1, kr * kc, incaps]
-        x = core.reshape(x, [batch-size, 1, 1, kshape[0] * kshape[1], inchannels])
-        #     [batch-size, out_neurons, 1, 1, kr * kc, incaps]
-        #=>   [batch-size, out_neurons, caps_dims, channels, kr * kc, incaps]
-        #=>   [batch-size, out_neurons, caps_dims, channels, incaps]
-        return core.sum(x * weights, axis=-2, keepdims=False)
+        #     [batch-size, out_neurons, 1, 1, kr * kc * channels]
+        #=>   [batch-size, out_neurons, 1, 1, kr * kc, channels]
+        x = core.reshape(x, [batch_size, output_shape[1], 1, 1, kshape[1] * kshape[2], inchannels])
+        #     [batch-size, out_neurons, 1, 1, kr * kc, channels]
+        #=>   [batch-size, out_neurons, caps_dims, channels, kr * kc, channels] (*)
+        #=>   [batch-size, out_neurons, caps_dims, channels, channels] (sum)
+        x = core.sum(x * weights, axis=-2, keepdims=False)
+        return x
 
     return cap_conv(_conv1d,
                     bias_shape,
@@ -695,7 +726,7 @@ def cap_conv2d(input_shape, nouts, caps_dims, kshape,
     input_nshape[0] = batch_size
     #  [batch-size, rows, cols, incaps, incapdim]
     #=>[batch-size, rows, cols, incpas * incapdim]
-    input_nshape[core.axis] *= input_nshape[-2]
+    input_nshape[core.caxis] *= input_nshape[-2]
     input_nshape.pop(-2)
     # output shape [batch-size, nrows, ncols, nouts, caps_dims]
     output_shape = helper.get_output_shape(input_nshape, nouts * caps_dims,

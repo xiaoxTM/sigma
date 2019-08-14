@@ -180,6 +180,7 @@ def session(target='',
             log=None,
             debug=False,
             address=None,
+            var_list=None,
             verbose=True):
     """ get session and setup Graph, GPU, checkpoints, logs
     """
@@ -190,7 +191,7 @@ def session(target='',
         if checkpoint[-1] != '/':
             parent_dir = checkpoint.rsplit('/', 1)[0]
         os.makedirs(parent_dir, exist_ok=True)
-        sess, saver = helpers.load(sess, checkpoint, saver, verbose=verbose)
+        sess, saver = helpers.load(sess, checkpoint, saver, var_list, verbose=verbose)
     if log is not None:
         summarize = ops.core.summary_merge()
         # in case none tf.summary.* are invoked

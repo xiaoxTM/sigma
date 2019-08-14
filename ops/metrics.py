@@ -53,9 +53,9 @@ def accuracy(from_logits=True,
              scope=None):
     def _accuracy(x, labels):
         with scope:
-            #if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_accuracy(labels,
                                       x,
                                       weights,
@@ -82,9 +82,9 @@ def auc(from_logits=True,
         summation_method='trapezoidal'):
     def _auc(x, labels):
         with scope:
-            #if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_auc(labels,
                                  x,
                                  weights,
@@ -111,9 +111,9 @@ def false_negatives(from_logits=True,
                     thresholds=None):
     def _false_negatives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_false_negatives_at_threshold(labels,
                                                               x,
@@ -146,9 +146,9 @@ def false_positives(from_logits=True,
                     thresholds=None):
     def _false_positives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_false_positives_at_threshold(labels,
                                                               x,
@@ -181,9 +181,9 @@ def true_negatives(from_logits=True,
                    thresholds=None):
     def _true_negatives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_true_negatives_at_threshold(labels,
                                                              x,
@@ -216,9 +216,9 @@ def true_positives(from_logits=True,
                    thresholds=None):
     def _true_positives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_true_positives_at_threshold(labels,
                                                              x,
@@ -253,9 +253,9 @@ def mean_iou(from_logits=True,
         raise TypeError('`nclass` for `mean_iou` can not be None')
     def _mean_iou(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_mean_iou(labels,
                                       x,
                                       nclass,
@@ -279,9 +279,9 @@ def precision(from_logits=True,
               scope=None):
     def _precision(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_precision(labels,
                                        x,
                                        weights,
@@ -304,9 +304,9 @@ def recall(from_logits=True,
            scope=None):
     def _recall(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.caxis)
-            labels = core.argmax(labels, core.caxis)
+            if from_logits:
+                x = core.argmax(x, core.caxis)
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_recall(labels,
                                     x,
                                     weights,

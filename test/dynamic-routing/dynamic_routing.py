@@ -83,13 +83,14 @@ def build_func(inputs, labels, initializer='glorot_uniform'):
     tf.summary.image('reconstruction', reconstruction, max_outputs=10)
     recon_loss = layers.losses.mse([reconstruction, image])
     tf.summary.scalar('reconstruction-loss', recon_loss)
-    loss = layers.math.add([class_loss, recon_loss], [1, 0.005])
+    loss = layers.math.add([class_loss, recon_loss], [1, 0.392]) #0.392 = 0.0005 * 784
     metric = layers.metrics.accuracy([classification, labels])
     ops.core.summarize('loss', loss, 'scalar')
     ops.core.summarize('acc', metric[0], 'scalar')
     return reconstruction, loss, metric
     #return None, loss, metric
 
+@helpers.stampit({'checkpoint':-2})
 def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -137,10 +138,15 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
                 train_feed = {inputs: xs, labels: ys}
-                _, loss, _, summary = ops.core.run(sess, [train_op, loss_op, metric_update_op, summarize], feed_dict=train_feed)
+                if summarize is None:
+                    _, loss, _ = ops.core.run(sess, [train_op, loss_op, metric_update_op], feed_dict=train_feed)
+                else:
+                    _, loss, _, summary = ops.core.run(sess, [train_op, loss_op, metric_update_op, summarize], feed_dict=train_feed)
+
                 #loss, _, summary = sess.run([loss_op, metric_update_op, summarize], feed_dict=train_feed)
                 metric = sess.run(metric_op)
-                ops.core.add_summary(writer, summary, global_step=(epoch * steps) + step)
+                if summarize is not None:
+                    ops.core.add_summary(writer, summary, global_step=(epoch * steps) + step)
                 if step % 20 == 0:
                     print('train for {}-th iteration: loss:{}, accuracy:{}'.format(step, loss, metric))
             end = time.time()
@@ -195,7 +201,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', '-c', type=str, default=None)
+parser.add_argument('--checkpoint', '-c', type=str, default='checkpoint/model.ckpt',)
 parser.add_argument('--log', '-l', type=str, default=None)
 parser.add_argument('--timestamp', '-t', type=bool, default=True)
 parser.add_argument('--epochs', '-e', type=int, default=100)

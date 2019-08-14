@@ -14,7 +14,7 @@ from .decoder import decode
 
 def point_capsule_tio(inputs,
                       is_training,
-                      nclass=8,
+                      nclass=40,
                       reuse=False):
     #    [batch-size, npoints, 3]
     npoints = ops.core.shape(inputs)[1]
@@ -22,10 +22,10 @@ def point_capsule_tio(inputs,
     #=>  [batch-size, 3, npoints]; `npoints` capsules, each of which has 3 dims
     x = layers.base.transpose(inputs, (0, 2, 1), reuse=reuse, name='transpose-0')
     x = layers.capsules.order_invariance_transform(x, npoints, 9, act='squash', name='tio', reuse=reuse)
-    #    [batch-size, 9, npoints]
-    #=>  [batch-size, npoints, 9]
+    #    [batch-size, 18, npoints]
+    #=>  [batch-size, npoints, 18]
     x = layers.base.transpose(x, (0, 2, 1), reuse=reuse, name='transpose-1')
-    #    [batch-size, npoints, 9, 1]
+    #    [batch-size, npoints, 18, 1]
     x = layers.base.reshape(x, [-1, npoints, 9, 1], name='reshape', reuse=reuse)
     #    [batch-size, npoints, 3, 16]
     #x = _block_conv2d(x, 16, reuse=reuse, is_training=is_training, act='relu', name='block_1')

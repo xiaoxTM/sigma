@@ -28,7 +28,7 @@ class TensorFlowTest(unittest.TestCase):
         data = np.asarray([[0.6, 0.8, -7.4]])
         data_norm = la.norm(data)
 
-        x = stf.norm(data)
+        x = stf.norm(data,axis=1)
         _x = stf.run(self.sess, x)
         with self.subTest(idx=2):
             self.assertEqual(data_norm, _x)

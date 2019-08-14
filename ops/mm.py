@@ -43,14 +43,14 @@ def malloc(name,
         add_to_collect = False
     else:
         variable_scope = '{}/{}'.format(scope, layername)
-    variable_type = 'trainable'
-    if not trainable:
-        variable_type = 'non-trainable'
-    variable_scope = '{}/variables/{}'.format(variable_scope, variable_type)
+    #variable_type = 'trainable'
+    #if not trainable:
+    #    variable_type = 'non-trainable'
+    #variable_scope = '{}/variables/{}'.format(variable_scope, variable_type)
+    variable_scope = '{}/variables'.format(variable_scope)
     with core.variable_scope(variable_scope, reuse=reuse):
         variable = core.get_variable(name, shape, dtype, initializer,
                                      regularizer, trainable, collections)
-    #print('done')
     if add_to_collect and not reuse:
         core.add_to_collection(scope, variable)
     if summary is not None and not reuse:

@@ -60,24 +60,28 @@ def cutpoints(points, rows, num_points):
         return points
     return _cut
 
-def parse(num_points):
+def parse(num_points=2048, cut=True):
     def _parse(record):
         features = tf.parse_single_example(
                 record,
                 features={
                     'rows': tf.FixedLenFeature([], tf.int64),
                     'cols': tf.FixedLenFeature([], tf.int64),
-                    'points': tf.VarLenFeature(tf.float),
+                    'points': tf.VarLenFeature(tf.float32),
                     'labels': tf.FixedLenFeature([], tf.int64)
+                    #'filename': tf.FixedLenFeature([], tf.string)
                     }
                 )
         points = tf.sparse_tensor_to_dense(features['points'])
-        category = tf.cast(features['label'], tf.int32)
-        rows = features['rows']
-        cols = features['cols']
-        points = tf.reshape(points, [rows, cols])
-        points = tf.cond(tf.greater(rows, num_points), cutpoints(points, rows, num_points), lambda :points)
-        return points, tf.one_hot(category, 40)
+        category = tf.cast(features['labels'], tf.int32)
+        rows = tf.cast(features['rows'], tf.int32)
+        cols = tf.cast(features['cols'], tf.int32)
+        #filename = features['filename']
+        points = tf.reshape(points, [rows, 3])
+        if cut:
+            points = tf.cond(tf.greater(rows, num_points), cutpoints(points, rows, num_points), lambda :points)
+            points = tf.reshape(points, (num_points, 3))
+        return points, tf.one_hot(category, 40)#, filename
     return _parse
 
 def load_vertices(filename):
@@ -94,7 +98,7 @@ def load_vertices(filename):
         rows = int(line)
     return np.loadtxt(filename, dtype=np.float32, skiprows=skiprow, max_rows=rows)
 
-def load(filename, npoints=2048, normalize=True):
+def load(filename, npoints=2048, normalize=True, padding=True):
     category = filename.split('/')[-3]
     label = labelmap[category]
     points = load_vertices(filename)
@@ -103,28 +107,62 @@ def load(filename, npoints=2048, normalize=True):
         points -= centroid
         points /= np.max(np.sqrt(np.sum(points**2, axis=1)))
     size = len(points)
-    if size < npoints:
+    if size < npoints and padding:
+        print(points.shape, ' => ')
         points = np.concatenate((points, np.zeros((npoints-size, 3))), axis=0)
+        print(points.shape)
     return points, label
 
 
-def create_records(fold, filename, dataset='train', normalize=True):
+def create_records(fold, filename, npoints=2048, dataset='train', normalize=True, padding=True):
     writer = core.feature_writer(filename)
+    count = 0
     for root, dirs, files in os.walk(fold):
         if root.split('/')[-1] == dataset:
             for f in files:
-                points, label = load(os.path.join(root, f), normalize)
+                if count == 10:
+                    break
+                count += 1
+                datafile = os.path.join(root, f)
+                points, label = load(datafile, npoints, normalize, padding)
                 example = core.make_feature({
                     'rows': core.int64_feature([len(points)]),
                     'cols': core.int64_feature([3]),
                     'points': core.float_feature(points.flatten()),
-                    'label': core.int64_feature([label])
+                    'labels': core.int64_feature([label])
+                    #'filename': core.bytes_feature([bytes(datafile, encoding='utf-8')])
                     })
                 writer.write(example)
     writer.close()
 
 if __name__ == '__main__':
-    create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/train_normalize.tfrecotd')
-    create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/train.tfrecotd', normalize=False)
-    create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/test_normalize.tfrecotd',dataset='test')
-    create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/test.tfrecotd', normalize=False, dataset='test')
+    #print('converting train nornmalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/train_normalize.tfrecord')
+    #print('done\nconverting train no normalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/train.tfrecord', normalize=False)
+    #print('done\nconverting test normalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/test_normalize.tfrecord',dataset='test')
+    #print('done\nconverting test no normalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/test.tfrecord', normalize=False, dataset='test')
+    #print('dong\converting train nornmalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/var_train_normalize.tfrecord', padding=False)
+    #print('done\nconverting train no normalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/var_train.tfrecord', normalize=False, padding=False)
+    #print('done\nconverting test normalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/var_test_normalize.tfrecord',dataset='test', padding=False)
+    #print('done\nconverting test no normalize')
+    #create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/var_test.tfrecord', normalize=False, dataset='test', padding=False)
+    ##create_records('/home/xiaox/studio/db/modelnet/40', '/home/xiaox/studio/db/modelnet/var_test_test.tfrecord', normalize=False, dataset='test', padding=False)
+    #print('done')
+    filename = tf.placeholder(tf.string, shape=[])
+    dataset = tf.data.TFRecordDataset(filename)
+    dataset = dataset.map(parse(2048, cut=False))
+    dataset = dataset.batch(1)
+    iterator = dataset.make_initializable_iterator()
+    points, labels, fn = iterator.get_next()
+    with tf.Session() as sess:
+        sess.run(iterator.initializer, feed_dict={filename:'/home/xiaox/studio/db/modelnet/var_test_test.tfrecord'})
+        p, l, f = sess.run([points, labels, fn])
+        p = np.squeeze(p)
+        np.savetxt('test.txt',p)
+        print(f)

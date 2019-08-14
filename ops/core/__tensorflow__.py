@@ -909,8 +909,7 @@ def softmax_cross_entropy_with_logits(labels=None,
                                       name=None):
 
     if version_compare(tf.__version__,'1.5.0'):
-        return tf.nn.softmax_cross_entropy_with_logits_v2(_sentinel=None,
-                                                          labels=labels,
+        return tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels,
                                                           logits=logits,
                                                           dim=axis,
                                                           name=name)
@@ -1452,9 +1451,10 @@ def load_mnist(path, one_hot):
 
 def load(session, checkpoint,
          saver=None,
+         var_list=None,
          verbose=True):
     if saver is None:
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(var_list)
     if not isinstance(saver, tf.train.Saver):
         raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
                         'given {}'
@@ -1698,7 +1698,7 @@ def extract_patches(x,
                     rates,
                     padding,
                     name=None):
-    return tf.extract_patches(x,
+    return tf.extract_image_patches(x,
                               ksize,
                               strides,
                               rates,

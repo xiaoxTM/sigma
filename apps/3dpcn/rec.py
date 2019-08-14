@@ -29,7 +29,7 @@ parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
 parser.add_argument('--database', default='shapenet_part', type=str)
-parser.add_argument('--gpu', default='0', type=str)
+parser.add_argument('--gpu', default='2', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--shuffle', default=True, type=bool)
@@ -157,7 +157,7 @@ def train_net(batch_size=8,
             print('test for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, tloss, tacc))
             if epoch % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True, global_step=epoch)
-        np.savetxt('losses.log', losses)
+        np.savetxt('rec_losses.log', losses)
         ops.core.close_summary_writer(writer)
 
 def eval_net(args):
