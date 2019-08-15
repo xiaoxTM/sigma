@@ -22,7 +22,7 @@ import argparse
 parser = argparse.ArgumentParser(description='3D point capsule network implementation with TensorFlow')
 parser.add_argument('--phase', default='train', type=str, help='"train" or "eval" mode switch')
 parser.add_argument('--batch-size', default=8, type=int)
-parser.add_argument('--epochs', default=200, type=int)
+parser.add_argument('--epochs', default=500, type=int)
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--num-points', default=2048, type=int)
 parser.add_argument('--nclass', default=40, type=int)
@@ -124,10 +124,10 @@ def train_net(batch_size=8,
 
         validp = build_net(inputs, reuse=True)
         #valid_loss_op = layers.losses.get('margin_loss', validp, labels)
-        valid_loss_op = layers.losses.get('margin_loss', validp, labels)
+        valid_loss_op = layers.losses.categorical_cross_entropy([validp, labels])
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
-    sess, saver, summarize, writer = engine.session(checkpoint=checkpoint,
+    sess, saver, summarize, writer = engine.session(checkpoint='/home/xiaox/studio/exp/3dpcn/cache/20190814161647/checkpoint/model.ckpt',#checkpoint,
                                                     config=config,
                                                     debug=debug,
                                                     address=address,

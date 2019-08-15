@@ -33,7 +33,7 @@ parser.add_argument('--gpu', default='3', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--shuffle', default=True, type=bool)
-parser.add_argument('--learning-rate', default=0.05, type=float)
+parser.add_argument('--learning-rate', default=0.5, type=float)
 
 def capsule_transform(inputs,
                       channels,
@@ -64,7 +64,6 @@ def capsule_transform(inputs,
     weight_shape = [1, indims, dims*channels, 1] # get rid of batch_size axis
     bias_shape = [channels, 1]
     output_shape = [input_shape[0], dims, channels]
-    act = ops.actives.get(act)
     weights = ops.mm.malloc('weights',
                         name,
                         weight_shape,
@@ -92,6 +91,10 @@ def capsule_transform(inputs,
                          scope)
     else:
         bias = 0
+    if isinstance(act, str) and act == 'squash':
+        act = ops.actives.get(act, axis=-3)
+    else:
+        act = ops.actives.get(act)
     def _transform(x):
         #    [batch-size, indims, incaps]
         #=>  [batch-size, indims, 1, incaps]
@@ -155,20 +158,21 @@ def per_channel_routing(inputs,
                          reuse,
                          scope)
     def _routing(idx, x, preds):
-        # weight: [1, indims, dims*channels, 1], shared along incaps
+        # weight  : [1, indims, dims*channels, 1], shared along incaps
         weight = ops.core.gather(weights, idx, axis=-1)
         #=> subias: [dims, channels, 1], shared along incaps
         subias = ops.core.gather(bias, idx, axis=-1)
+        #      x  : [batch-size, dims, nroutings, incaps]
         #=> subx  : [batch-size, indims, incaps]
         subx = ops.core.gather(x, idx, axis=-2)
-        #=> subx:   [batch-size, indims, 1, incaps]
+        #=> subx  : [batch-size, indims, 1, incaps]
         subx = ops.core.expand_dims(subx, 2)
-        #=> subx :  [batch-size, indims, dims*channels, incaps] (*)
-        #=> subx:   [batch-size, dims*channels, incaps] (sum)
+        #=> subx  : [batch-size, indims, dims*channels, incaps] (*)
+        #=> subx  : [batch-size, dims*channels, incaps] (sum)
         subx = ops.core.sum(subx * weight, axis=1)
         subx = ops.core.reshape(subx, [batch_size, dims, channels, incaps])
-        #=> subx:   [batch-size, dims, channels]
-        subx = ops.capsules._agreement_routing(subx,
+        #=> subx  : [batch-size, dims, channels]
+        subx = ops.capsules.dynamic_routing(subx,
                                                logits_shape,
                                                iterations,
                                                subias,
@@ -225,7 +229,7 @@ def build_net(inputs, nclass=40, reuse=False):
 def train_net(batch_size=8,
               epochs=1000,
               num_points=2048,
-              lr=0.02,
+              lr=0.8,
               nclass=40,
               debug=False,
               address=None,
@@ -266,10 +270,10 @@ def train_net(batch_size=8,
 
         validp = build_net(inputs, reuse=True)
         #valid_loss_op = layers.losses.get('margin_loss', validp, labels)
-        valid_loss_op = layers.losses.get('margin_loss', validp, labels)
+        valid_loss_op = layers.losses.categorical_cross_entropy([validp, labels])
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
-    sess, saver, summarize, writer = engine.session(checkpoint=checkpoint,#'/home/xiaox/studio/exp/3dpcn/cache/20190812135449/checkpoint/model.ckpt',
+    sess, saver, summarize, writer = engine.session(checkpoint='/home/xiaox/studio/exp/3dpcn/cache/20190815020029/checkpoint/model.ckpt',
                                                     config=config,
                                                     debug=debug,
                                                     address=address,

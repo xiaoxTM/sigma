@@ -44,7 +44,8 @@ def build_net(inputs, nclass=40, reuse=False):
         #=>      [batch-size, 6,  512]
         if not reuse:
             ops.core.summarize('inputs', x)
-        x = layers.capsules.order_invariance_transform(x, 9, 9, 'max', reuse=reuse, name='order_invariance_transform', act='squash', weight_regularizer=ops.regularizers.regularize(l1=0.01))
+        x = layers.capsules.order_invariance_transform(x, 9, 9, 'max', reuse=reuse, name='order_invariance_transform',
+                act='squash')
     #if not reuse:
     #    ops.core.summarize('order_invariance_transform', x)
     #x = layers.capsules.dense(x, 256, 20, reuse=reuse, epsilon=1e-9, name='dense-1', act='squash')
@@ -60,7 +61,7 @@ def build_net(inputs, nclass=40, reuse=False):
     #if not reuse:
     #    ops.core.summarize('dense-4', x)
     with tf.device('/device:GPU:1'):
-        x = layers.capsules.dense(x,  nclass, 9, reuse=reuse, epsilon=1e-9, name='dense-5', act='squash', weight_regularizer=ops.regularizers.regularize(l1=0.01))
+        x = layers.capsules.dense(x,  nclass, 9, reuse=reuse, epsilon=1e-9, name='dense-5', act='squash')
         if not reuse:
             ops.core.summarize('dense-5', x)
         x = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9, name='norm', reuse=reuse)
@@ -124,17 +125,16 @@ def train_net(batch_size=8,
     trainp = build_net(inputs)
     validp = build_net(inputs, reuse=True)
     with tf.device('/device:GPU:0'):
-        train_loss_op = layers.losses.get('margin_loss', trainp, labels) + ops.core.sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+        train_loss_op = layers.losses.get('margin_loss', trainp, labels)
         train_metric = layers.metrics.accuracy([trainp, labels])
         train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
         train_iters = int(get_tfrecord_size(train_filename) / batch_size)
         learning_rate = tf.train.exponential_decay(lr, global_step, train_iters, 0.9)
         update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
-        #train_loss_placeholder = tf.placeholder(dtype=tf.float32)
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
 
-        valid_loss_op = layers.losses.get('margin_loss', validp, labels) + ops.core.sum(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+        valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
         if valid_filename is not None:

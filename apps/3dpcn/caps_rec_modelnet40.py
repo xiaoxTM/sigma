@@ -131,7 +131,8 @@ def train_net(batch_size=8,
     config.allow_soft_placement = True
     with ops.core.device('/gpu:0'):
         trainp = build_net(inputs)
-        train_loss_op = layers.losses.categorical_cross_entropy([trainp, labels])
+        train_loss_op = layers.losses.get('margin_loss', trainp, labels)
+        #train_loss_op = layers.losses.categorical_cross_entropy([trainp, labels])
         train_metric = layers.metrics.accuracy([trainp, labels])
         train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
         train_iters = int(get_tfrecord_size(train_filename) / batch_size)
