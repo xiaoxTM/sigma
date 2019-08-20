@@ -14,8 +14,8 @@ import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-import skimage as sk
-import skimage.io as skio
+#import skimage as sk
+#import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
@@ -122,76 +122,75 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
                                                     debug=False,
                                                     #address='172.31.234.152:2666',
                                                     log=logdir)
+    #base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
+    #with sess:
+    #    #tf.global_variables_initializer().run()
+    #    #tf.local_variables_initializer().run()
 
-    base = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing/mnist'
-    with sess:
-        #tf.global_variables_initializer().run()
-        #tf.local_variables_initializer().run()
+    #    mlog = np.ones([epochs, 5])
 
-        mlog = np.ones([epochs, 5])
+    #    steps = int(mnist.train.num_examples / batchsize)
+    #    for epoch in range(epochs):
+    #        start = time.time()
+    #        ops.core.run(sess, metric_variable_initialize_op)
+    #        for step in range(steps):
+    #            xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
+    #            train_feed = {inputs: xs, labels: ys}
+    #            _, loss, _, summary = ops.core.run(sess, [train_op, loss_op, metric_update_op, summarize], feed_dict=train_feed)
+    #            #loss, _, summary = sess.run([loss_op, metric_update_op, summarize], feed_dict=train_feed)
+    #            metric = sess.run(metric_op)
+    #            ops.core.add_summary(writer, summary, global_step=(epoch * steps) + step)
+    #            if step % 20 == 0:
+    #                print('train for {}-th iteration: loss:{}, accuracy:{}'.format(step, loss, metric))
+    #        end = time.time()
+    #        mlog[epoch][4] = end - start
+    #        print("time cost:", mlog[epoch][4])
+    #        valid_step = int(mnist.validation.num_examples / batchsize)
+    #        validation_loss = []
+    #        validation_metric = []
+    #        ops.core.run(sess, metric_variable_initialize_op)
+    #        for vstep in range(valid_step):
+    #            xs, ys = mnist.validation.next_batch(batchsize)
+    #            valid_feed = {inputs:xs, labels:ys}
+    #            loss, _ = sess.run([loss_op, metric_update_op], feed_dict=valid_feed)
+    #            metric = ops.core.run(sess, metric_op)
+    #            validation_loss.append(loss)
+    #            validation_metric.append(metric)
+    #        vloss = np.asarray(validation_loss).mean()
+    #        vmetric = np.asarray(validation_metric).mean()
+    #        mlog[epoch][0] = vloss
+    #        mlog[epoch][1] = vmetric
+    #        print('valid for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, vloss, vmetric))
 
-        steps = int(mnist.train.num_examples / batchsize)
-        for epoch in range(epochs):
-            start = time.time()
-            ops.core.run(sess, metric_variable_initialize_op)
-            for step in range(steps):
-                xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
-                train_feed = {inputs: xs, labels: ys}
-                _, loss, _, summary = ops.core.run(sess, [train_op, loss_op, metric_update_op, summarize], feed_dict=train_feed)
-                #loss, _, summary = sess.run([loss_op, metric_update_op, summarize], feed_dict=train_feed)
-                metric = sess.run(metric_op)
-                ops.core.add_summary(writer, summary, global_step=(epoch * steps) + step)
-                if step % 20 == 0:
-                    print('train for {}-th iteration: loss:{}, accuracy:{}'.format(step, loss, metric))
-            end = time.time()
-            mlog[epoch][4] = end - start
-            print("time cost:", mlog[epoch][4])
-            valid_step = int(mnist.validation.num_examples / batchsize)
-            validation_loss = []
-            validation_metric = []
-            ops.core.run(sess, metric_variable_initialize_op)
-            for vstep in range(valid_step):
-                xs, ys = mnist.validation.next_batch(batchsize)
-                valid_feed = {inputs:xs, labels:ys}
-                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=valid_feed)
-                metric = ops.core.run(sess, metric_op)
-                validation_loss.append(loss)
-                validation_metric.append(metric)
-            vloss = np.asarray(validation_loss).mean()
-            vmetric = np.asarray(validation_metric).mean()
-            mlog[epoch][0] = vloss
-            mlog[epoch][1] = vmetric
-            print('valid for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, vloss, vmetric))
-
-            test_step = int(mnist.test.num_examples / batchsize)
-            test_loss = []
-            test_metric = []
-            ops.core.run(sess, metric_variable_initialize_op)
-            for tstep in range(test_step):
-                xs, ys = mnist.test.next_batch(batchsize)
-                test_feed = {inputs:xs, labels:ys}
-                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=test_feed)
-                reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
-                metric = ops.core.run(sess, metric_op)
-                test_loss.append(loss)
-                test_metric.append(metric)
-                if epoch % 10 == 0:
-                    for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
-                        origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
-                        predict = sk.img_as_ubyte(predict)
-                        #print(origin.shape, predict.shape)
-                        os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
-                        images = np.concatenate([origin, predict], axis=1)
-                        skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
-            tloss = np.asarray(test_loss).mean()
-            tmetric = np.asarray(test_metric).mean()
-            mlog[epoch][2] = tloss
-            mlog[epoch][3] = tmetric
-            print('test for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, tloss, tmetric))
-            if epoch % 10 == 0:
-                helpers.save(sess, checkpoint, saver, True)
-        ops.core.close_summary_writer(writer)
-        np.savetxt('log', mlog)
+    #        test_step = int(mnist.test.num_examples / batchsize)
+    #        test_loss = []
+    #        test_metric = []
+    #        ops.core.run(sess, metric_variable_initialize_op)
+    #        for tstep in range(test_step):
+    #            xs, ys = mnist.test.next_batch(batchsize)
+    #            test_feed = {inputs:xs, labels:ys}
+    #            loss, _ = sess.run([loss_op, metric_update_op], feed_dict=test_feed)
+    #            reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
+    #            metric = ops.core.run(sess, metric_op)
+    #            test_loss.append(loss)
+    #            test_metric.append(metric)
+    #            if epoch % 10 == 0:
+    #                for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
+    #                    origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
+    #                    predict = sk.img_as_ubyte(predict)
+    #                    #print(origin.shape, predict.shape)
+    #                    os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
+    #                    images = np.concatenate([origin, predict], axis=1)
+    #                    skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
+    #        tloss = np.asarray(test_loss).mean()
+    #        tmetric = np.asarray(test_metric).mean()
+    #        mlog[epoch][2] = tloss
+    #        mlog[epoch][3] = tmetric
+    #        print('test for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, tloss, tmetric))
+    #        if epoch % 10 == 0:
+    #            helpers.save(sess, checkpoint, saver, True)
+    #    ops.core.close_summary_writer(writer)
+    #    np.savetxt('log', mlog)
 
 
 parser = argparse.ArgumentParser()

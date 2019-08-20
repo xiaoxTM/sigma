@@ -52,7 +52,7 @@ def instance_norm(inputs,
                                   reuse,
                                   name,
                                   scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if input_shape[1:] != xshape[1:]:
@@ -98,7 +98,7 @@ def conditional_instance_norm(inputs,
                                               reuse,
                                               name,
                                               scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if input_shape[1:] != xshape[1:]:
@@ -112,6 +112,7 @@ def conditional_instance_norm(inputs,
 @core.layer
 def batch_norm(inputs,
                is_training,
+               axis=None,
                momentum=0.99,
                offset_initializer='zeros',
                scale_initializer='ones',
@@ -133,7 +134,7 @@ def batch_norm(inputs,
                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun = ops.norms.batch_norm(input_shape,
-                               is_training,
+                               axis,
                                momentum,
                                offset_initializer,
                                scale_initializer,
@@ -145,14 +146,13 @@ def batch_norm(inputs,
                                epsilon,
                                act,
                                trainable,
-                               fused,
                                collections,
                                summary,
                                check_input_shape,
                                reuse,
                                name,
                                scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs, is_training, fused)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if input_shape[1:] != xshape[1:]:

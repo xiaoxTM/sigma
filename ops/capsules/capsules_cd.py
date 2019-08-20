@@ -16,11 +16,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .. import colors
-from . import core, actives, helper, mm
+from sigma import colors
+from .. import core, actives, helper, mm
 import logging
 
-from .. import helpers
+from sigma import helpers
 
 # capsule networks with dynamic routing
 # NOTE: tensor shape:
@@ -353,6 +353,81 @@ def cap_fully_connected(input_shape,
                     reuse,
                     name,
                     scope), output_shape
+
+def cap_project(input_shape,
+                                  dims,
+                                  weight_initializer='glorot_uniform',
+                                  weight_regularizer=None,
+                                  bias_initializer='zeros',
+                                  bias_regularizer=None,
+                                  cpuid=0,
+                                  act=None,
+                                  trainable=True,
+                                  dtype=core.float32,
+                                  collections=None,
+                                  summary='histogram',
+                                  check_input_shape=True,
+                                  reuse=False,
+                                  name=None,
+                                  scope=None):
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
+    if len(input_shape) != 3:
+        raise ValueError('fully_conv require input shape {}[batch-size,'
+                         ' dims, channels]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
+    batch_size, incaps, indims = input_shape
+    weight_shape = [1, incaps, indims, dims] # get rid of batch_size axis
+
+    bias_shape = [incaps, 1]
+    output_shape = [input_shape[0], incaps, dims]
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'project',
+                                             reuse)
+    act = actives.get(act)
+    weights = mm.malloc('weights',
+                        name,
+                        weight_shape,
+                        dtype,
+                        weight_initializer,
+                        weight_regularizer,
+                        cpuid,
+                        trainable,
+                        collections,
+                        summary,
+                        reuse,
+                        scope)
+    if not isinstance(bias_initializer, bool) or bias_initializer is True:
+        bias = mm.malloc('bias',
+                         name,
+                         bias_shape,
+                         dtype,
+                         bias_initializer,
+                         bias_regularizer,
+                         cpuid,
+                         trainable,
+                         collections,
+                         summary,
+                         reuse,
+                         scope)
+    else:
+        bias = 0
+    def _cap_project(x):
+        with ops_scope:
+            #    [batch-size, incaps, indims]
+            #=>  [batch-size, incaps, indims, 1]
+            x = core.expand_dims(x, 2)
+            #    [batch-size, incaps, indims, 1]
+            #  * [1, incaps, indims, dims]
+            #=>  [batch-size, incaps, indims, dims] (*)
+            #=>  [batch-size, incaps, dims] (sum)
+            x = core.sum(x * weights, axis=2) + bias
+            return act(x)
+    return _cap_project, output_shape
 
 """ order invarnace transformation operation
 """

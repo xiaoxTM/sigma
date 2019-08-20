@@ -20,8 +20,8 @@ from .. import ops
 from .. import colors
 from . import core
 
-def _math(fun, inputs, output, typename, return_shape):
-    x = fun(inputs)
+def _math(fun, inputs, output, name, typename, return_shape):
+    x = core.run_and_record_fun(fun, name, inputs)
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
@@ -42,7 +42,7 @@ def add(inputs,
         scope=None):
     input_shape = [ops.helper.norm_input_shape(ip)  for ip in inputs]
     fun, output = ops.math.add(input_shape, weights, reuse, name, scope)
-    return _math(fun, inputs, output, 'add', return_shape)
+    return _math(fun, inputs, output, name, 'add', return_shape)
 
 
 @core.layer
@@ -53,7 +53,7 @@ def mul(inputs,
         scope=None):
     input_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.math.mul(input_shape, reuse, name, scope)
-    return _math(fun, inputs, output, 'mul', return_shape)
+    return _math(fun, inputs, output, name, 'mul', return_shape)
 
 
 @core.layer
@@ -64,4 +64,4 @@ def matmul(inputs,
            scope=None):
     input_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.math.matmul(input_shape, reuse, name, scope)
-    return _math(fun, inputs, output, 'matmul', return_shape)
+    return _math(fun, inputs, output, name, 'matmul', return_shape)

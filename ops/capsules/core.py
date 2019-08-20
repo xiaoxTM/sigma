@@ -1,7 +1,3 @@
-import capsules_dc
-import capsules_cd
-
-
 """
     sigma, a deep neural network framework.
     Copyright (C) 2018  Renwu Gao
@@ -20,10 +16,10 @@ import capsules_cd
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .. import colors
-
-import capsules_cd
-import capsules_dc
+from sigma import colors
+from . import capsules_cd
+from . import capsules_dc
+from .. import core, helper, actives
 
 # capsule networks with dynamic routing
 # NOTE: tensor shape:
@@ -108,7 +104,7 @@ def cap_fully_connected(input_shape,
                         channels,
                         dims,
                         iterations=2,
-                        data_format='DC',
+                        order='DC',
                         leaky=False,
                         share_weights=False,
                         weight_initializer='glorot_uniform',
@@ -166,7 +162,64 @@ def cap_fully_connected(input_shape,
                             name,
                             scope)
 
-""" order invarnace transformation operation
+""" capsule projection / transformation operation
+"""
+# @helpers.typecheck(input_shape=list,
+#                    dims=int,
+#                    channels=int,
+#                    kshape=[int, list],
+#                    stride=[int, list],
+#                    padding=str,
+#                    trainable=bool,
+#                    iterations=int,
+#                    collections=str,
+#                    summary=str,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def cap_project(input_shape,
+                channels,
+                dims,
+                order='DC',
+                weight_initializer='glorot_uniform',
+                weight_regularizer=None,
+                bias_initializer='zeros',
+                bias_regularizer=None,
+                cpuid=0,
+                act=None,
+                trainable=True,
+                dtype=core.float32,
+                collections=None,
+                summary='histogram',
+                check_input_shape=True,
+                reuse=False,
+                name=None,
+                scope=None):
+    if order not in {'DC', 'CD'}:
+        raise ValueError('`order` must be one of {}/{}'.format(colors.red('DC'), colors.red('CD')))
+    _project= capsules_dc.cap_project
+    if order == 'CD':
+        _project = capsules_cd.cap_project
+    return _project(input_shape,
+                    channels,
+                    dims,
+                    mode,
+                    weight_initializer,
+                    weight_regularizer,
+                    bias_initializer,
+                    bias_regularizer,
+                    cpuid,
+                    act,
+                    trainable,
+                    dtype,
+                    collections,
+                    summary,
+                    check_input_shape,
+                    reuse,
+                    name,
+                    scope)
+
+""" permutation transformation operation
 """
 # @helpers.typecheck(input_shape=list,
 #                    dims=int,

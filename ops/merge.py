@@ -70,7 +70,7 @@ def concat(inputs_shape,
 #                    scope=str)
 def stack(inputs_shape,
           axis=-1,
-          check_input_shape=True
+          check_input_shape=True,
           reuse=False,
           name=None,
           scope=None):

@@ -22,18 +22,18 @@ from . import core, convs
 
 @core.layer
 def cap_norm(inputs,
-                              axis,
-                              keepdims=False,
-                              ord='euclidean',
-                              epsilon=ops.core.epsilon,
-                              safe=True,
-                              act=None,
-                              return_shape=False,
-                              check_output_shape=True,
-                              check_input_shape=True,
-                              reuse=False,
-                              name=None,
-                              scope=None):
+             axis,
+             keepdims=False,
+             ord='euclidean',
+             epsilon=ops.core.epsilon,
+             safe=True,
+             act=None,
+             return_shape=False,
+             check_output_shape=True,
+             check_input_shape=True,
+             reuse=False,
+             name=None,
+             scope=None):
     """ norm of vector
         input vector output scalar
     """
@@ -41,7 +41,6 @@ def cap_norm(inputs,
     fun, output = ops.capsules.cap_norm(input_shape,
                                         axis,
                                         keepdims,
-                                        order,
                                         ord,
                                         epsilon,
                                         safe,
@@ -50,7 +49,7 @@ def cap_norm(inputs,
                                         reuse,
                                         name,
                                         scope)
-    return convs._layers(fun, inputs, output, return_shape, check_output_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -105,57 +104,107 @@ def cap_fully_connected(inputs,
                                                    reuse,
                                                    name,
                                                    scope)
-    return convs._layers(fun, inputs, output, return_shape, check_output_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
-def permutation_transform(inputs,
-                          channels,
-                          dims,
-                          order='DC',
-                          mode='max',
-                          weight_initializer=core.__defaults__['weight_initializer'],
-                          weight_regularizer=core.__defaults__['weight_regularizer'],
-                          bias_initializer=core.__defaults__['bias_initializer'],
-                          bias_regularizer=core.__defaults__['bias_regularizer'],
-                          cpuid=0,
-                          act=None,
-                          trainable=True,
-                          dtype=ops.core.float32,
-                          return_shape=False,
-                          collections=None,
-                          summary=core.__defaults__['summary'],
-                          check_output_shape=True,
-                          check_input_shape=True,
-                          reuse=False,
-                          name=None,
-                          scope=None):
+def cap_project(inputs,
+                channels,
+                dims,
+                order='DC',
+                mode='max',
+                weight_initializer=core.__defaults__['weight_initializer'],
+                weight_regularizer=core.__defaults__['weight_regularizer'],
+                bias_initializer=core.__defaults__['bias_initializer'],
+                bias_regularizer=core.__defaults__['bias_regularizer'],
+                cpuid=0,
+                act=None,
+                trainable=True,
+                dtype=ops.core.float32,
+                return_shape=False,
+                collections=None,
+                summary=core.__defaults__['summary'],
+                check_output_shape=True,
+                check_input_shape=True,
+                reuse=False,
+                name=None,
+                scope=None):
     ''' order invariance transform layer
         i.e., the output feature indepenedent of input order
         inputs should have shape of
         [batch-size, indims, incaps]
     '''
     input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.order_invariance_transform(input_shape,
-                                                          channels,
-                                                          dims,
-                                                          order,
-                                                          mode,
-                                                          weight_initializer,
-                                                          weight_regularizer,
-                                                          bias_initializer,
-                                                          bias_regularizer,
-                                                          cpuid,
-                                                          act,
-                                                          trainable,
-                                                          dtype,
-                                                          collections,
-                                                          summary,
-                                                          check_input_shape,
-                                                          reuse,
-                                                          name,
-                                                          scope)
-    return convs._layers(fun, inputs, output, return_shape, check_output_shape)
+    fun, output = ops.capsules.cap_project(input_shape,
+                                           channels,
+                                           dims,
+                                           order,
+                                           mode,
+                                           weight_initializer,
+                                           weight_regularizer,
+                                           bias_initializer,
+                                           bias_regularizer,
+                                           cpuid,
+                                           act,
+                                           trainable,
+                                           dtype,
+                                           collections,
+                                           summary,
+                                           check_input_shape,
+                                           reuse,
+                                           name,
+                                           scope)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
+
+
+@core.layer
+def cap_permutation_transform(inputs,
+                              channels,
+                              dims,
+                              order='DC',
+                              mode='max',
+                              weight_initializer=core.__defaults__['weight_initializer'],
+                              weight_regularizer=core.__defaults__['weight_regularizer'],
+                              bias_initializer=core.__defaults__['bias_initializer'],
+                              bias_regularizer=core.__defaults__['bias_regularizer'],
+                              cpuid=0,
+                              act=None,
+                              trainable=True,
+                              dtype=ops.core.float32,
+                              return_shape=False,
+                              collections=None,
+                              summary=core.__defaults__['summary'],
+                              check_output_shape=True,
+                              check_input_shape=True,
+                              reuse=False,
+                              name=None,
+                              scope=None):
+    ''' order invariance transform layer
+        i.e., the output feature indepenedent of input order
+        inputs should have shape of
+        [batch-size, indims, incaps]
+    '''
+    input_shape = ops.helper.norm_input_shape(inputs)
+    fun, output = ops.capsules.cap_permutation_transform(input_shape,
+                                                         channels,
+                                                         dims,
+                                                         order,
+                                                         mode,
+                                                         weight_initializer,
+                                                         weight_regularizer,
+                                                         bias_initializer,
+                                                         bias_regularizer,
+                                                         cpuid,
+                                                         act,
+                                                         trainable,
+                                                         dtype,
+                                                         collections,
+                                                         summary,
+                                                         check_input_shape,
+                                                         reuse,
+                                                         name,
+                                                         scope)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -214,7 +263,7 @@ def cap_conv1d(inputs,
                                           reuse,
                                           name,
                                           scope)
-    return convs._layers(fun, inputs, output, return_shape, check_output_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -273,7 +322,7 @@ def cap_conv2d(inputs,
                                           reuse,
                                           name,
                                           scope)
-    return convs._layers(fun, inputs, output, return_shape, check_output_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 # alien name
 norm = cap_norm

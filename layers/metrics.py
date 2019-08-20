@@ -29,14 +29,14 @@ def accuracy(inputs,
              reuse=False,
              name=None,
              scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.accuracy(from_logits,
+    fun = ops.metrics.accuracy(from_logits,
                                 weights,
                                 metrics_collections,
                                 updates_collections,
                                 reuse,
                                 name,
-                                scope)(inputs, labels)
+                                scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -51,8 +51,7 @@ def auc(inputs,
         reuse=False,
         name=None,
         scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.auc(from_logits,
+    fun = ops.metrics.auc(from_logits,
                            weights,
                            metrics_collections,
                            updates_collections,
@@ -61,7 +60,8 @@ def auc(inputs,
                            scope,
                            num_thresholds,
                            curve,
-                           summation_method)(inputs, labels)
+                           summation_method)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -74,15 +74,15 @@ def false_negatives(inputs,
                     name=None,
                     scope=None,
                     thresholds=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.false_negatives(from_logits,
+    fun = ops.metrics.false_negatives(from_logits,
                                        weights,
                                        metrics_collections,
                                        updates_collections,
                                        reuse,
                                        name,
                                        scope,
-                                       thresholds)(inputs, labels)
+                                       thresholds)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -95,15 +95,15 @@ def false_positives(inputs,
                     name=None,
                     scope=None,
                     thresholds=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.false_positives(from_logits,
+    fun = ops.metrics.false_positives(from_logits,
                                        weights,
                                        metrics_collections,
                                        updates_collections,
                                        reuse,
                                        name,
                                        scope,
-                                       thresholds)(inputs, labels)
+                                       thresholds)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -116,15 +116,15 @@ def true_negatives(inputs,
                    name=None,
                    scope=None,
                    thresholds=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.true_negatives(from_logits,
+    fun = ops.metrics.true_negatives(from_logits,
                                       weights,
                                       metrics_collections,
                                       updates_collections,
                                       reuse,
                                       name,
                                       scope,
-                                      thresholds)(inputs, labels)
+                                      thresholds)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -137,15 +137,15 @@ def true_positives(inputs,
                    name=None,
                    scope=None,
                    thresholds=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.true_positives(from_logits,
+    fun = ops.metrics.true_positives(from_logits,
                                       weights,
                                       metrics_collections,
                                       updates_collections,
                                       reuse,
                                       name,
                                       scope,
-                                      thresholds)(inputs, labels)
+                                      thresholds)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -158,15 +158,15 @@ def mean_iou(inputs,
              name=None,
              scope=None,
              nclass=None): # nclass = None is just for normalizing API
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.mean_iou(from_logits,
+    fun = ops.metrics.mean_iou(from_logits,
                                 weights,
                                 metrics_collections,
                                 updates_collections,
                                 reuse,
                                 name,
                                 scope,
-                                nclass)(inputs, labels)
+                                nclass)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -178,14 +178,14 @@ def precision(inputs,
               reuse=False,
               name=None,
               scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.precision(from_logits,
+    fun = ops.metrics.precision(from_logits,
                                  weights,
                                  metrics_collections,
                                  updates_collections,
                                  reuse,
                                  name,
-                                 scope)(inputs, labels)
+                                 scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 @core.layer
 def recall(inputs,
@@ -196,14 +196,14 @@ def recall(inputs,
            reuse=False,
            name=None,
            scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.metrics.recall(from_logits,
+    fun = ops.metrics.recall(from_logits,
                               weights,
                               metrics_collections,
                               updates_collections,
                               reuse,
                               name,
-                              scope)(inputs, labels)
+                              scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 def get(m, inputs, labels, **kwargs):

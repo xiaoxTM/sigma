@@ -16,4 +16,3 @@ class FunsTest(unittest.TestCase):
             self.assertRaises(TypeError, lambda: test('3', [], 20))
         with self.subTest():
             self.assertRaises(TypeError, lambda: test(3, '3', 10))
-

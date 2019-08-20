@@ -43,10 +43,12 @@ def malloc(name,
         add_to_collect = False
     else:
         variable_scope = '{}/{}'.format(scope, layername)
-    variable_type = 'trainable'
-    if not trainable:
-        variable_type = 'non-trainable'
-    variable_scope = '{}/variables/{}'.format(variable_scope, variable_type)
+    # since variable type will cause pretrain loading problem
+    # remove it
+    # variable_type = 'trainable'
+    # if not trainable:
+    #     variable_type = 'non-trainable'
+    variable_scope = '{}/variables'.format(variable_scope)
     with core.variable_scope(variable_scope, reuse=reuse):
         variable = core.get_variable(name, shape, dtype, initializer,
                                      regularizer, trainable, collections)

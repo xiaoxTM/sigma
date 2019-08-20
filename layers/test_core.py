@@ -36,25 +36,25 @@ def make_test5(a, b=200):
 
 
 class CoreTest(unittest.TestCase):
-    def test_split_inputs(self):
-        x = [3,4]
-        x, y = core.split_inputs(x)
-        with self.subTest(idx=0):
-            self.assertEqual(x, 3)
-        with self.subTest(idx=1):
-            self.assertEqual(y, 4)
+    #def test_split_inputs(self):
+    #    x = [3,4]
+    #    x, y = core.split_inputs(x)
+    #    with self.subTest(idx=0):
+    #        self.assertEqual(x, 3)
+    #    with self.subTest(idx=1):
+    #        self.assertEqual(y, 4)
 
-        x = [5]
-        x, y = core.split_inputs(x)
-        with self.subTest(idx=2):
-            self.assertEqual(x, 5)
-        with self.subTest(idx=3):
-            self.assertEqual(y, None)
+    #    x = [5]
+    #    x, y = core.split_inputs(x)
+    #    with self.subTest(idx=2):
+    #        self.assertEqual(x, 5)
+    #    with self.subTest(idx=3):
+    #        self.assertEqual(y, None)
 
-        with self.subTest(idx=4):
-            self.assertRaises(TypeError, lambda: core.split_inputs('test'))
-        with self.subTest(idx=5):
-            self.assertRaises(ValueError, lambda: core.split_inputs([2,3,4]))
+    #    with self.subTest(idx=4):
+    #        self.assertRaises(TypeError, lambda: core.split_inputs('test'))
+    #    with self.subTest(idx=5):
+    #        self.assertRaises(ValueError, lambda: core.split_inputs([2,3,4]))
 
 
     def test_set_print(self):

@@ -48,8 +48,7 @@ def embedding(inputs,
                               reuse,
                               name,
                               scope)
-    x = fun(inputs)
-    return x
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -62,7 +61,7 @@ def flatten(inputs,
             scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.flatten(input_shape, check_input_shape, reuse, name, scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -77,7 +76,7 @@ def flatten(inputs,
 
 @core.layer
 def reshape(inputs,
-            output_shape,
+            target_shape,
             return_shape=False,
             check_output_shape=True,
             check_input_shape=True,
@@ -85,11 +84,11 @@ def reshape(inputs,
             name=None,
             scope=None):
     # input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.base.reshape(output_shape, check_input_shape, reuse, name, scope)
-    x = fun(inputs)
+    fun, output = ops.base.reshape(target_shape, reuse, name, scope)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
-        if output[1:] != output_shape[1:]:
+        if output[1:] != target_shape[1:]:
             raise ValueError('the predicted output shape and the '
                              'real output shape not match. {} vs {}'
                              .format(colors.red(output),
@@ -113,11 +112,11 @@ def transpose(inputs,
     fun, output = ops.base.transpose(input_shape,
                                      perm,
                                      conjugate,
-                                     check_input_shape
+                                     check_input_shape,
                                      reuse,
                                      name,
                                      scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -143,7 +142,7 @@ def expand_dims(inputs,
                 scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.expand_dims(input_shape, axis, check_input_shape, reuse, name, scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -159,7 +158,8 @@ def expand_dims(inputs,
 @core.layer
 def maskout(inputs,
             index=None,
-            axis=-2, # axis according to which to maskout
+            axis=-2,
+            onehot=True,
             drop=False,
             flatten=True,
             return_shape=False,
@@ -178,13 +178,14 @@ def maskout(inputs,
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.maskout(input_shape,
                                    axis,
+                                   onehot,
                                    drop,
                                    flatten,
                                    check_input_shape,
                                    reuse,
                                    name,
                                    scope)
-    x = fun(inputs, index)
+    x = core.run_and_record_fun(fun, name, inputs, index)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -205,13 +206,14 @@ def dropout(inputs, pkeep,
             reuse=False,
             name=None,
             scope=None):
-    return ops.base.dropout(pkeep,
+    fun = ops.base.dropout(pkeep,
                              noise_shape,
                              seed,
                              True, #interpret as layer
                              reuse,
                              name,
-                             scope)(inputs)
+                             scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 @core.layer
 def input_spec(inputs,

@@ -415,3 +415,11 @@ def norm_input_3d(shape):
                         .format(colors.fg.green, colors.reset,
                                 colors.red(type(shape))))
     return list(shape)
+
+def split_inputs(inputs, types=(list, tuple), allow_none=-1):
+    if not isinstance(inputs, types):
+        raise TypeError('input must be {}. given {}'.format(colors.green(types), colors.red(type(inputs))))
+    for i, v in enumerate(inputs):
+        if i != allow_none and v is None:
+            raise ValueError('{}-th element is None, which is not allowed'.format(colors.red(i)))
+    return inputs

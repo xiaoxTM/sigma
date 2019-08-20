@@ -45,13 +45,13 @@ def binary_cross_entropy(inputs,
             onehot : bool
                      whether labels is in onehot format or not
     """
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.binary_cross_entropy(axis,
+    fun = ops.losses.binary_cross_entropy(axis,
                                            from_logits,
                                            onehot,
                                            reuse,
                                            name,
-                                           scope)(inputs, labels)
+                                           scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -62,13 +62,13 @@ def categorical_cross_entropy(inputs,
                               reuse=False,
                               name=None,
                               scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.categorical_cross_entropy(axis,
+    fun = ops.losses.categorical_cross_entropy(axis,
                                                 from_logits,
                                                 onehot,
                                                 reuse,
                                                 name,
-                                                scope)(inputs, labels)
+                                                scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -79,13 +79,13 @@ def mean_square_error(inputs,
                       reuse=False,
                       name=None,
                       scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.mean_square_error(axis,
+    fun = ops.losses.mean_square_error(axis,
                                         from_logits,
                                         onehot,
                                         reuse,
                                         name,
-                                        scope)(inputs, labels)
+                                        scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -96,13 +96,13 @@ def mean_absolute_error(inputs,
                         reuse=False,
                         name=None,
                         scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.mean_absolute_error(axis,
+    fun = ops.losses.mean_absolute_error(axis,
                                           from_logits,
                                           onehot,
                                           reuse,
                                           name,
-                                          scope)(inputs, labels)
+                                          scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -113,13 +113,13 @@ def winner_takes_all(inputs,
                      reuse=False,
                      name=None,
                      scope=None):
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.winner_takes_all(axis,
+    fun = ops.losses.winner_takes_all(axis,
                                        from_logits,
                                        onehot,
                                        reuse,
                                        name,
-                                       scope)(inputs, labels)
+                                       scope)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -138,8 +138,7 @@ def margin_loss(inputs,
         because margin loss treat inputs as
         `vector in vector out` tensor
     """
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.margin_loss(axis,
+    fun = ops.losses.margin_loss(axis,
                                   from_logits,
                                   onehot,
                                   reuse,
@@ -147,7 +146,8 @@ def margin_loss(inputs,
                                   scope,
                                   positive_margin,
                                   negative_margin,
-                                  downweight)(inputs, labels)
+                                  downweight)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 @core.layer
@@ -168,8 +168,7 @@ def chamfer_loss(inputs,
         that is:
             mean(min(each point in setA, setB)) + mean(min(setA, each point in setB))
     """
-    inputs, labels = core.split_inputs(inputs)
-    return ops.losses.chamfer_loss(axis,
+    fun = ops.losses.chamfer_loss(axis,
                                    from_logits,
                                    onehot,
                                    reuse,
@@ -178,7 +177,8 @@ def chamfer_loss(inputs,
                                    dtype,
                                    metric,
                                    alpha,
-                                   belta)(inputs, labels)
+                                   belta)
+    return core.run_and_record_fun(fun, name, inputs)
 
 
 # short alias for each losses

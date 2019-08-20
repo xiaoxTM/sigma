@@ -60,6 +60,7 @@ __defaults__ = {'padding' : 'valid',
 #               'input_spec', 'label_spec', 'random_spec',
 #              ]
 
+__functions__ = {}
 
 __modules__ = {'actives': ['crelu',
                           'relu',
@@ -111,27 +112,34 @@ __colormaps__ = {'actives' : 'Magenta',
                  'other' : 'Yellow'
                  }
 
-def split_inputs(inputs):
-    """ split inputs into two parts according to the type of inputs:
-        - inputs
-        - output
-    """
-    if isinstance(inputs, (list, tuple)):
-        if len(inputs) == 1:
-            inputs, labels = inputs[0], None
-        elif len(inputs) == 2:
-            inputs, labels = inputs
-        else:
-            raise ValueError('`inputs` as list must have length of 1 or 2.'
-                             ' given {}'.format(len(inputs)))
-    elif isinstance(inputs, dict):
-        inputs = inputs['logits']
-        labels = inputs.get('labels', None)
-    else:
-        raise TypeError('`inputs` must be list / tuple / dict.'
-                        ' given {}'.format(type(inputs)))
+def run_and_record_fun(fun, name, inputs, *args, **kwargs):
+    if name in __functions__.keys():
+        raise KeyError('key `{}` already exists'.format(colors.red(name)))
+    global __functions__
+    __functions__[name] = fun
+    return fun(inputs, *args, **kwargs)
 
-    return [inputs, labels]
+# def split_inputs(inputs):
+#     """ split inputs into two parts according to the type of inputs:
+#         - inputs
+#         - output
+#     """
+#     if isinstance(inputs, (list, tuple)):
+#         if len(inputs) == 1:
+#             inputs, labels = inputs[0], None
+#         elif len(inputs) == 2:
+#             inputs, labels = inputs
+#         else:
+#             raise ValueError('`inputs` as list must have length of 1 or 2.'
+#                              ' given {}'.format(len(inputs)))
+#     elif isinstance(inputs, dict):
+#         inputs = inputs['logits']
+#         labels = inputs.get('labels', None)
+#     else:
+#         raise TypeError('`inputs` must be list / tuple / dict.'
+#                         ' given {}'.format(type(inputs)))
+#
+#     return [inputs, labels]
 
 
 # interstatus for visualization
@@ -270,7 +278,7 @@ def graph_has_edge(graph, input_name, output_name):
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
 """
-def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
+def print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     """ print each layer
         parameters:
             @name: layer name
@@ -434,7 +442,6 @@ def defaultable(fun):
         return fun(**kwargs)
     return _wrap
 
-
 """ layer decorator
         layer decorated using @layer must have the spec:
         fun layername(inputs, [...], reuse, name) => x[, output_shape]
@@ -452,6 +459,10 @@ def layer(fun):
                                  .format(colors.red('True')))
             name = ops.helper.dispatch_name(fun.__name__)
             kwargs['name'] = name
+        else:
+            if reuse:
+                call = __functions__[name]
+                return call(kwargs.pop('inputs'))
         x = fun(**kwargs)
         outputs = x
         if isinstance(x, (list, tuple)):
@@ -460,7 +471,7 @@ def layer(fun):
         kwargs.pop('reuse')
         kwargs.pop('name')
         scope = kwargs.pop('scope')
-        _print_layer(inputs, outputs, fun.__name__, reuse,
+        print_layer(inputs, outputs, fun.__name__, reuse,
                      name, scope, **kwargs)
         return x
     return _wrap

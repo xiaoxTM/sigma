@@ -20,6 +20,8 @@ import numpy as np
 from . import core, helper
 
 def regularize(l1=0.0, l2=0.0):
+    if not l1 and not l2:
+        raise ValueError('`l1` and `l2` can not be zero at the same time')
     def _regularize(x):
         regularization = 0.
         if l1:

@@ -62,10 +62,12 @@ def embedding(table_shape,
 
 # @helpers.typecheck(input_shape=list, reuse=bool, name=str, scope=str)
 def flatten(input_shape,
+            check_input_shape=True,
             reuse=False,
             name=None,
             scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'flatten', reuse)
     output_shape = [-1, np.prod(input_shape[1:])]
     def _flatten(x):
@@ -74,26 +76,28 @@ def flatten(input_shape,
     return _flatten, output_shape
 
 
-# @helpers.typecheck(output_shape=list, reuse=bool, name=str, scope=str)
-def reshape(output_shape,
+# @helpers.typecheck(target_shape=list, reuse=bool, name=str, scope=str)
+def reshape(target_shape,
             reuse=False,
             name=None,
             scope=None):
     ops_scope, _, name = helper.assign_scope(name, scope, 'reshape', reuse)
     def _reshape(x):
         with ops_scope:
-            return core.reshape(x, output_shape)
-    return _reshape, output_shape
+            return core.reshape(x, target_shape)
+    return _reshape, target_shape
 
 
 # @heplers.typecheck(input_shape=list, conjugate=bool, name=str, scope=str)
 def transpose(input_shape,
               perm,
               conjugate=False,
+              check_input_shape=True,
               reuse=False,
               name=None,
               scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'transpose',
@@ -119,10 +123,12 @@ def transpose(input_shape,
 # @helpers.typecheck(input_shape=list, axis=int, reuse=bool, name=str, scope=str)
 def expand_dims(input_shape,
                 axis,
+                check_input_shape=True,
                 reuse=False,
                 name=None,
                 scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     ops_scope, _, _ = helper.assign_scope(name,
                                           scope,
                                           'expand_dims',
@@ -144,8 +150,10 @@ def expand_dims(input_shape,
 #                    scope=str)
 def maskout(input_shape,
             axis=-1,
+            onehot=True,
             drop=False,
             flatten=True,
+            check_input_shape=True,
             reuse=False,
             name=None,
             scope=None):
@@ -154,7 +162,8 @@ def maskout(input_shape,
 
         flatten works ONLY when drop is `False`
     """
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     ops_scope, name_with_ltype, _ = helper.assign_scope(name,
                                                         scope,
                                                         'maskout',
@@ -163,54 +172,42 @@ def maskout(input_shape,
     index_shape = output_shape[:]
     axis = helper.normalize_axes(input_shape, axis)
     if drop:
-        index_shape[axis] = 1
         output_shape.pop(axis)
-        def _maskout(x, index=None):
-            with ops_scope:
-                if index is None:
-                    if axis != len(input_shape) - 1:
-                        #  x: [batch-size, length of feature, channels]
-                        #=>x: [batch-size, channels]
-                        xnorm = core.norm(x, -2, safe=False, keepdims=False)
-                        #=>index: [batch-size,]
-                        index = core.argmax(xnorm, -1, dtype=core.int32)
-                    else:
-                        raise ValueError('index cannot be None')
-                x = core.gather(x, index, axis=axis)
-                return x
-    else:
-        # no need for batch-size axis, therefore -1
-        if flatten:
-            output_shape[-1] *= output_shape[axis]
-            output_shape.pop(axis)
-        def _maskout(x, index=None):
-            with ops_scope:
-                if index is None:
-                    #print('axis: ', axis)
-                    #print('input shape length: ', len(input_shape))
-                    ## if index not given, use the max `NORM` as index
-                    if axis != len(input_shape) - 1:
-                        # x shape: [batch-size, length of feature, channels]
-                        # xnorm shape: [batch-size, channels]
-                        xnorm = core.norm(x, -2, safe=False, keepdims=False)
-                        # index shape: [batch-size]
-                        index = core.argmax(xnorm, -1, dtype=core.int32)
-                        # [batch-size] => [batch-size, channels]
-                        index = core.one_hot(index, input_shape[-1])
-                    else:
-                        raise ValueError('element cannot be None')
-                # onehot to from
-                # [batch-size]
-                # to
-                # [batch-size, nclass]
-                # tile to [batch-size, nclass, depth]
-                index = core.expand_dims(index, -2)
-                index = core.cast(index, core.float32)
-                x = core.multiply(x, index)
-                if flatten:
-                    #x = core.flatten(x)
-                    x = core.reshape(x, output_shape)
-                return x
+    elif flatten:
+        output_shape[-1] *= output_shape[axis]
+        output_shape.pop(axis)
+    def _maskout(x, index):
+        with ops_scope:
+            if index is None:
+                ## if index not given, use the max `NORM` as index
+                if axis != len(input_shape) - 1:
+                    # x shape: [batch-size, length of feature, nclass]
+                    # xnorm shape: [batch-size, nclass]
+                    xnorm = core.norm(x, -2, safe=True, keepdims=False, epsilon=1e-10)
+                    # index shape: [batch-size]
+                    index = core.argmax(xnorm, -1, dtype=core.int32)
+                    # [batch-size] => [batch-size, nclass]
+                    index = core.one_hot(index, input_shape[-1])
+                else:
+                    raise ValueError('element cannot be None')
+            elif not onehot:
+                index = core.one_hot(index, input_shape[-1])
+            # onehot form
+            # [batch-size, nclass]
+            # to [batch-size, 1, nclass]
+            index = core.expand_dims(index, -2)
+            index = core.cast(index, core.float32)
+            x = core.multiply(x, index)
+            if drop:
+                #     x: [batch-size, length of feature, nclass]
+                # index: [batch-size, 1, nclass]
+                raise AttributeError('`drop` for maskout not implemented yet!')
+                index = core.argmax(index, -1, dtype=core.int32)
+                x = x[:, :, index]
+            elif flatten:
+                #x = core.flatten(x)
+                x = core.reshape(x, output_shape)
+            return x
     return _maskout, output_shape
 
 

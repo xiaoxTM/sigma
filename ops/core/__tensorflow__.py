@@ -175,6 +175,8 @@ def padnorm(fun):
         return fun(**kwargs)
     return _padnorm
 
+def runtime_print(*inputs, **kwargs):
+    return tf.print(*inputs, **kwargs)
 
 #= workflow control =====================
 def cond(condition,
@@ -931,16 +933,17 @@ def sigmoid_cross_entropy_with_logits(labels=None,
 
 
 #----- tensorflow summaries -----#
-def summarize(name, tensor, mode='histogram', **kwargs):
-    if mode == 'histogram':
-        return tf.summary.histogram(name, tensor)
-    elif mode == 'scalar':
-        return tf.summary.scalar(name, tensor)
-    elif mode == 'image':
-        return tf.summary.image(name, tensor, **kwargs)
-    else:
-        raise ValueError('`{}` mode for summary not supported'
-                         .format(mode))
+def summarize(name, tensor, mode='histogram', reuse=False, **kwargs):
+    if not reuse:
+        if mode == 'histogram':
+            return tf.summary.histogram(name, tensor)
+        elif mode == 'scalar':
+            return tf.summary.scalar(name, tensor)
+        elif mode == 'image':
+            return tf.summary.image(name, tensor, **kwargs)
+        else:
+            raise ValueError('`{}` mode for summary not supported'
+                             .format(mode))
 
 
 #----- tensorflow log gradients -----#
@@ -1452,9 +1455,10 @@ def load_mnist(path, one_hot):
 
 def load(session, checkpoint,
          saver=None,
+         var_list=None,
          verbose=True):
     if saver is None:
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(var_list)
     if not isinstance(saver, tf.train.Saver):
         raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
                         'given {}'
@@ -1479,8 +1483,11 @@ def load(session, checkpoint,
                  )
         saver.restore(session, ckpt.model_checkpoint_path)
     elif verbose:
-        print('{}restoring from checkpoint {}ignored{}'
-              .format(colors.fg.blue, colors.fg.red, colors.reset))
+        print('{}restoring from checkpoint:{} {}ignored{}'
+              .format(colors.fg.blue,
+                      colors.green(ckpt),
+                      colors.fg.red,
+                      colors.reset))
     return session, saver
 
 

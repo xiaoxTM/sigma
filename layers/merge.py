@@ -20,8 +20,8 @@ from .. import ops
 from .. import colors
 from . import core
 
-def _merge(fun, inputs, output, typename, return_shape, check_output_shape):
-    x = fun(inputs)
+def _merge(fun, inputs, output, name, typename, return_shape, check_output_shape):
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -45,7 +45,7 @@ def concat(inputs,
            scope=None):
     inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.merge.concat(inputs_shape, axis, check_input_shape, reuse, name, scope)
-    return _merge(fun, inputs, output, 'concat', return_shape, check_output_shape)
+    return _merge(fun, inputs, output, name, 'concat', return_shape, check_output_shape)
 
 @core.layer
 def stack(inputs,
@@ -58,4 +58,4 @@ def stack(inputs,
            scope=None):
     inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.merge.stack(inputs_shape, axis, check_input_shape, reuse, name, scope)
-    return _merge(fun, inputs, output, 'stack', return_shape, check_output_shape)
+    return _merge(fun, inputs, output, name, 'stack', return_shape, check_output_shape)

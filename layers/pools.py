@@ -33,7 +33,7 @@ def _pool(inputs,
           scope):
     fun, output = op(ops.core.shape(inputs), pshape,
                      stride, padding, check_input_shape, reuse, name, scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -54,7 +54,7 @@ def _pool_global(inputs,
                  name,
                  scope):
     fun, output = op(ops.helper.norm_input_shape(inputs), check_input_shape, reuse, name, scope)
-    x = fun(inputs)
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:

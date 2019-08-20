@@ -16,24 +16,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .. import colors
-from . import core, actives, helper, mm
+from sigma import colors
+from .. import core, actives, helper, mm
 import logging
 
-from .. import helpers
+from sigma import helpers
 
 # capsule networks with dynamic routing
 # NOTE: tensor shape:
 #       1> for fully_connected capsule:
-#           [batch-size, capdim, channels]
+#           [batch-size, dims, channels]
 #vs normal: [batch-size, channels]
 #       2> for conv1d capsules:
-#           [batch-size, neurons, capdim, channels]
+#           [batch-size, neurons, dims, channels]
 #vs normal: [batch-size, neurons, channels]
 #       3> for conv2d capsules:
-#           [batch-size, rows, cols, capdim, channels]
+#           [batch-size, rows, cols, dims, channels]
 #vs normal: [batch-size, rows, cols, channels]
-
 
 def _leaky_routing(logits):
     """ leaky routing
@@ -45,10 +44,10 @@ def _leaky_routing(logits):
         ==========
         logits : Tensor
                  output tensor of one layer with shape of:
-                 [batch-size, ncaps, caps_dim]
+                 [batch-size, dims, caps]
                  for fully connected
                  or
-                 [batch-size, rows, cols, ncaps, caps_dim]
+                 [batch-size, rows, cols, dims, caps]
                  for conv2d
                  NOTE that, logits is not `activated` by
                  `softmax` or `sigmoid`
@@ -65,7 +64,7 @@ def _leaky_routing(logits):
     return core.split(leaky_routs, [1, channels], axis=core.axis)[1]
 
 
-def _agreement_routing(prediction,
+def dynamic_routing(prediction,
                        logits_shape,
                        iterations,
                        bias, #[channels, 1]
@@ -80,11 +79,11 @@ def _agreement_routing(prediction,
                      predictions from previous layers
                      denotes u^{\hat}_{j|i} in paper
                      with the shape of
-                     [batch-size, outcapdim, outcaps, incaps]
+                     [batch-size, dims, outcaps, incaps]
                      for fully_connected, and
-                     [batch-size, neurons, outcapdim, outcaps, incaps]
+                     [batch-size, neurons, dims, outcaps, incaps]
                      for conv1d, and
-                     [batch-size, rows, cols, outcapdim, outcaps, incaps]
+                     [batch-size, rows, cols, dims, outcaps, incaps]
                      for conv2d
         logits_shape : Tensor
                        denotes b_{i,j} in paper
@@ -105,11 +104,11 @@ def _agreement_routing(prediction,
         ==========
         Activated tensor of the output layer. That is v_j
         with shape of
-        [batch-size, outcapdims, outcaps]
+        [batch-size, dims, outcaps]
         for fully_connected
-        [batch-size, neurons, outcapdims, outcaps]
+        [batch-size, neurons, dims, outcaps]
         for conv1d
-        [batch-size, rows, cols, outcapdims, outcaps]
+        [batch-size, rows, cols, dims, outcaps]
         for conv2d
     """
     # restore v_j
@@ -117,16 +116,15 @@ def _agreement_routing(prediction,
                                    size=iterations,
                                    clear_after_read=False)
     logits = core.zeros(logits_shape, dtype=core.float32)
-    act = actives.get(act)
+    if isinstance(act, str) and act == 'squash':
+        act = actives.get(act, axis=-3)
+    else:
+        act = actives.get(act)
     idx = core.constant(0, dtype=core.int32)
-    # softmax along with `outcaps` axis
 
     no_grad_prediction = core.stop_gradient(prediction, name='stop_gradient')
 
-    def _update(i, logits, activations):
-        """ dynamic routing to update coefficiences (c_{i, j})
-            logits : [batch-size, /*rows, cols,*/ incaps, outcaps, 1]
-        """
+    def _with_bp(idx, activations, logits):
         # softmax along with `outcaps` axis
         # that is, `agree` on some capsule
         # a.k.a., which capsule in higher layer to activate
@@ -137,38 +135,45 @@ def _agreement_routing(prediction,
         #              / [batch-size, neurons, 1, outcaps, incaps]
         #              / [batch-size, rows, cols, 1, outcaps, incaps]
         coefficients = core.softmax(logits, axis=-2)
-        # average all lower capsules's prediction to higher capsule
-        # e.g., sum along with `incaps` axis
-        # that is, agreements from all capsules in lower layer
-        if i == iterations - 1:
-            # bias: [outdims, outcaps, 1]
-            # coefficients * prediction:
-            #=> [batch-size, outdims, outcaps, incaps] (i.e., elements in the same capsules shares bias)
-            # sum operation (i.e., preactivate):
-            #=> [batch-size, outdims, outcaps, 1]
-            preactivate = core.sum(coefficients * prediction,
-                                   axis=-1,
-                                   keepdims=True) + bias
-            activation = act(preactivate)
-            activations = activations.write(i, activation)
-        else:
-            preactivate = core.sum(coefficients * no_grad_prediction,
-                                   axis=-1,
-                                   keepdims=True) + bias
-            # typically, squash
-            activation = act(preactivate)
-            activations = activations.write(i, activation)
-            # sum up along `outcapdim`
-            # prediction * activation:
-            #=> [batch-size, outdims, outcaps, incaps]
-            # * [batch-size, outdims, outcaps, 1]
-            #=> [batch-size, outdims, outcaps, incaps]
-            # sum:
-            #=> [batch-size, 1, outcaps, incaps]
-            distance = core.sum(prediction * activation,
-                                axis=-3,
-                                keepdims=True)
-            logits += distance
+        # bias: [outdims, outcaps, 1]
+        # coefficients * prediction:
+        #=> [batch-size, dims, outcaps, incaps] (i.e., elements in the same capsules shares bias)
+        # sum operation (i.e., preactivate):
+        #=> [batch-size, dims, outcaps, 1]
+        preactivate = core.sum(coefficients * prediction,
+                               axis=-1,
+                               keepdims=True) + bias
+        # typically, squash
+        activation = act(preactivate)
+        activations = activations.write(idx, activation)
+        return logits, activations
+
+    def _no_bp(idx, activations, logits):
+        coefficients = core.softmax(logits, axis=-2)
+        preactivate = core.sum(coefficients * no_grad_prediction,
+                               axis=-1,
+                               keepdims=True) + bias
+        activation = act(preactivate)
+        activations = activations.write(idx, activation)
+        # sum up along `dims`
+        # prediction * activation:
+        #=> [batch-size, dims, outcaps, incaps]
+        # * [batch-size, dims, outcaps, 1]
+        #=> [batch-size, dims, outcaps, incaps] (*)
+        #=> [batch-size, 1, outcaps, incaps] (+)
+        distance = core.sum(prediction * activation,
+                            axis=-3,
+                            keepdims=True)
+        logits += distance
+        return logits, activations
+
+    def _update(i, logits, activations):
+        """ dynamic routing to update coefficiences (c_{i, j})
+            logits : [batch-size, /*rows, cols,*/ incaps, outcaps, 1]
+        """
+        logits, activations = core.cond(core.eq(i+1, iterations),
+                                        lambda: _with_bp(i, activations, logits),
+                                        lambda: _no_bp(i, activations, logits))
         return (i+1, logits, activations)
 
     _, logits, activations = core.while_loop(
@@ -176,9 +181,7 @@ def _agreement_routing(prediction,
         _update,
         loop_vars=[idx, logits, activations],
         swap_memory=True)
-    #   [batch-size, nrows, ncols, 1, outcaps, outcapdim]
-    # =>[batch-size, nrows, ncols, outcaps, outcapdim]
-    # activate: [batch-size, outdims, outcaps, 1]
+    # activations: [batch-size, dims, outcaps, 1]
     return core.squeeze(activations.read(iterations-1), axis=-1)
 
 
@@ -237,7 +240,7 @@ def cap_conv(convop,
             # for 2d:
             #     [batch-size, nrows, ncols, incaps, outcaps, dims]
             with core.name_scope('agreement_routing'):
-                x = _agreement_routing(x,
+                x = dynamic_routing(x,
                                        logits_shape,
                                        iterations,
                                        bias,
@@ -304,13 +307,13 @@ def cap_fully_connected(input_shape,
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
     output_shape = [batch_size, dims, channels]
-    incapdim, incaps = input_shape[-2:]
+    indim, incaps = input_shape[-2:]
     logits_shape = [batch_size, 1, channels, incaps]
     bias_shape = [dims, channels, 1]
     if share_weights:
-        weight_shape = [1, incapdim, dims * channels, 1]
+        weight_shape = [1, indim, dims * channels, 1]
     else:
-        weight_shape = [1, incapdim, dims * channels, incaps]
+        weight_shape = [1, indim, dims * channels, incaps]
     weights = mm.malloc('weights',
                         helper.normalize_name(name),
                         weight_shape,
@@ -328,12 +331,12 @@ def cap_fully_connected(input_shape,
         #=>        [batch-size, indims, 1, inchannels]
         x = core.expand_dims(x, 2)
         #       x: [batch-size, indims, 1, incaps]
-        # weights: [1, indims, outdims * channels, incaps]
-        #=>        [batch-size, indims, outdims * channels, incaps] (element-wise multiply)
-        #=>        [batch-size, outdims * channels, incaps] (sum along indims)
+        # weights: [1, indims, dims * channels, incaps]
+        #=>        [batch-size, indims, dims * channels, incaps] (*)
+        #=>        [batch-size, dims * channels, incaps] (sum along indims)
         x = core.sum(x * weights, axis=1)
-        #=>        [batch-size, outdims, channels, incaps]
-        return core.reshape(x, [-1, dims, channels, incaps])
+        #=>        [batch-size, dims, channels, incaps]
+        return core.reshape(x, [batch_size, dims, channels, incaps])
 
     return cap_conv(_fully_connected,
                     bias_shape,
@@ -353,6 +356,81 @@ def cap_fully_connected(input_shape,
                     reuse,
                     name,
                     scope), output_shape
+
+def cap_transform(input_shape,
+                                  dims,
+                                  weight_initializer='glorot_uniform',
+                                  weight_regularizer=None,
+                                  bias_initializer='zeros',
+                                  bias_regularizer=None,
+                                  cpuid=0,
+                                  act=None,
+                                  trainable=True,
+                                  dtype=core.float32,
+                                  collections=None,
+                                  summary='histogram',
+                                  check_input_shape=True,
+                                  reuse=False,
+                                  name=None,
+                                  scope=None):
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
+    if len(input_shape) != 3:
+        raise ValueError('fully_conv require input shape {}[batch-size,'
+                         ' dims, channels]{}, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(input_shape)))
+    batch_size, indims, incaps = input_shape
+    weight_shape = [1, indims, dims, incaps] # get rid of batch_size axis
+
+    bias_shape = [incaps]
+    output_shape = [input_shape[0], dims, incaps]
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'project',
+                                             reuse)
+    act = actives.get(act)
+    weights = mm.malloc('weights',
+                        name,
+                        weight_shape,
+                        dtype,
+                        weight_initializer,
+                        weight_regularizer,
+                        cpuid,
+                        trainable,
+                        collections,
+                        summary,
+                        reuse,
+                        scope)
+    if not isinstance(bias_initializer, bool) or bias_initializer is True:
+        bias = mm.malloc('bias',
+                         name,
+                         bias_shape,
+                         dtype,
+                         bias_initializer,
+                         bias_regularizer,
+                         cpuid,
+                         trainable,
+                         collections,
+                         summary,
+                         reuse,
+                         scope)
+    else:
+        bias = 0
+    def _cap_transform(x):
+        with ops_scope:
+            #    [batch-size, indims, incaps]
+            #=>  [batch-size, indims, 1, incaps]
+            x = core.expand_dims(x, 2)
+            #    [batch-size, indims, 1, incaps]
+            #  * [1, indims, dims, incaps]
+            #=>  [batch-size, indims, dims, incaps] (*)
+            #=>  [batch-size, dims, incaps] (sum)
+            x = core.sum(x * weights, axis=1) + bias
+            return act(x)
+    return _cap_transform, output_shape
 
 """ permutation invarnace transformation operation
 """

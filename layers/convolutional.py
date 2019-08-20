@@ -20,8 +20,8 @@ from .. import ops, colors
 from . import core
 
 
-def _layers(fun, inputs, output, return_shape, check_shape=True):
-    x = fun(inputs)
+def _layers(fun, inputs, output, name, return_shape, check_shape=True):
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -114,7 +114,7 @@ def fully_connected(inputs,
                                             reuse,
                                             name,
                                             scope)
-    return _layers(fun, inputs, output, return_shape, check_output_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 # alias of fully-connected
@@ -166,7 +166,7 @@ def conv1d(inputs,
                                    name,
                                    scope)
 
-    return _layers(fun, inputs, output, return_shape, check_output_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 # @layer
@@ -238,7 +238,7 @@ def conv2d(inputs,
                                    reuse,
                                    name,
                                    scope)
-    return _layers(fun, inputs, output, return_shape, check_output_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 """ 2-D soft convolutional operation
@@ -315,7 +315,7 @@ def soft_conv2d(inputs,
                                         reuse,
                                         name,
                                         scope)
-    x, offsets = fun(inputs)
+    x, offsets = core.run_and_record_fun(fun, name, inputs)
     if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -378,7 +378,7 @@ def conv3d(inputs,
                                    reuse,
                                    name,
                                    scope)
-    return _layers(fun, inputs, output, return_shape, check_output_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 """ 2-D transpose convolutional operation
@@ -420,12 +420,12 @@ def deconv2d(inputs, output_shape, channels,
                                      dtype,
                                      collections,
                                      summary,
-                                     check_input_shape
+                                     check_input_shape,
                                      reuse,
                                      name,
                                      scope)
 
-    return _layers(fun, inputs, output, return_shape, check_output_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -473,4 +473,4 @@ def sepconv2d(inputs, channels,
                                       reuse,
                                       name,
                                       scope)
-    return _layer(fun, inputs, output, return_shape, check_output_shape)
+    return _layer(fun, inputs, output, name, return_shape, check_output_shape)
