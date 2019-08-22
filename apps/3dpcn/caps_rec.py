@@ -72,7 +72,7 @@ def get_tfrecord_size(filename):
         count += 1
     return count
 
-@helpers.stampit({'checkpoint':-2, 'log':-1})
+@helpers.stampit({'checkpoint':-2, 'log':-1}, message='caps_rec_shapenet_part_normalized')
 def train_net(batch_size=8,
               epochs=1000,
               num_points=2048,

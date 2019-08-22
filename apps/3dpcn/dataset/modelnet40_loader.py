@@ -2,12 +2,14 @@
     ModelNet dataset. Support ModelNet40, XYZ channels. Up to 2048 points.
     Faster IO than ModelNetDataset in the first epoch.
 '''
-
-import os
 import sys
+sys.path.append('/home/xiaox/studio/src/git-series')
+from sigma.ops import core
+import os
 import numpy as np
 import h5py
 #import provider
+import tensorflow as tf
 
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #sys.path.append(BASE_DIR)
@@ -131,6 +133,34 @@ class ModelNetH5Dataset(object):
 #            data_batch = self._augment_batch_data(data_batch)
         return data_batch, label_batch
 
+def create_tfrecord(filename, root, train=True):
+    dataset = modelnet40(root, train=train, batch_size=1)
+    writer = core.feature_writer(filename)
+    while dataset.has_next_batch():
+        points, label = dataset.next_batch()
+        example = core.make_feature({
+            'points': core.float_feature(points.flatten()),
+            'label': core.int64_feature([label])
+            })
+        writer.write(example)
+    writer.close()
+
+def parse(num_points=1024, onehot=True):
+    def _parse(record):
+        features = tf.parse_single_example(
+                record,
+                features={
+                    'points': tf.VarLenFeature(tf.float32),
+                    'label': tf.FixedLenFeature([], tf.int64)
+                    }
+                )
+        points = tf.sparse_tensor_to_dense(features['points'])
+        points = core.reshape(points, [num_points, 3])
+        label = tf.cast(features['label'], tf.int32)
+        if onehot:
+            label = tf.one_hot(label, 40)
+        return points, label
+    return _parse
 
 if __name__ == '__main__':
 

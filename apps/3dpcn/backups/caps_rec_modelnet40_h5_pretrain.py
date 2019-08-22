@@ -11,10 +11,11 @@ import tensorflow as tf
 
 # add sigma to sys path
 curd = os.path.dirname(os.path.abspath(__file__))
-root = os.path.realpath(os.path.join(curd, '../../../../'))
+root = os.path.realpath(os.path.join(curd, '../../../'))
 sys.path.append(root)
 
-from models import point_capsule_rec, point_capsule_tio
+from dataset import modelnet40_loader
+
 from sigma import layers, engine, ops, status, helpers
 import argparse
 
@@ -24,64 +25,67 @@ parser.add_argument('--batch-size', default=8, type=int)
 parser.add_argument('--epochs', default=200, type=int)
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--num-points', default=2048, type=int)
-parser.add_argument('--nclass', default=16, type=int)
+parser.add_argument('--nclass', default=40, type=int)
 parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/checkpoint/model.ckpt', type=str)
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
-parser.add_argument('--database', default='shapenet_part', type=str)
+parser.add_argument('--database', default='modelnet40', type=str)
 parser.add_argument('--gpu', default='2', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--shuffle', default=True, type=bool)
 parser.add_argument('--learning-rate', default=0.05, type=float)
 
+def build_net(inputs, nclass=40, reuse=False, trainable=True):
+    #inputs: [batch-size, 2048, 3]
+    #=>      [batch-size, 3, 2048]
+    x = layers.base.transpose(inputs, (0, 2, 1), reuse=reuse, name='transpose-0')
+    #        [batch-size, 3, 2048]
+    #=>      [batch-size, 6,  512]
+    if not reuse:
+        ops.core.summarize('inputs', x)
+    x = layers.capsules.order_invariance_transform(x, 512, 16, 'max', reuse=reuse, name='oit', act='squash',
+            trainable=False)
+    if not reuse:
+        ops.core.summarize('oit', x)
+    x = layers.capsules.dense(x,  16, 24, reuse=reuse, epsilon=1e-9, name='dense-5', act='squash', trainable=False)
+    if not reuse:
+        ops.core.summarize('dense-5', x)
+    x = layers.capsules.dense(x, 40, 16, reuse=reuse, epsilon=1e-9, name='dense-6', act='squash')
+    if not reuse:
+        ops.core.summarize('dense-6', x)
+    x = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9, name='norm', reuse=reuse)
+    if not reuse:
+        ops.core.summarize('norm', x)
 
+    return x
 
-def get_tfrecord_size(filename):
-    count = 0
-    for _ in tf.python_io.tf_record_iterator(filename):
-        count += 1
-    return count
-
-@helpers.stampit({'checkpoint':-2, 'log':-1}, message='rec_shapenet_part')
+@helpers.stampit({'checkpoint':-2, 'log':-1})
 def train_net(batch_size=8,
               epochs=1000,
               num_points=2048,
               lr=0.02,
-              nclass=16,
+              nclass=40,
               debug=False,
               address=None,
               checkpoint=None,
               log=None,
               database=None,
               gpu='0'):
-    if database is None or database == 'shapenet_part':
-        from dataset.shapenet_part import parse
-    else:
-        from dataset.modelnet40 import parse
-
     engine.set_print(False)
-    train_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized.tfrecord'
-    valid_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_valid.tfrecord'
-    tests_filename = '/home/xiaox/studio/db/shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_test.tfrecord'
 
-    filename = tf.placeholder(tf.string, shape=[])
-    dataset = tf.data.TFRecordDataset(filename)
-    dataset = dataset.map(parse(num_points))
-    dataset = dataset.shuffle(1000).batch(batch_size)
-    dataset = dataset.repeat(epochs)
-    iterator = dataset.make_initializable_iterator()
-    inputs, labels = iterator.get_next()
-    #ops.core.summarize('inputs', inputs)
-    def _build_net(inputs, reuse, is_training):
-        return point_capsule_tio(inputs,
-                                 is_training,
-                                 nclass,
-                                 reuse=reuse)
+    trainset = modelnet40_loader.ModelNetH5Dataset('/home/xiaox/studio/db/modelnet/ply_hdf5_2018/',
+            batch_size=batch_size,
+            train=True, npoints=num_points)
+    validset = modelnet40_loader.ModelNetH5Dataset('/home/xiaox/studio/db/modelnet/ply_hdf5_2018/',
+            batch_size=batch_size,
+            train=False, npoints=num_points)
 
     global_step = ops.core.get_variable('global-step',
                                         initializer=0,
                                         trainable=False)
+    inputs = layers.base.input_spec([None, num_points, 3])
+    labels = layers.base.label_spec([None, nclass])
 
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     config = tf.ConfigProto()
@@ -89,67 +93,84 @@ def train_net(batch_size=8,
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
     config.allow_soft_placement = True
     with ops.core.device('/gpu:0'):
-        trainp = _build_net(inputs, reuse=False, is_training=True)
-        print(ops.core.shape(trainp))
-        print(ops.core.shape(labels))
-        train_loss_op = layers.losses.get('margin_loss', trainp, labels)
+        trainp = build_net(inputs, trainable=True)
+        #train_loss_op = layers.losses.get('margin_loss', trainp, labels)
+        train_loss_op = layers.losses.categorical_cross_entropy([trainp, labels])
         train_metric = layers.metrics.accuracy([trainp, labels])
         train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
-        train_iters = int(get_tfrecord_size(train_filename) / batch_size)
-        learning_rate = tf.train.exponential_decay(lr, global_step, train_iters, 0.9)
+        learning_rate = tf.train.exponential_decay(lr, global_step, 10000, 0.9)
         update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
 
-        validp = _build_net(inputs, reuse=True, is_training=False)
+        validp = build_net(inputs, reuse=True, trainable=True)
+        #valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
-        valid_iters = int(get_tfrecord_size(valid_filename) / batch_size)
-        test_iters  = int(get_tfrecord_size(tests_filename) / batch_size)
-    sess, saver, summarize, writer = engine.session(checkpoint=checkpoint,
+
+    trainable_variables = tf.global_variables()
+    for v in trainable_variables:
+        print('global variables:', v.name, v)
+    name_list = ['oit/variables/weights',
+            'oit/variables/bias',
+            'dense-5/variables/weights',
+            'dense-5/variables/bias']
+    print('retriving variables')
+    vardict = {}
+    for name in name_list:
+        names = name.rsplit('/', 1)
+        if len(names) == 2:
+            scope, name = names
+        else:
+            scope = ''
+            name = names[0]
+        print('scope:', scope, ' name:', name)
+        with tf.variable_scope(scope, reuse=True):
+            v = tf.get_variable(name)
+            vardict[name] = v
+            print(name, v)
+    sess, saver, summarize, writer = engine.session(checkpoint='/home/xiaox/studio/exp/3dpcn/cache/20190814163743/checkpoint/model.ckpt', #load pre-trained model
                                                     config=config,
                                                     debug=debug,
                                                     address=address,
+                                                    var_list=vardict,
                                                     log=log)
-
+    return
     #layers.core.export_graph('auto_encoder.png')
     with sess:
         losses =  np.zeros((epochs, 4))
         for epoch in range(epochs):
             start = time.time()
-            ops.core.run(sess, [train_metric_initialize_op, iterator.initializer], feed_dict={filename: train_filename})
-            for iters in range(train_iters):
-                _, loss, _, summary = ops.core.run(sess, [train_op, train_loss_op, train_metric_update_op, summarize])
+            ops.core.run(sess, train_metric_initialize_op)
+            iters = 0
+            while trainset.has_next_batch():
+                iters += 1
+                points, gt = trainset.next_batch(False)
+                gt = helpers.one_hot(gt.astype(np.int32), nclass)
+                _, loss, _, summary, gstep = ops.core.run(sess, [train_op, train_loss_op, train_metric_update_op, summarize,
+                    global_step],
+                        feed_dict={inputs:points, labels:gt})
                 accuracy = ops.core.run(sess, train_metric_op)
-                ops.core.add_summary(writer, summary, global_step=(epoch*train_iters)+iters)
+                ops.core.add_summary(writer, summary, global_step=gstep)
                 if iters % 10 == 0:
                     print('train for {}-th iteration: loss: {}, accuracy: {}'.format(iters, loss, accuracy))
+            trainset.reset()
             end = time.time()
             print('time cost:', end-start)
-            # validation
-            valid_loss = []
-            valid_acc = []
-            ops.core.run(sess, [valid_metric_initialize_op, iterator.initializer], feed_dict={filename: valid_filename})
-            for iters in range(valid_iters):
-                loss, _ = ops.core.run(sess, [valid_loss_op, valid_metric_update_op])
-                accuracy = ops.core.run(sess, valid_metric_op)
-                valid_loss.append(loss)
-                valid_acc.append(accuracy)
-            vloss = np.mean(valid_loss)
-            vacc = np.mean(valid_acc)
-            losses[epoch][0] = vloss
-            losses[epoch][1] = vacc
-            print('valid for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, vloss, vacc))
             # test
             test_loss = []
             test_acc = []
-            ops.core.run(sess, [valid_metric_initialize_op, iterator.initializer], feed_dict={filename: tests_filename})
-            for iters in range(test_iters):
-                loss, _ = ops.core.run(sess, [valid_loss_op, valid_metric_update_op])
+            ops.core.run(sess, valid_metric_initialize_op)
+            while validset.has_next_batch():
+                points, gt = validset.next_batch()
+                gt = helpers.one_hot(gt.astype(np.int32), nclass)
+                loss, _ = ops.core.run(sess, [valid_loss_op, valid_metric_update_op], feed_dict={inputs:points,
+                    labels:gt})
                 accuracy = ops.core.run(sess, valid_metric_op)
                 test_loss.append(loss)
                 test_acc.append(accuracy)
+            validset.reset()
             tloss = np.mean(test_loss)
             tacc = np.mean(test_acc)
             losses[epoch][2] = tloss
@@ -157,7 +178,7 @@ def train_net(batch_size=8,
             print('test for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, tloss, tacc))
             if epoch % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True, global_step=epoch)
-        np.savetxt('rec_shapenet_part.log', losses)
+        np.savetxt('caps_rec_modelnet40_h5.log', losses)
         ops.core.close_summary_writer(writer)
 
 def eval_net(args):

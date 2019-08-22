@@ -19,78 +19,82 @@ import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
-def build_func(inputs, labels, initializer='glorot_uniform'):
+def build_func(inputs, labels, initializer='glorot_uniform', is_training=True, reuse=False):
     # inputs shape :
     #    [batch-size, 28x28]
-    ops.core.summarize('inputs', inputs)
-    image = layers.base.reshape(inputs, [-1, 28, 28, 1])
-    x = layers.convs.conv2d(image, 256, 9,
-                            stride=1,
-                            padding='valid',
-                            act='relu',
-                            name='conv2d-0',
-                            weight_initializer=initializer)
-    ops.core.summarize('conv2d-0', x)
-    #   [batch-size, 20, 20, 256]
-    #=> [batch-size, 6, 6, 256]
-    x = layers.convs.conv2d(x, 32*8, 9,
-                            stride=2,
-                            act='relu',
-                            padding='valid',
-                            name='conv2d-1',
-                            weight_initializer=initializer)
-    ops.core.summarize('conv2d-1', x)
-    #   [batch-size, 6, 6, 256]
-    #=> [batch-size, 6 * 6 * 32, 8]
-    #=> [batch-size, 8, 6 * 6 * 32]
-    x = layers.base.reshape(x, [-1, 6*6*32, 8])
-    x = layers.base.transpose(x, (0, 2, 1))
-    x = layers.actives.squash(x, axis=1, epsilon=1e-9, name='squash-actives')
-    ops.core.summarize('squash-actives', x)
+    with sigma.defaults(reuse=reuse):
+        ops.core.summarize('inputs', inputs)
+        image = layers.base.reshape(inputs, [-1, 28, 28, 1], name='reshape-0')
+        x = layers.convs.conv2d(image, 256, 9,
+                                stride=1,
+                                padding='valid',
+                                act='relu',
+                                name='conv2d-0',
+                                weight_initializer=initializer)
+        ops.core.summarize('conv2d-0', x)
+        #   [batch-size, 20, 20, 256]
+        #=> [batch-size, 6, 6, 256]
+        x = layers.convs.conv2d(x, 32*8, 9,
+                                stride=2,
+                                act='relu',
+                                padding='valid',
+                                name='conv2d-1',
+                                weight_initializer=initializer)
+        ops.core.summarize('conv2d-1', x)
+        #   [batch-size, 6, 6, 256]
+        #=> [batch-size, 6 * 6 * 32, 8]
+        #=> [batch-size, 8, 6 * 6 * 32]
+        x = layers.base.reshape(x, [-1, 6*6*32, 8], name='reshape-1')
+        x = layers.base.transpose(x, (0, 2, 1), name='transpose-0')
+        x = layers.actives.squash(x, axis=1, epsilon=1e-9, name='squash-actives')
+        ops.core.summarize('squash-actives', x)
 
-    #  [batch_size, nrows * ncols * 32, 8]
-    #=>[batch_size, 16, 10]
-    # a.k.a [batch-size, 1=capsules of each channel, 16=capsule atoms/dims, 10=channels]
-    # digitCapsule Layer
-    random_normal = ops.initializers.get('random_normal', stddev=0.01)
-    x = layers.capsules.dense(x, 10, 16, 3,
-                              share_weights=False,
-                              name='capdense-0',
-                              safe=True,
-                              epsilon=1e-9,
-                              weight_initializer=random_normal)
-    ops.core.summarize('capdense-0', x)
-    # norm the output to represent the existance probabilities
-    # of each class
-    # classification:
-    #    [batch-size, caps_dims, incaps=channels]
-    #=>  [batch-size, incaps=channels=10]
-    classification = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9)
-    ops.core.summarize('norm-0', classification)
-    class_loss = layers.losses.get('margin_loss', classification, labels)
-    #loss = class_loss
-    tf.summary.scalar('classification-loss', class_loss)
-    ## reconstruction
-    x = layers.base.maskout(x, index=labels)
-    ops.core.summarize('maskout', x)
-    x = layers.convs.dense(x, 512, act='relu', name='dense-0')
-    ops.core.summarize('dense-0', x)
-    x = layers.convs.dense(x, 1024, act='relu', name='dense-1')
-    ops.core.summarize('dense-1', x)
-    x = layers.convs.dense(x, 784, act='sigmoid', name='dense-2')
-    ops.core.summarize('dense-2', x)
-    reconstruction = layers.base.reshape(x, [-1, 28, 28, 1])
-    tf.summary.image('reconstruction', reconstruction, max_outputs=10)
-    recon_loss = layers.losses.mse([reconstruction, image])
-    tf.summary.scalar('reconstruction-loss', recon_loss)
-    loss = layers.math.add([class_loss, recon_loss], [1, 0.392]) #0.392 = 0.0005 * 784
-    metric = layers.metrics.accuracy([classification, labels])
-    ops.core.summarize('loss', loss, 'scalar')
-    ops.core.summarize('acc', metric[0], 'scalar')
+        #  [batch_size, nrows * ncols * 32, 8]
+        #=>[batch_size, 16, 10]
+        # a.k.a [batch-size, 1=capsules of each channel, 16=capsule atoms/dims, 10=channels]
+        # digitCapsule Layer
+        random_normal = ops.initializers.get('random_normal', stddev=0.01)
+        x = layers.capsules.dense(x, 10, 16, 3,
+                                  share_weights=False,
+                                  name='capdense-0',
+                                  safe=True,
+                                  epsilon=1e-9,
+                                  weight_initializer=random_normal)
+        ops.core.summarize('capdense-0', x)
+        # norm the output to represent the existance probabilities
+        # of each class
+        # classification:
+        #    [batch-size, caps_dims, incaps=channels]
+        #=>  [batch-size, incaps=channels=10]
+        classification = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9, name='caps-norm')
+        ops.core.summarize('norm-0', classification)
+        class_loss = layers.losses.get('margin_loss', classification, labels, name='classification-loss')
+        #loss = class_loss
+        tf.summary.scalar('classification-loss', class_loss)
+        ## reconstruction
+        if is_training:
+            x = layers.base.maskout(x, index=labels, name='maskout-train')
+        else:
+            x = layers.base.maskout(x, index=None, name='maskout-valid')
+        ops.core.summarize('maskout', x)
+        x = layers.convs.dense(x, 512, act='relu', name='dense-0')
+        ops.core.summarize('dense-0', x)
+        x = layers.convs.dense(x, 1024, act='relu', name='dense-1')
+        ops.core.summarize('dense-1', x)
+        x = layers.convs.dense(x, 784, act='sigmoid', name='dense-2')
+        ops.core.summarize('dense-2', x)
+        reconstruction = layers.base.reshape(x, [-1, 28, 28, 1], name='reshape-2')
+        tf.summary.image('reconstruction', reconstruction, max_outputs=10)
+        recon_loss = layers.losses.mse([reconstruction, image], name='reconstruction-loss')
+        tf.summary.scalar('reconstruction-loss', recon_loss)
+        loss = layers.math.add([class_loss, recon_loss], [1, 0.392], name='add') #0.392 = 0.0005 * 784
+        metric = layers.metrics.accuracy([classification, labels], name='accuracy')
+        ops.core.summarize('loss', loss, 'scalar')
+        ops.core.summarize('acc', metric[0], 'scalar')
     return reconstruction, loss, metric
     #return None, loss, metric
 
-@helpers.stampit({'checkpoint':-2})
+@helpers.stampit({'checkpoint':-2}, message='capsnet_mnist')
 def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -110,7 +114,9 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
 
     with ops.core.device('/gpu:0'):
         reconstruction_op, loss_op, metrics_op = build_func(inputs, labels)
+        valid_reconstruction_op, valid_loss_op, valid_metrics_op = build_func(inputs, labels, reuse=True, is_training=False)
         metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
+        valid_metric_op, valid_metric_update_op, valid_metric_variable_initialize_op = valid_metrics_op
         learning_rate = tf.train.exponential_decay(0.001, global_step, mnist.train.num_examples / batchsize, 0.998)
         train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(loss_op, global_step=global_step)
         #trainable_variables = tf.trainable_variables()
@@ -155,12 +161,12 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             valid_step = int(mnist.validation.num_examples / batchsize)
             validation_loss = []
             validation_metric = []
-            ops.core.run(sess, metric_variable_initialize_op)
+            ops.core.run(sess, valid_metric_variable_initialize_op)
             for vstep in range(valid_step):
                 xs, ys = mnist.validation.next_batch(batchsize)
                 valid_feed = {inputs:xs, labels:ys}
-                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=valid_feed)
-                metric = ops.core.run(sess, metric_op)
+                loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=valid_feed)
+                metric = ops.core.run(sess, valid_metric_op)
                 validation_loss.append(loss)
                 validation_metric.append(metric)
             vloss = np.asarray(validation_loss).mean()
@@ -172,13 +178,13 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             test_step = int(mnist.test.num_examples / batchsize)
             test_loss = []
             test_metric = []
-            ops.core.run(sess, metric_variable_initialize_op)
+            ops.core.run(sess, valid_metric_variable_initialize_op)
             for tstep in range(test_step):
                 xs, ys = mnist.test.next_batch(batchsize)
                 test_feed = {inputs:xs, labels:ys}
-                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=test_feed)
-                reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
-                metric = ops.core.run(sess, metric_op)
+                loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
+                reconstruction, loss, _ = sess.run([valid_reconstruction_op, valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
+                metric = ops.core.run(sess, valid_metric_op)
                 test_loss.append(loss)
                 test_metric.append(metric)
                 if epoch % 10 == 0:
@@ -203,16 +209,13 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', '-c', type=str, default='checkpoint/model.ckpt',)
 parser.add_argument('--log', '-l', type=str, default=None)
-parser.add_argument('--timestamp', '-t', type=bool, default=True)
 parser.add_argument('--epochs', '-e', type=int, default=100)
 parser.add_argument('--batch-size', '-b', type=int, default=100)
 
 if __name__=='__main__':
     args = parser.parse_args()
     exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing'
-    if args.timestamp:
-        exp = os.path.join(exp, helpers.timestamp(fmt='%Y%m%d%H%M%S', split=None))
-    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     checkpoint = None
     log = None
     if args.checkpoint is not None:

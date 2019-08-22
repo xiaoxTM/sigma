@@ -22,7 +22,7 @@ import argparse
 parser = argparse.ArgumentParser(description='3D point capsule network implementation with TensorFlow')
 parser.add_argument('--phase', default='train', type=str, help='"train" or "eval" mode switch')
 parser.add_argument('--batch-size', default=8, type=int)
-parser.add_argument('--epochs', default=200, type=int)
+parser.add_argument('--epochs', default=500, type=int)
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--num-points', default=2048, type=int)
 parser.add_argument('--nclass', default=40, type=int)
@@ -30,13 +30,13 @@ parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
 parser.add_argument('--database', default='modelnet40', type=str)
-parser.add_argument('--gpu', default='2', type=str)
+parser.add_argument('--gpu', default='1', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--shuffle', default=True, type=bool)
-parser.add_argument('--learning-rate', default=0.05, type=float)
+parser.add_argument('--learning-rate', default=0.1, type=float)
 
-def build_net(inputs, nclass=40, reuse=False, trainable=True):
+def build_net(inputs, nclass=40, reuse=False):
     #inputs: [batch-size, 2048, 3]
     #=>      [batch-size, 3, 2048]
     x = layers.base.transpose(inputs, (0, 2, 1), reuse=reuse, name='transpose-0')
@@ -44,20 +44,39 @@ def build_net(inputs, nclass=40, reuse=False, trainable=True):
     #=>      [batch-size, 6,  512]
     if not reuse:
         ops.core.summarize('inputs', x)
-    x = layers.capsules.order_invariance_transform(x, 512, 16, 'max', reuse=reuse, name='oit', act='squash',
-            trainable=trainable)
-    if not reuse:
-        ops.core.summarize('oit', x)
-    x = layers.capsules.dense(x,  16, 24, reuse=reuse, epsilon=1e-9, name='dense-5', act='squash', trainable=trainable)
+    x = layers.capsules.order_invariance_transform(x, 512, 16, 'max', reuse=reuse, name='oit', act='squash')
+    ##=>    [batch-size, neurons, dims]
+    #x = layers.base.transpose(x, (0, 2, 1), reuse=reuse, name='transpose-1')
+    ##=>    [batch-size, neurons, dims, 1]
+    #x = layers.base.expand_dims(x, 3, reuse=reuse, name='expand_dims')
+    ##print(ops.core.shape(x))
+    #x = layers.capsules.conv1d(x, 3, 32, 3, reuse=reuse, name='cap_conv1d', act='squash')
+    #x = layers.capsules.conv1d(x, 6, 16, 3, reuse=reuse, name='cap_conv1d-2', act='squash')
+    #x = layers.capsules.conv1d(x, 1, 32, 3, reuse=reuse, name='cap_conv1d-3', act='squash')
+    #x = ops.core.squeeze(x, -1)
+    #x = layers.base.transpose(x, (0, 2, 1), reuse=reuse, name='transpose-2')
+    #x = layers.capsules.order_invariance_transform(x, 256, 20, 'max', reuse=reuse, name='order_invariance_transform-1',
+    #        act='tanh')
+    #if not reuse:
+    #    ops.core.summarize('order_invariance_transform', x)
+    #x = layers.capsules.dense(x, 256, 20, reuse=reuse, epsilon=1e-9, name='dense-1', act='squash')
+    #if not reuse:
+    #    ops.core.summarize('dense-1', x)
+    #x = layers.capsules.dense(x, 128, 24, reuse=reuse, epsilon=1e-9, name='dense-2', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-2', x)
+    #x = layers.capsules.dense(x,  64, 48, reuse=reuse, epsilon=1e-9, name='dense-3', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-3', x)
+    #x = layers.capsules.dense(x,  32, 96, reuse=reuse, epsilon=1e-9, name='dense-4', act='relu')
+    #if not reuse:
+    #    ops.core.summarize('dense-4', x)
+    x = layers.capsules.dense(x,  nclass, 24, reuse=reuse, epsilon=1e-9, name='dense-5', act='squash')
     if not reuse:
         ops.core.summarize('dense-5', x)
-    x = layers.capsules.dense(x, 40, 16, reuse=reuse, epsilon=1e-9, name='dense-6', act='squash')
-    if not reuse:
-        ops.core.summarize('dense-6', x)
     x = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9, name='norm', reuse=reuse)
     if not reuse:
         ops.core.summarize('norm', x)
-
     return x
 
 @helpers.stampit({'checkpoint':-2, 'log':-1})
@@ -93,7 +112,7 @@ def train_net(batch_size=8,
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
     config.allow_soft_placement = True
     with ops.core.device('/gpu:0'):
-        trainp = build_net(inputs, trainable=False)
+        trainp = build_net(inputs)
         #train_loss_op = layers.losses.get('margin_loss', trainp, labels)
         train_loss_op = layers.losses.categorical_cross_entropy([trainp, labels])
         train_metric = layers.metrics.accuracy([trainp, labels])
@@ -103,36 +122,17 @@ def train_net(batch_size=8,
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
 
-        validp = build_net(inputs, reuse=True, trainable=False)
+        validp = build_net(inputs, reuse=True)
         #valid_loss_op = layers.losses.get('margin_loss', validp, labels)
-        valid_loss_op = layers.losses.get('margin_loss', validp, labels)
+        valid_loss_op = layers.losses.categorical_cross_entropy([validp, labels])
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
-    trainable_variables = tf.global_variables()
-    for v in trainable_variables:
-        print(v.name, v)
-    name_list = ['oit/variables/non-trainable/weights',
-                'oit/variables/non-trainable/bias',
-                'dense-5/variables/non-trainable/weights',
-                'dense-5/variables/non-trainable/bias']
-    nont_list = ['oit/variables/trainable/weights',
-                'oit/variables/trainable/bias',
-                'dense-5/variables/trainable/weights',
-                'dense-5/variables/trainable/bias']
-    print('retriving variables')
-    vardict = {}
-    with tf.variable_scope('', reuse=True):
-        for name, var in zip(nont_list, name_list):
-            #var_list = [{tf.get_variable(name) for name in zip(name_list, nont_list)]
-            v = tf.get_variable(var)
-            vardict[name] = v
-            print(name, v)
-    sess, saver, summarize, writer = engine.session(checkpoint='/home/xiaox/studio/exp/3dpcn/cache/20190808075217/checkpoint/model.ckpt', #load pre-trained model
+    sess, saver, summarize, writer = engine.session(checkpoint='/home/xiaox/studio/exp/3dpcn/cache/20190815075357/checkpoint/model.ckpt',#checkpoint,
                                                     config=config,
                                                     debug=debug,
                                                     address=address,
-                                                    var_list=vardict,
                                                     log=log)
+
     #layers.core.export_graph('auto_encoder.png')
     with sess:
         losses =  np.zeros((epochs, 4))

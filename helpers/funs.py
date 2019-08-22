@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import sys
 
 from timeit import default_timer as timer
 from datetime import datetime
@@ -89,7 +90,7 @@ def timestamp(date=None, fmt='%Y-%m-%d %H:%M:%S', split='-'):
         return datetime.strptime(date, fmt)
 
 
-def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', split=None):
+def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, verbose=True):
     ''' add time stamp to string
         targets has form of {string: position}
         typically, string is a path, and position indicates the position to insert time stamp
@@ -101,6 +102,14 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', split=None):
     def _stampit(fun):
         def _wrap(*args, **kwargs):
             ts = timestamp(date, fmt, split)
+            if message is not None:
+                if isinstance(message, str):
+                    ts = '{}_{}'.format(ts, message)
+                else:
+                    raise TypeError('`message` for stampit must be str or None. given {}'
+                                    .format(colors.red(type(message))))
+            if verbose:
+                print('stamp: {}'.format(colors.red(ts)))
             signature = inspect.signature(fun)
             items = list(signature.parameters.items())
             for idx, arg in enumerate(args):
@@ -127,6 +136,9 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', split=None):
             return fun(**kwargs)
         return _wrap
     return _stampit
+
+def set_term_title(title):
+    sys.stdout.write('\x1b]2;{}\x07'.format(title))
 
 # @typecheck(x=int)
 def intsize(x, cminus=False):
