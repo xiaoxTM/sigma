@@ -697,7 +697,7 @@ def leaky_relu(x, alpha=0.2, name=None):
 
 def softmax(x, axis=-1, name=None):
     if not version_compare_great(tf.__version__, '1.5'):
-        axis = helper.normalize(shape(x), axis)
+        axis = helper.normalize_axes(shape(x), axis)
     return tf.nn.softmax(x, axis, name)
 
 
