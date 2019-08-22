@@ -25,7 +25,6 @@ parser.add_argument('--batch-size', default=8, type=int)
 parser.add_argument('--epochs', default=200, type=int)
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--num-points', default=2048, type=int)
-parser.add_argument('--nclass', default=16, type=int)
 parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/checkpoint/model.ckpt', type=str)
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
@@ -43,7 +42,6 @@ def train_net(batch_size=8,
               epochs=1000,
               num_points=2048,
               lr=0.02,
-              nclass=16,
               debug=False,
               address=None,
               checkpoint=None,
@@ -54,6 +52,9 @@ def train_net(batch_size=8,
     global_step = ops.core.get_variable('global-step',
                                         initializer=0,
                                         trainable=False)
+    nclass = 40
+    if database == 'shapenet_part':
+        nclass = 16
 
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     config = tf.ConfigProto()
@@ -65,7 +66,7 @@ def train_net(batch_size=8,
         train_iters, valid_iters, tests_iters, \
         filename, iterator = dataset.prepare_dataset(num_points, batch_size, epochs, database)
         inputs, labels = iterator.get_next()
-        trainp = rec.build_net(net_arch, inputs, nclass)
+        trainp = rec.build_net(net_arch, inputs, nclass=nclass)
         train_loss_op = layers.losses.get('margin_loss', trainp, labels)
         ops.core.summarize('train-loss', train_loss_op, 'scalar')
         train_metric = layers.metrics.accuracy([trainp, labels])
@@ -76,7 +77,7 @@ def train_net(batch_size=8,
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
 
-        validp = rec.build_net(net_arch, inputs, nclass, reuse=True)
+        validp = rec.build_net(net_arch, inputs, nclass=nclass, reuse=True)
         valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
@@ -142,7 +143,6 @@ if __name__ == '__main__':
                   args.epochs,
                   args.num_points,
                   args.learning_rate,
-                  args.nclass,
                   args.debug,
                   args.address,
                   args.checkpoint,

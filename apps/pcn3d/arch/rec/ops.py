@@ -3,22 +3,22 @@ sys.path.append('/home/xiaox/studio/src/git-series')
 from sigma import colors
 from sigma.ops import helper, core, mm, actives
 
-def project_transform(inputs,
-                      dims,
-                      weight_initializer='glorot_uniform',
-                      weight_regularizer=None,
-                      bias_initializer='zeros',
-                      bias_regularizer=None,
-                      cpuid=0,
-                      act=None,
-                      trainable=True,
-                      dtype=core.float32,
-                      collections=None,
-                      summary='histogram',
-                      check_input_shape=True,
-                      reuse=False,
-                      name=None,
-                      scope=None):
+def projection_transform(inputs,
+                         dims,
+                         weight_initializer='glorot_uniform',
+                         weight_regularizer=None,
+                         bias_initializer='zeros',
+                         bias_regularizer=None,
+                         cpuid=0,
+                         act=None,
+                         trainable=True,
+                         dtype=core.float32,
+                         collections=None,
+                         summary='histogram',
+                         check_input_shape=True,
+                         reuse=False,
+                         name=None,
+                         scope=None):
     input_shape = helper.norm_input_shape(inputs)
     if check_input_shape:
         helper.check_input_shape(input_shape)
@@ -66,7 +66,7 @@ def project_transform(inputs,
                          scope)
     else:
         bias = 0
-    def _project_transform(x):
+    def _projection_transform(x):
         with ops_scope:
             #    [batch-size, indims, incaps]
             #=>  [batch-size, indims, 1, incaps]
@@ -77,7 +77,7 @@ def project_transform(inputs,
             #=>  [batch-size, dims, incaps] (sum)
             x = core.sum(x * weights, axis=1) + bias
             return act(x)
-    return _project_transform(inputs)
+    return _projection_transform(inputs)
 
 """ permutation invarnace transformation operation
 """
