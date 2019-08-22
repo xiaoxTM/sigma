@@ -31,18 +31,27 @@ from tensorflow.python.training import moving_averages
 
 from . import commons
 from sigma import colors
+from sigma.ops import helper
 
 # backend version
 version = tf.__version__
 
 def version_convert(version):
-    major, mid, minor = version.split('.')
+    v = version.split('.')
+    if len(v) == 3:
+        major, mid, minor = v
+    elif len(v) == 2:
+        major, mid = v
+        minor = '0'
+    else:
+        raise ValueError('`version` must be major.mid[.minor], given {}'
+                         .format(version))
     major = int(major)
     mid = int(mid)
     minor = int(minor)
     return major * 100000 + mid * 100 + minor
 
-def version_compare(ver1, ver2):
+def version_compare_great(ver1, ver2):
     v1 = version_convert(ver1)
     v2 = version_convert(ver2)
     return v1 > v2
@@ -687,6 +696,8 @@ def leaky_relu(x, alpha=0.2, name=None):
 
 
 def softmax(x, axis=-1, name=None):
+    if not version_compare_great(tf.__version__, '1.5'):
+        axis = helper.normalize(shape(x), axis)
     return tf.nn.softmax(x, axis, name)
 
 

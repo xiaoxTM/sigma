@@ -109,7 +109,10 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, ve
                     raise TypeError('`message` for stampit must be str or None. given {}'
                                     .format(colors.red(type(message))))
             if verbose:
-                print('stamp: {}'.format(colors.red(ts)))
+                print('{}STAMP{}: <{}>'
+                      .format(colors.fg.blue,
+                              colors.red(ts),
+                              colors.reset))
             signature = inspect.signature(fun)
             items = list(signature.parameters.items())
             for idx, arg in enumerate(args):

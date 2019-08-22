@@ -16,7 +16,7 @@ normalization=None
 
 def cutpoints(points, rows, num_points):
     indices = tf.range(rows, dtype=tf.int32)
-    indices = tf.random.shuffle(indices)
+    indices = tf.random_shuffle(indices)
     points = tf.gather(points, indices)
     slices = np.arange(num_points, dtype=np.int32)
     points = tf.gather(points, slices)
