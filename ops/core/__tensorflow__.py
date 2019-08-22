@@ -1490,11 +1490,15 @@ def load(session, checkpoint,
                  )
         saver.restore(session, ckpt.model_checkpoint_path)
     elif verbose:
-        print('{}restoring from checkpoint: {} {}ignored{}'
-              .format(colors.fg.blue,
-                      colors.green(checkpoint),
-                      colors.fg.red,
-                      colors.reset))
+        if ckpt is None:
+            print('{}no checkpoint to restore from{}'
+                  .format(colors.fg.green, colors.reset))
+        else:
+            print('{}restoring from checkpoint: {} {}ignored{}'
+                  .format(colors.fg.blue,
+                          colors.green(checkpoint),
+                          colors.fg.red,
+                          colors.reset))
     return session, saver
 
 
