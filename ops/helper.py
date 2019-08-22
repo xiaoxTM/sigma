@@ -29,9 +29,9 @@ def normalize_name(x):
         raise ValueError('`x` must be non None for name normalize')
     if not isinstance(x, str):
         raise TypeError('`x` muset be string for name normalize. given `{}`'.format(type(x)))
-    if x[0] == '.':
+    if x[0] != '.':
         x = '.'+x
-    if x[-1] == '.':
+    if x[-1] != '.':
         x = x+'.'
     return x
 
