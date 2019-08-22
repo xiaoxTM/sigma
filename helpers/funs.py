@@ -111,8 +111,8 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, ve
             if verbose:
                 print('{}STAMP{}: <{}>'
                       .format(colors.fg.blue,
-                              colors.red(ts),
-                              colors.reset))
+                              colors.reset,
+                              colors.red(ts)))
             signature = inspect.signature(fun)
             items = list(signature.parameters.items())
             for idx, arg in enumerate(args):
