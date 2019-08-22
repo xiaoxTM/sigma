@@ -466,7 +466,7 @@ def argmax(x,
            axis=None,
            dtype=int64,
            name=None):
-    if version_compare(tf.__version__,'1.4.0'):
+    if version_compare_great(tf.__version__,'1.4.0'):
         return tf.argmax(x, axis=axis, output_type=dtype, name=name)
     return tf.argmax(x, axis=axis, name=name)
 
@@ -690,7 +690,7 @@ def selu(x,
 
 
 def leaky_relu(x, alpha=0.2, name=None):
-    if version_compare(tf.__version__, '1.4.0'):
+    if version_compare_great(tf.__version__, '1.4.0'):
         return tf.nn.leaky_relu(x, alpha, name)
     return tf.maximum(x, x * alpha, name)
 
@@ -803,7 +803,7 @@ def conv2d(x, filters, strides, padding,
            data_format=commons.data_format[2],
            dilations=[1,1,1,1],
            name=None):
-    if version_compare(tf.__version__,'1.5.0'):
+    if version_compare_great(tf.__version__,'1.5.0'):
         return tf.nn.conv2d(x,
                             filters,
                             strides,
@@ -827,7 +827,7 @@ def conv3d(x, filters, strides, padding,
            data_format=commons.data_format[3],
            dilations=[1,1,1,1],
            name=None):
-    if version_compare(tf.__version__,'1.5.0'):
+    if version_compare_great(tf.__version__,'1.5.0'):
         return tf.nn.conv3d(x,
                             filters,
                             strides,
@@ -919,7 +919,7 @@ def softmax_cross_entropy_with_logits(labels=None,
                                       axis=commons.caxis,
                                       name=None):
 
-    if version_compare(tf.__version__,'1.5.0'):
+    if version_compare_great(tf.__version__,'1.5.0'):
         return tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels,
                                                           logits=logits,
                                                           dim=axis,
@@ -1473,7 +1473,7 @@ def load(session, checkpoint,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
     sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
-    if version_compare(tf.__version__, '1.12.0'):
+    if version_compare_great(tf.__version__, '1.12.0'):
         sessions.append(tf_debug.TensorBoardDebugWrapperSession)
     if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
@@ -1512,7 +1512,7 @@ def save(session,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
     sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
-    if version_compare(tf.__version__, '1.12.0'):
+    if version_compare_great(tf.__version__, '1.12.0'):
         sessions.append(tf_debug.TensorBoardDebugWrapperSession)
     if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
