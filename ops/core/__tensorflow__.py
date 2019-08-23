@@ -941,16 +941,17 @@ def sigmoid_cross_entropy_with_logits(labels=None,
 
 
 #----- tensorflow summaries -----#
-def summarize(name, tensor, mode='histogram', **kwargs):
-    if mode == 'histogram':
-        return tf.summary.histogram(name, tensor)
-    elif mode == 'scalar':
-        return tf.summary.scalar(name, tensor)
-    elif mode == 'image':
-        return tf.summary.image(name, tensor, **kwargs)
-    else:
-        raise ValueError('`{}` mode for summary not supported'
-                         .format(mode))
+def summarize(name, tensor, mode='histogram', reuse=False, **kwargs):
+    if reuse:
+        if mode == 'histogram':
+            return tf.summary.histogram(name, tensor)
+        elif mode == 'scalar':
+            return tf.summary.scalar(name, tensor)
+        elif mode == 'image':
+            return tf.summary.image(name, tensor, **kwargs)
+        else:
+            raise ValueError('`{}` mode for summary not supported'
+                             .format(mode))
 
 
 #----- tensorflow log gradients -----#
