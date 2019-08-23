@@ -185,6 +185,7 @@ def conditional_instance_norm(input_shape,
 #                    scope=str)
 def batch_norm(input_shape,
                is_training,
+               axes=None,
                momentum=0.99,
                offset_initializer='zeros',
                scale_initializer='ones',
@@ -237,11 +238,12 @@ def batch_norm(input_shape,
                                              scope,
                                              'batch_norm',
                                              reuse)
-    axis = list(range(len(input_shape)-1))
-    if fused:
-        axis = [0 ,1, 2]
-    # if not isinstance(axis, (list, tuple)):
-    #     axis = [axis]
+    if axes is None:
+        axes = list(range(len(input_shape)-1))
+        if fused:
+            axes = [0 ,1, 2]
+        # if not isinstance(axis, (list, tuple)):
+        #     axis = [axis]
     neurons = input_shape[core.caxis]
 
     offset = None
@@ -318,7 +320,7 @@ def batch_norm(input_shape,
                                                       epsilon=epsilon)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = core.moments(x, axis, keepdims=True)
+            mean, variance = core.moments(x, axes, keepdims=True)
             # batch_normalize(x, mean, variance, offset,
             #                 scale, variance_epsilon, name)
             x = core.batch_norm(x, mean, variance,
@@ -342,7 +344,7 @@ def batch_norm(input_shape,
                                  epsilon, is_training=False)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = core.moments(x, axis, keepdims=True)
+            mean, variance = core.moments(x, axes, keepdims=True)
             x = core.batch_norm(x, moving_mean, moving_variance,
                                          offset, scale, epsilon)
 

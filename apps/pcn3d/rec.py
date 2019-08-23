@@ -66,7 +66,7 @@ def train_net(batch_size=8,
         train_iters, valid_iters, tests_iters, \
         filename, iterator = dataset.prepare_dataset(num_points, batch_size, epochs, database)
         inputs, labels = iterator.get_next()
-        trainp = rec.build_net(net_arch, inputs, nclass=nclass)
+        trainp = rec.build_net(net_arch, inputs, nclass=nclass, is_training=True)
         train_loss_op = layers.losses.get('margin_loss', trainp, labels)
         ops.core.summarize('train-loss', train_loss_op, 'scalar')
         train_metric = layers.metrics.accuracy([trainp, labels])
@@ -77,7 +77,7 @@ def train_net(batch_size=8,
         with ops.core.control_dependencies(update_ops):
             train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
 
-        validp = rec.build_net(net_arch, inputs, nclass=nclass, reuse=True)
+        validp = rec.build_net(net_arch, inputs, nclass=nclass, reuse=True, is_training=False)
         valid_loss_op = layers.losses.get('margin_loss', validp, labels)
         valid_metric = layers.metrics.accuracy([validp, labels])
         valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric

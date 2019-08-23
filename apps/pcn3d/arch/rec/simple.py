@@ -4,7 +4,7 @@ from sigma import layers
 from sigma.ops import core
 from . import ops
 
-def build_net(inputs, nclass=16, reuse=False):
+def build_net(inputs, nclass=16, reuse=False, is_training=True):
     #inputs: [batch-size, 2048, 3]
     #=>      [batch-size, 3, 2048]
     x = layers.base.transpose(inputs, (0, 2, 1))
