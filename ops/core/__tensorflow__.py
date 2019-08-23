@@ -943,6 +943,7 @@ def sigmoid_cross_entropy_with_logits(labels=None,
 #----- tensorflow summaries -----#
 def summarize(name, tensor, mode='histogram', reuse=False, **kwargs):
     if reuse:
+        name = helper.normalize_name(name)
         if mode == 'histogram':
             return tf.summary.histogram(name, tensor)
         elif mode == 'scalar':
