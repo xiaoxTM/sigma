@@ -14,7 +14,7 @@ def prepare_dataset(num_points, batch_size, epochs, setname='shapenet_part'):
         train_filename = os.path.join(base, 'shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized.tfrecord')
         valid_filename = os.path.join(base, 'shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_valid.tfrecord')
         tests_filename = os.path.join(base, 'shapenet/shapenet_part/shapenetcore_partanno_segmentation_normalized_test.tfrecord')
-        valid_iters = get_tfrecord_size(valid_filename)
+        valid_iters = int(get_tfrecord_size(valid_filename) / batch_size)
     elif setname == 'modelnet40':
         from .modelnet40_loader import parse
         train_filename = os.path.join(base, 'modelnet/train2048.tfrecord')
@@ -23,8 +23,8 @@ def prepare_dataset(num_points, batch_size, epochs, setname='shapenet_part'):
         valid_iters = None
     else:
         raise ValueError('dataset `{}` not support'.format(setname))
-    train_iters = get_tfrecord_size(train_filename)
-    tests_iters = get_tfrecord_size(tests_filename)
+    train_iters = int(get_tfrecord_size(train_filename) / batch_size)
+    tests_iters = int(get_tfrecord_size(tests_filename) / batch_size)
     filename = tf.placeholder(tf.string, shape=[])
     dataset = tf.data.TFRecordDataset(filename)
     dataset = dataset.map(parse(num_points))

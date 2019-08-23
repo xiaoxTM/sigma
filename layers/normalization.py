@@ -125,7 +125,7 @@ def batch_norm(inputs,
     input_shape = ops.helper.norm_input_shape(inputs)
     fun = ops.norms.batch_norm(input_shape,
                                is_training,
-                               axes=None,
+                               axes,
                                momentum,
                                offset_initializer,
                                scale_initializer,

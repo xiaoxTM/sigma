@@ -89,6 +89,10 @@ def train_net(batch_size=8,
 
     with sess:
         losses =  np.zeros((epochs, 4))
+        print('train iteration:', train_iters)
+        if valid_iters is not None:
+            print('valid iteration:', valid_iters)
+        print('tests iteration:', tests_iters)
         for epoch in range(epochs):
             start = time.time()
             ops.core.run(sess, [train_metric_initialize_op, iterator.initializer], feed_dict={filename: train_filename})
