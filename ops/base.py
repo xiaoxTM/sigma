@@ -111,8 +111,7 @@ def transpose(input_shape,
         with ops_scope:
             return core.transpose(x,
                                   perm=perm,
-                                  conjugate=conjugate,
-                                  name=name)
+                                  conjugate=conjugate)
     return _transpose, output_shape
 
 

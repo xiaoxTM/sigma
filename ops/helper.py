@@ -339,6 +339,7 @@ def norm_input_1d(shape):
         > input shape : 2
         > output shape: [1, 2, 1]
 
+    print('name in ops/transpose after assign_scope:', name)
         > input shape : [2]
         > output shape: [1, 2, 1]
 

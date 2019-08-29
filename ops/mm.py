@@ -53,9 +53,9 @@ def malloc(name,
                                      regularizer, trainable, collections)
     if add_to_collect and not reuse:
         core.add_to_collection(scope, variable)
-    if summary is not None and not reuse:
-        with core.device('/device:CPU:{}'.format(cpuid)):
-            core.summarize(variable.name, variable, summary)
+    if summary is not None:
+        with core.device('/cpu:{}'.format(cpuid)):
+            core.summarize(variable.name, variable, summary, norm=False, reuse=reuse)
     return variable
 
 

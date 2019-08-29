@@ -313,10 +313,10 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     # input_name_str = ops.helper.concat_scope_and_name(inputname)
                     input_shape_str = str(input_shape)
                     input_name_str = str(input_name).replace("'","")
-                    print('{}{} \t=>`{}[{} | {}]{}`=> \t{}{}'
+                    print('{}{} \t=>`{}[{}]{}`=> \t{}{}'
                           .format(input_name_str,
                                   colors.green(input_shape_str),
-                                  colors.fg.blue, name, typename, colors.reset,
+                                  colors.fg.blue, typename, colors.reset,
                                   output_name, colors.red(output_shape)))
                     if __details__ is True:
                         length = len(input_name_str) + len(input_shape_str)

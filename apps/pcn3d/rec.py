@@ -33,6 +33,7 @@ parser.add_argument('--gpu', default='1', type=str)
 parser.add_argument('--normalize', default=True, type=bool)
 parser.add_argument('--net-arch', default='simple', type=str)
 parser.add_argument('--debug', default=False, type=bool)
+parser.add_argument('--views', default=3, type=int)
 parser.add_argument('--shuffle', default=True, type=bool)
 parser.add_argument('--learning-rate', default=0.05, type=float)
 
@@ -41,6 +42,7 @@ parser.add_argument('--learning-rate', default=0.05, type=float)
 def train_net(batch_size=8,
               epochs=1000,
               num_points=2048,
+              views=3,
               lr=0.02,
               debug=False,
               address=None,
@@ -57,6 +59,7 @@ def train_net(batch_size=8,
         nclass = 16
 
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
+    num_gpus = len(gpu.split(','))
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
@@ -66,21 +69,14 @@ def train_net(batch_size=8,
         train_iters, valid_iters, tests_iters, \
         filename, iterator = dataset.prepare_dataset(num_points, batch_size, epochs, database)
         inputs, labels = iterator.get_next()
-        trainp = rec.build_net(net_arch, inputs, nclass=nclass, is_training=True)
-        train_loss_op = layers.losses.get('margin_loss', trainp, labels)
-        ops.core.summarize('train-loss', train_loss_op, 'scalar')
-        train_metric = layers.metrics.accuracy([trainp, labels])
-        train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
-        ops.core.summarize('train-acc', train_metric_op, 'scalar')
-        learning_rate = tf.train.exponential_decay(lr, global_step, train_iters, 0.9)
-        update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
-        with ops.core.control_dependencies(update_ops):
-            train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
-
-        validp = rec.build_net(net_arch, inputs, nclass=nclass, reuse=True, is_training=False)
-        valid_loss_op = layers.losses.get('margin_loss', validp, labels)
-        valid_metric = layers.metrics.accuracy([validp, labels])
-        valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
+    train_loss_op, train_metric = rec.build_net(net_arch, inputs, labels, nclass=nclass, is_training=True, reuse=False, views=views, num_gpus=num_gpus)
+    valid_loss_op, valid_metric = rec.build_net(net_arch, inputs, labels, nclass=nclass, reuse=True, is_training=False, views=views, num_gpus=num_gpus)
+    learning_rate = tf.train.exponential_decay(lr, global_step, train_iters, 0.9)
+    update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
+    with ops.core.control_dependencies(update_ops):
+        train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
+    train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
+    valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
     sess, saver, summarize, writer = engine.session(checkpoint=checkpoint,
                                                     config=config,
                                                     debug=debug,
@@ -146,6 +142,7 @@ if __name__ == '__main__':
         train_net(args.batch_size,
                   args.epochs,
                   args.num_points,
+                  args.views,
                   args.learning_rate,
                   args.debug,
                   args.address,

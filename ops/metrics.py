@@ -60,8 +60,7 @@ def accuracy(from_logits=True,
                                       x,
                                       weights,
                                       metrics_collections,
-                                      updates_collections,
-                                      name)
+                                      updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -92,7 +91,7 @@ def auc(from_logits=True,
                                  metrics_collections,
                                  updates_collections,
                                  curve,
-                                 name,
+                                 None,
                                  summation_method)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
@@ -120,15 +119,13 @@ def false_negatives(from_logits=True,
                                                               thresholds,
                                                               weights,
                                                               metrics_collections,
-                                                              updates_collections,
-                                                              name)
+                                                              updates_collections)
             else:
                 x = core.metrics_false_negatives(labels,
                                                  x,
                                                  weights,
                                                  metrics_collections,
-                                                 updates_collections,
-                                                 name)
+                                                 updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -155,15 +152,13 @@ def false_positives(from_logits=True,
                                                               thresholds,
                                                               weights,
                                                               metrics_collections,
-                                                              updates_collections,
-                                                              name)
+                                                              updates_collections)
             else:
                 x = core.metrics_false_positives(labels,
                                                  x,
                                                  weights,
                                                  metrics_collections,
-                                                 updates_collections,
-                                                 name)
+                                                 updates_collections)
             variables = core.get_collection(Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -190,15 +185,13 @@ def true_negatives(from_logits=True,
                                                              thresholds,
                                                              weights,
                                                              metrics_collections,
-                                                             updates_collections,
-                                                             name)
+                                                             updates_collections)
             else:
                 x = core.metrics_true_negatives(labels,
                                                 x,
                                                 weights,
                                                 metrics_collections,
-                                                updates_collections,
-                                                name)
+                                                updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -225,15 +218,13 @@ def true_positives(from_logits=True,
                                                              thresholds,
                                                              weights,
                                                              metrics_collections,
-                                                             updates_collections,
-                                                             name)
+                                                             updates_collections)
             else:
                 x = core.metrics_true_positives(labels,
                                                 x,
                                                 weights,
                                                 metrics_collections,
-                                                updates_collections,
-                                                name)
+                                                updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -261,8 +252,7 @@ def mean_iou(from_logits=True,
                                       nclass,
                                       weights,
                                       metrics_collections,
-                                      updates_collections,
-                                      name)
+                                      updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -286,8 +276,7 @@ def precision(from_logits=True,
                                        x,
                                        weights,
                                        metrics_collections,
-                                       updates_collections,
-                                       name)
+                                       updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
@@ -311,8 +300,7 @@ def recall(from_logits=True,
                                     x,
                                     weights,
                                     metrics_collections,
-                                    updates_collections,
-                                    name)
+                                    updates_collections)
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)

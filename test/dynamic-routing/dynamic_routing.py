@@ -215,7 +215,7 @@ parser.add_argument('--batch-size', '-b', type=int, default=100)
 if __name__=='__main__':
     args = parser.parse_args()
     exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing'
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     checkpoint = None
     log = None
     if args.checkpoint is not None:
