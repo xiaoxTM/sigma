@@ -1463,7 +1463,8 @@ def load_mnist(path, one_hot):
     return mnist.input_data.read_data_set(path, one_hot)
 
 
-def load(session, checkpoint,
+def load(session,
+         checkpoint,
          saver=None,
          var_list=None,
          verbose=True):

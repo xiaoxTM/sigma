@@ -26,6 +26,7 @@ parser.add_argument('--epochs', default=200, type=int)
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--num-points', default=2048, type=int)
 parser.add_argument('--checkpoint', default='/home/xiaox/studio/exp/3dpcn/cache/checkpoint/model.ckpt', type=str)
+parser.add_argument('--restore', default=None, type=str)
 parser.add_argument('--log', default='/home/xiaox/studio/exp/3dpcn/cache/log', type=str)
 parser.add_argument('--address', default='172.31.234.152:2666')
 parser.add_argument('--database', default='shapenet_part', type=str)
@@ -35,7 +36,7 @@ parser.add_argument('--net-arch', default='simple', type=str)
 parser.add_argument('--debug', default=False, type=bool)
 parser.add_argument('--views', default=3, type=int)
 parser.add_argument('--shuffle', default=True, type=bool)
-parser.add_argument('--learning-rate', default=0.05, type=float)
+parser.add_argument('--learning-rate', default=0.02, type=float)
 
 
 @helpers.stampit({'checkpoint':-2, 'log':-1}, verbose=True)
@@ -47,6 +48,7 @@ def train_net(batch_size=8,
               debug=False,
               address=None,
               checkpoint=None,
+              restore=None,
               log=None,
               net_arch='simple',
               database='shapenet_part',
@@ -57,7 +59,8 @@ def train_net(batch_size=8,
     nclass = 40
     if database == 'shapenet_part':
         nclass = 16
-
+    if restore is None:
+        restore = checkpoint
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     num_gpus = len(gpu.split(','))
     config = tf.ConfigProto()
@@ -69,15 +72,16 @@ def train_net(batch_size=8,
         train_iters, valid_iters, tests_iters, \
         filename, iterator = dataset.prepare_dataset(num_points, batch_size, epochs, database)
         inputs, labels = iterator.get_next()
-    train_loss_op, train_metric = rec.build_net(net_arch, inputs, labels, nclass=nclass, is_training=True, reuse=False, views=views, num_gpus=num_gpus)
-    valid_loss_op, valid_metric = rec.build_net(net_arch, inputs, labels, nclass=nclass, reuse=True, is_training=False, views=views, num_gpus=num_gpus)
-    learning_rate = tf.train.exponential_decay(lr, global_step, train_iters, 0.9)
+    train_loss_op, train_metric = rec.build_net(net_arch, inputs, labels, batch_size=batch_size, nclass=nclass, is_training=True, reuse=False, views=views, num_gpus=num_gpus)
+    valid_loss_op, valid_metric = rec.build_net(net_arch, inputs, labels, batch_size=batch_size, nclass=nclass, reuse=True, is_training=False, views=views, num_gpus=num_gpus)
+    #learning_rate = tf.train.exponential_decay(lr, global_step, train_iters, 0.9)
     update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
     with ops.core.control_dependencies(update_ops):
-        train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(train_loss_op, global_step=global_step)
+        train_op = ops.optimizers.get('AdamOptimizer', learning_rate=lr).minimize(train_loss_op, global_step=global_step)
     train_metric_op, train_metric_update_op, train_metric_initialize_op = train_metric
+    ops.core.summarize('accuracy', train_metric_op, 'scalar')
     valid_metric_op, valid_metric_update_op, valid_metric_initialize_op = valid_metric
-    sess, saver, summarize, writer = engine.session(checkpoint=checkpoint,
+    sess, saver, summarize, writer = engine.session(checkpoint=restore,
                                                     config=config,
                                                     debug=debug,
                                                     address=address,
@@ -96,7 +100,7 @@ def train_net(batch_size=8,
                 _, loss, _, summary = ops.core.run(sess, [train_op, train_loss_op, train_metric_update_op, summarize])
                 accuracy = ops.core.run(sess, train_metric_op)
                 ops.core.add_summary(writer, summary, global_step=(epoch*train_iters)+iters)
-                if iters % 10 == 0:
+                if (iters+1) % 10 == 0:
                     print('train for {}-th iteration: loss: {}, accuracy: {}'.format(iters, loss, accuracy))
             end = time.time()
             print('time cost:', end-start)
@@ -129,7 +133,7 @@ def train_net(batch_size=8,
             losses[epoch][2] = tloss
             losses[epoch][3] = tacc
             print('test for {}-th epoch: loss:{}, accuracy: {}'.format(epoch, tloss, tacc))
-            if epoch % 10 == 0:
+            if (epoch+1) % 10 == 0:
                 helpers.save(sess, checkpoint, saver, True, global_step=epoch)
         np.savetxt('losses/{}_{}.loss'.format(net_arch, database), losses)
         ops.core.close_summary_writer(writer)
@@ -147,6 +151,7 @@ if __name__ == '__main__':
                   args.debug,
                   args.address,
                   args.checkpoint,
+                  args.restore,
                   args.log,
                   args.net_arch,
                   args.database,

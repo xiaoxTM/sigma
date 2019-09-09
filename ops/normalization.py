@@ -184,7 +184,6 @@ def conditional_instance_norm(input_shape,
 #                    name=str,
 #                    scope=str)
 def batch_norm(input_shape,
-               is_training,
                axes=None,
                momentum=0.99,
                offset_initializer='zeros',
@@ -350,16 +349,12 @@ def batch_norm(input_shape,
 
         return act(x)
 
-    if is_training:
-        def _process(x):
-            return _train(x)
-    else:
-        def _process(x):
-            return _infer(x)
-
-    def _batch_norm(x):
+    def _batch_norm(x, is_training):
         with ops_scope:
-            return _process(x)
+            if is_training:
+                return _train(x)
+            else:
+                return _infer(x)
     return _batch_norm
 
 
@@ -388,7 +383,9 @@ def dropout(pkeep,
     #     def _dropout(x):
     #         return core.dropout(x, pkeep, noise_shape, seed, name)
     # return _dropout
-    def _dropout(x):
+    def _dropout(x, is_training):
         with helper.maybe_layer(aslayer, name, scope, 'dropout', reuse):
-            return core.dropout(x, pkeep, noise_shape, seed, name)
+            return core.cond(is_training,
+                             lambda: core.dropout(x, pkeep, noise_shape, seed, name),
+                             lambda: x)
     return _dropout

@@ -2,10 +2,14 @@ import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 from sigma import layers
 from sigma.ops import core
+from sigma.apps.pcn3d import dataset
 from . import ops
 
-def build_net(inputs, labels, loss='margin_loss', nclass=16, reuse=False, is_training=True, **kwargs):
+def build_net(inputs, labels, loss='margin_loss', batch_size=32, nclass=16, reuse=False, is_training=True, **kwargs):
     with core.device('/gpu:0'):
+        if is_training:
+            inputs = dataset.rotate_point_cloud(inputs, batch_size=batch_size)
+            inputs = dataset.jitter_point_cloud(inputs, batch_size=batch_size)
         #inputs: [batch-size, 2048, 3]
         #=>      [batch-size, 3, 2048]
         x = layers.base.transpose(inputs, (0, 2, 1))

@@ -23,7 +23,7 @@ from .. import colors
 import numpy as np
 import math
 import inspect
-
+from contextlib import contextmanager
 
 def typecheck(**dwargs):
     dkeys = dwargs.keys()
@@ -203,6 +203,16 @@ def timeit(print_it):
             return ret
         return _wrap
     return _timeit
+
+
+@contextmanager
+def time(message=None, color='blue'):
+    if message is None:
+        message = ''
+    beg = timer()
+    yield beg
+    end = timer()
+    print('>>> {}{}  <<<'.format(message, eval('colors.{}(end-bed)'.format(color))))
 
 
 def line(iterable,
@@ -408,3 +418,26 @@ def line(iterable,
             idx += 1
         print()
     return _line, iterable_size
+
+
+def hitmap(predict, label, nclass):
+    if not isinstance(predict, np.ndarray):
+        raise TypeError('`predict` must be np.ndarray, given {}'
+                        .format(type(predict)))
+    if not isinstance(label, np.ndarray):
+        raise TypeError('`label` must be np.ndarray, given {}'
+                        .format(type(label)))
+    if len(predict.shape) == 2:
+        predict = np.argmax(predict, axis=1)
+    elif len(predict.shape) > 2:
+        raise ValueError('`predict` shape must be 1/2, given {}'.format(predict.shape))
+    if len(label.shape) == 2:
+        label = np.argmax(label, axis=1)
+    elif len(label.shape) > 2:
+        raise ValueError('`label` shape must be 1/2, given {}'.format(label.shape))
+
+    # predict / label: [batch-size]
+    matrix = np.zeros(shape=(nclass, nclass))
+    for p, l in zip(predict, label):
+        matrix[p, l] += 1
+    return matrix

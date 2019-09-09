@@ -1,7 +1,95 @@
 import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 from sigma import colors
-from sigma.ops import helper, core, mm, actives
+from sigma.ops import helper, core, mm, actives, convs
+
+def pairwise_euclidean_distance(inputs):
+    batch_size, npoints, channels = core.shape(inputs)
+   #   [batch-size, npoints, channels]
+   #=> [batch-size, npoints, npoints]
+   inner = -2 * core.matmul(inputs, core.transpose(inputs, perm=(0,2,1)))
+   square = core.sum(core.square(inputs), axis=-1, keepdims=True)
+   transpose = core.transpose(square, perm=(0,2,1))
+   return square + inner + transpose
+
+
+def edge_conv(inputs,
+              k,
+              channels,
+              kshape=[1,1],
+              stride=1,
+              padding='valid',
+              weight_initializer='glorot_uniform',
+              weight_regularizer=None,
+              bias_initializer='zeros',
+              bias_regularizer=None,
+              cpuid=0,
+              act=None,
+              trainable=True,
+              dtype=core.float32,
+              collection=None,
+              summary='histogram',
+              reuse=False,
+              name=None,
+              scope=None):
+    """ inputs: tensorflow with shape [batch-size, npoints, channels]
+        k: int for knn (top_k neighbours in terms of euclidean distance)
+    """
+    shape = core.shape(inputs)
+    if len(shape) != 3:
+        raise ValueError('`inputs` must be [batch-size, npoints, channels], given {}'
+                         .format(shape))
+    # adjacent matrix: [batch-size, npoints, npoints]
+    adjacent_matrix = pairwise_euclidean_distance(inputs)
+    def _knn(adjacent_matrix, k, axis=2, selfloop=False):
+        # get top_k
+        # selfloop: False, exclude self-disance, i.e., no self loop
+        # x [batch-size, npoints, channels]
+        if selfloop:
+            return core.top_k(-adjacent_matrix, k)[1]
+        x = core.top_k(-adjacent_matrix, k+1)[1]
+        idx = core.range(1, k+1)
+        return core.gather(x, idx, axis=axis)
+
+    # idx: [batch-size, npoints, k]
+    nn_idx = _knn(adjacent_matrix, k)
+
+    batch_size, npoints, channels = shape
+    # [batch-size]
+    idx = core.range(batch_size) * npoints
+    # [batch-size, 1, 1]
+    idx = core.reshape(idx, [batch_size, 1, 1])
+    # [batch-size * npoints, channels]
+    flatten = core.reshape(inputs, [batch_size * npoints, channels])
+    # [batch-size, npoints, k, channels]
+    neighbours = core.gather(flatten, nn_idx + idx)
+    # [batch-size, npoints, 1, k]
+    central = core.expand_dims(inputs,axis=-2)
+    # [batch-size, npoints, k, k]
+    central = core.tile(central, [1,1,k,1])
+    # [batch-size, npoints, k, 2k]
+    x = core.concat([central, neighbours-central], axis=-1)
+    xshape = core.shape(x)
+    x = convs.conv2d(xshape,
+                     channels,
+                     kshape,
+                     stride,
+                     padding,
+                     weight_initializer,
+                     weight_regularizer,
+                     bias_initializer,
+                     bias_regularizer,
+                     cpuid,
+                     act,
+                     trainable,
+                     dtype,
+                     collections,
+                     summary,
+                     reuse,
+                     name,
+                     scope)[0](x)
+    return core.max(x, axis=-2, keepdims=True)
+
 
 def projection_transform(inputs,
                          dims,
