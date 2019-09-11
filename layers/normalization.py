@@ -124,7 +124,6 @@ def batch_norm(inputs,
                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun = ops.norms.batch_norm(input_shape,
-                               is_training,
                                axes,
                                momentum,
                                offset_initializer,
@@ -143,7 +142,7 @@ def batch_norm(inputs,
                                reuse,
                                name,
                                scope)
-    x = fun(inputs)
+    x = fun(inputs, is_training)
     xshape = ops.core.shape(x)
     if input_shape[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
@@ -155,6 +154,7 @@ def batch_norm(inputs,
 
 @core.layer
 def dropout(inputs, pkeep,
+            is_training,
             noise_shape=None,
             seed=None,
             reuse=False,
@@ -166,4 +166,4 @@ def dropout(inputs, pkeep,
                              True, #interpret as layer
                              reuse,
                              name,
-                             scope)(inputs)
+                             scope)(inputs, is_training)

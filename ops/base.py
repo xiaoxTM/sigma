@@ -127,7 +127,8 @@ def expand_dims(input_shape,
                                           'expand_dims',
                                           reuse)
     output_shape = input_shape[:]
-    output_shape.insert(axis if axis >= 0 else axis + 1, 1)
+    naxis = helper.normalize_axes(input_shape, axis)
+    output_shape.insert(axis if axis >= 0 else naxis+1, 1)
     def _expand_dims(x):
         with ops_scope:
             return core.expand_dims(x, axis)

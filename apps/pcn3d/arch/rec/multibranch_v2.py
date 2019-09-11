@@ -2,9 +2,13 @@ import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 from sigma import layers
 from sigma.ops import core
+from sigma.apps.pcn3d import dataset
 from . import ops
 
-def build_net(inputs, labels, loss='margin_loss', views=4, nclass=40, reuse=False, num_gpus=4, is_training=True, **kwargs):
+def build_net(inputs, labels, loss='margin_loss', batch_size=32, views=4, nclass=40, reuse=False, num_gpus=4, is_training=True, **kwargs):
+    if is_training:
+        inputs = dataset.rotate_point_cloud(inputs, batch_size=batch_size)
+        inputs = dataset.jitter_point_cloud(inputs, batch_size=batch_size)
     #inputs: [batch-size, 2048, 3]
     #=>      [batch-size, 3, 2048]
     begin = layers.base.transpose(inputs, (0, 2, 1), reuse=reuse, name='transpose')
@@ -57,4 +61,4 @@ def build_net(inputs, labels, loss='margin_loss', views=4, nclass=40, reuse=Fals
         loss_op = layers.losses.get(loss, x, labels)
         ops.core.summarize('train-loss', loss_op, 'scalar')
         metric_op = layers.metrics.accuracy([x, labels])
-    return loss_op, metric_op
+    return x, loss_op, metric_op

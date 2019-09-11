@@ -234,6 +234,8 @@ def map_func(func, elems,
              swap_memory=False,
              infer_shape=True,
              name=None):
+    if parallel_iterations is None:
+        parallel_iterations = 1
     return tf.map_fn(func,
                      elems,
                      dtype,
@@ -1463,7 +1465,8 @@ def load_mnist(path, one_hot):
     return mnist.input_data.read_data_set(path, one_hot)
 
 
-def load(session, checkpoint,
+def load(session,
+         checkpoint,
          saver=None,
          var_list=None,
          verbose=True):
