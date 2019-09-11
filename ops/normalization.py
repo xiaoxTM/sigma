@@ -226,7 +226,6 @@ def batch_norm(input_shape,
                                   initializer for moving_mean
         moving_variance_initializer : string / callable function | None
                                       initializer for moving_variance
-        is_training : bool
         fused : bool
                 use fused_batch_normal if true
     """
@@ -329,9 +328,9 @@ def batch_norm(input_shape,
         if momentum is not None:
             update_mean=core.moving_average_update(moving_mean, mean, momentum)
             update_variance=core.moving_average_update(moving_variance, variance, momentum)
-            core.add_to_collection(core.Collections.update_ops, update_mean)
-            core.add_to_collection(core.Collections.update_ops, update_variance)
-        return act(x)
+            with core.control_dependencies([update_mean, update_variance]):
+                x = act(x)
+        return x
 
     def _infer(x):
         if fused is True:
@@ -349,12 +348,11 @@ def batch_norm(input_shape,
 
         return act(x)
 
-    def _batch_norm(x, is_training):
+    def _batch_norm(x):
         with ops_scope:
-            if is_training:
-                return _train(x)
-            else:
-                return _infer(x)
+            return core.cond(status.is_training,
+                             lambda: _train(x),
+                             lambda: _infer(x))
     return _batch_norm
 
 
@@ -383,9 +381,9 @@ def dropout(pkeep,
     #     def _dropout(x):
     #         return core.dropout(x, pkeep, noise_shape, seed, name)
     # return _dropout
-    def _dropout(x, is_training):
+    def _dropout(x):
         with helper.maybe_layer(aslayer, name, scope, 'dropout', reuse):
-            return core.cond(is_training,
+            return core.cond(status.is_training,
                              lambda: core.dropout(x, pkeep, noise_shape, seed, name),
                              lambda: x)
     return _dropout

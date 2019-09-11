@@ -103,7 +103,6 @@ def conditional_instance_norm(inputs,
 
 @core.layer
 def batch_norm(inputs,
-               is_training,
                axes=None,
                momentum=0.99,
                offset_initializer='zeros',
@@ -142,7 +141,7 @@ def batch_norm(inputs,
                                reuse,
                                name,
                                scope)
-    x = fun(inputs, is_training)
+    x = fun(inputs)
     xshape = ops.core.shape(x)
     if input_shape[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
@@ -154,7 +153,6 @@ def batch_norm(inputs,
 
 @core.layer
 def dropout(inputs, pkeep,
-            is_training,
             noise_shape=None,
             seed=None,
             reuse=False,
@@ -166,4 +164,4 @@ def dropout(inputs, pkeep,
                              True, #interpret as layer
                              reuse,
                              name,
-                             scope)(inputs, is_training)
+                             scope)(inputs)

@@ -5,24 +5,6 @@ import os.path
 import argparse
 import numpy as np
 
-
-def phase(mode='train'):
-    if mode not in ['train', 'predict']:
-        raise ValueError('`phase` mode only support `train/predict`. given {}'
-                         .format(mode))
-    def _phase(fun):
-        def _wrap(*args, **kwargs):
-            if mode == 'train':
-                sigma.status.is_training = True
-            else:
-                sigma.status.is_training = False
-            x = fun(*args, **kwargs)
-            sigma.status.is_training = not sigma.status.is_training
-            return x
-        return _wrap
-    return _phase
-
-
 def predict_op(input_shape,
                predop=None,
                axis=None,
@@ -57,8 +39,6 @@ def predict_op(input_shape,
             return predop(x, axis, name=name)
     return _predict_op
 
-
-@phase('predict')
 def predict(sess,
             y, # tensor
             generator,

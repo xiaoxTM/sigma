@@ -21,18 +21,11 @@
 #    is_training
 # this variable is useful for layers like:
 #    - batch-norm
-is_training = False
 
-def set_phase(phase):
-    global is_training
-    if phase == 'train':
-        is_training = True
-    else:
-        is_training = False
+from ..layers.base import input_spec
+from ..ops import core
 
-def get_phase():
-    return is_training
-
+is_training = input_spec(shape=(), dtype=core.boolean)
 
 def get():
     return None
