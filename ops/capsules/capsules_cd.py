@@ -262,7 +262,6 @@ def cap_maskout(input_shape,
             onehot=True,
             drop=False,
             flatten=True,
-            check_input_shape=True,
             reuse=False,
             name=None,
             scope=None):
@@ -271,8 +270,6 @@ def cap_maskout(input_shape,
         axis: axis of caps
         flatten works ONLY when drop is `False`
     """
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
     ops_scope, name_with_ltype, _ = helper.assign_scope(name,
                                                         scope,
                                                         'maskout',

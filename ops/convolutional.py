@@ -138,7 +138,7 @@ def fully_connected(input_shape, nouts,
                     reuse=False,
                     name=None,
                     scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -200,7 +200,7 @@ def conv1d(input_shape, nouts, kshape,
            reuse=False,
            name=None,
            scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -272,7 +272,7 @@ def conv2d(input_shape,
            reuse=False,
            name=None,
            scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -338,7 +338,7 @@ def conv3d(input_shape, nouts,
            reuse=False,
            name=None,
            scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -413,7 +413,7 @@ def deconv2d(input_shape, output_shape, nout,
     #           [batch-size, ceil((output_shape[1:-1] - kshape[1:-1] + 1) / stride[1:-1])]
     #       else:
     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -504,7 +504,7 @@ def soft_conv(input_shape,
     # batch_size = input_shape[0]
     # if helper.is_tensor(input_shape):
     #     input_shape = input_shape.as_list()
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'soft_conv',
@@ -845,7 +845,7 @@ def soft_conv2d(input_shape, nouts,
                 reuse=False,
                 name=None,
                 scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -1084,7 +1084,7 @@ def sepconv2d(input_shape, nouts,
               reuse=False,
               name=None,
               scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()

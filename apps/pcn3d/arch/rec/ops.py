@@ -65,7 +65,6 @@ def capsule_graph_conv(inputs,
                        dtype=core.float32,
                        collections=None,
                        summary='histogram',
-                       check_input_shape=True,
                        reuse=False,
                        name=None,
                        scope=None):
@@ -87,7 +86,6 @@ def capsule_graph_conv(inputs,
                              dtype,
                              collections,
                              summary,
-                             check_input_shape,
                              reuse,
                              name,
                              scope)
@@ -166,13 +164,10 @@ def projection_transform(inputs,
                          dtype=core.float32,
                          collections=None,
                          summary='histogram',
-                         check_input_shape=True,
                          reuse=False,
                          name=None,
                          scope=None):
     input_shape = helper.norm_input_shape(inputs)
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
     if len(input_shape) != 3:
@@ -276,13 +271,10 @@ def permutation_transform(inputs,
                           dtype=core.float32,
                           collections=None,
                           summary='histogram',
-                          check_input_shape=True,
                           reuse=False,
                           name=None,
                           scope=None):
     input_shape = helper.norm_input_shape(inputs)
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
     if len(input_shape) != 3:

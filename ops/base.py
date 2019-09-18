@@ -45,6 +45,7 @@ def embedding(table_shape,
     # - ops_scope       : [scope/]layername/layertype
     # - name_with_ltype : layername/layertype
     # - name            : original name | layername
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'embedding',
@@ -62,12 +63,10 @@ def embedding(table_shape,
 
 # @helpers.typecheck(input_shape=list, reuse=bool, name=str, scope=str)
 def flatten(input_shape,
-            check_input_shape=True,
             reuse=False,
             name=None,
             scope=None):
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'flatten', reuse)
     output_shape = [input_shape[0], np.prod(input_shape[1:])]
     def _flatten(x):
@@ -92,11 +91,10 @@ def reshape(target_shape,
 def transpose(input_shape,
               perm,
               conjugate=False,
-              check_input_shape=True,
               reuse=False,
               name=None,
               scope=None):
-    #helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'transpose',
@@ -121,12 +119,10 @@ def transpose(input_shape,
 # @helpers.typecheck(input_shape=list, axis=int, reuse=bool, name=str, scope=str)
 def expand_dims(input_shape,
                 axis,
-                check_input_shape=True,
                 reuse=False,
                 name=None,
                 scope=None):
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     ops_scope, _, _ = helper.assign_scope(name,
                                           scope,
                                           'expand_dims',

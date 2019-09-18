@@ -263,7 +263,6 @@ def cap_maskout(input_shape,
             onehot=True,
             drop=False,
             flatten=True,
-            check_input_shape=True,
             reuse=False,
             name=None,
             scope=None):
@@ -272,8 +271,7 @@ def cap_maskout(input_shape,
         axis: axis of caps
         flatten works ONLY when drop is `False`
     """
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     ops_scope, name_with_ltype, _ = helper.assign_scope(name,
                                                         scope,
                                                         'maskout',
@@ -349,7 +347,6 @@ def cap_fully_connected(input_shape,
                         safe=True,
                         collections=None,
                         summary='histogram',
-                        check_input_shape=True,
                         reuse=False,
                         name=None,
                         scope=None):
@@ -364,8 +361,7 @@ def cap_fully_connected(input_shape,
         dims : int
                     output capsule dimension
     """
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -460,7 +456,6 @@ def cap_conv1d(input_shape,
                safe=True,
                collections=None,
                summary='histogram',
-               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -591,7 +586,6 @@ def cap_conv2d(input_shape,
                safe=True,
                collections=None,
                summary='histogram',
-               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -612,8 +606,7 @@ def cap_conv2d(input_shape,
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
+    helper.check_input_shape(input_shape)
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
