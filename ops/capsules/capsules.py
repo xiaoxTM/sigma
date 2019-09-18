@@ -16,11 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .. import colors
+from sigma import colors, helpers
 from . import core, actives, helper, mm
 import logging
 
-from .. import helpers
 import capsules_dc, capsules_cd
 
 
