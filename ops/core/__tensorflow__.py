@@ -249,7 +249,7 @@ def map_func(func, elems,
                      infer_shape,
                      name)
 
-def stop_gradient(x, name):
+def stop_gradient(x, name=None):
     return tf.stop_gradient(x, name)
 
 
