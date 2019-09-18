@@ -2,7 +2,7 @@ import argparse
 import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 import sigma
-from sigma import layers, dbs, ops, engine, colors, helpers, status
+from sigma import layers, dbs, ops, engine, colors, helpers
 import os.path
 import numpy as np
 import tensorflow as tf
@@ -14,8 +14,8 @@ import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-import skimage as sk
-import skimage.io as skio
+#import skimage as sk
+#import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
@@ -43,20 +43,17 @@ def build_func(inputs, labels, initializer='glorot_uniform', is_training=True, r
         ops.core.summarize('conv2d-1', x)
         #   [batch-size, 6, 6, 256]
         #=> [batch-size, 6 * 6 * 32, 8]
-        #=> [batch-size, 8, 6 * 6 * 32]
         x = layers.base.reshape(x, [-1, 6*6*32, 8], name='reshape-1')
-        x = layers.base.transpose(x, (0, 2, 1), name='transpose-0')
-        x = layers.actives.squash(x, axis=1, epsilon=1e-9, name='squash-actives')
+        x = layers.actives.squash(x, axis=2, epsilon=1e-9, name='squash-actives')
         ops.core.summarize('squash-actives', x)
 
         #  [batch_size, nrows * ncols * 32, 8]
-        #=>[batch_size, 16, 10]
-        # a.k.a [batch-size, 1=capsules of each channel, 16=capsule atoms/dims, 10=channels]
+        #=>[batch_size, 10, 16]
         # digitCapsule Layer
         random_normal = ops.initializers.get('random_normal', stddev=0.01)
         x = layers.capsules.dense(x, 10, 16, 3,
-                                  share_weights=False,
                                   name='capdense-0',
+                                  order='CD',
                                   safe=True,
                                   epsilon=1e-9,
                                   weight_initializer=random_normal)
@@ -64,15 +61,15 @@ def build_func(inputs, labels, initializer='glorot_uniform', is_training=True, r
         # norm the output to represent the existance probabilities
         # of each class
         # classification:
-        #    [batch-size, caps_dims, incaps=channels]
-        #=>  [batch-size, incaps=channels=10]
-        classification = layers.capsules.norm(x, safe=True, axis=1, epsilon=1e-9, name='caps-norm')
+        #    [batch-size, caps, dims]
+        #=>  [batch-size, caps]
+        classification = layers.capsules.norm(x, safe=True, axis=2, epsilon=1e-9, name='caps-norm')
         ops.core.summarize('norm-0', classification)
         class_loss = layers.losses.get('margin_loss', classification, labels, name='classification-loss')
         #loss = class_loss
         tf.summary.scalar('classification-loss', class_loss)
         ## reconstruction
-        x = layers.capsules.maskout(x, index=labels, name='maskout')
+        x = layers.capsules.maskout(x, index=labels, order='CD', name='maskout')
         ops.core.summarize('maskout', x)
         x = layers.convs.dense(x, 512, act='relu', name='dense-0')
         ops.core.summarize('dense-0', x)
@@ -140,7 +137,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             ops.core.run(sess, metric_variable_initialize_op)
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
-                train_feed = {inputs: xs, labels: ys, status.is_training:True}
+                train_feed = {inputs: xs, labels: ys}
                 if summarize is None:
                     _, loss, _ = ops.core.run(sess, [train_op, loss_op, metric_update_op], feed_dict=train_feed)
                 else:
@@ -161,7 +158,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             ops.core.run(sess, valid_metric_variable_initialize_op)
             for vstep in range(valid_step):
                 xs, ys = mnist.validation.next_batch(batchsize)
-                valid_feed = {inputs:xs, labels:ys, status.is_training:False}
+                valid_feed = {inputs:xs, labels:ys}
                 loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=valid_feed)
                 metric = ops.core.run(sess, valid_metric_op)
                 validation_loss.append(loss)
@@ -178,7 +175,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             ops.core.run(sess, valid_metric_variable_initialize_op)
             for tstep in range(test_step):
                 xs, ys = mnist.test.next_batch(batchsize)
-                test_feed = {inputs:xs, labels:ys, status.is_training:False}
+                test_feed = {inputs:xs, labels:ys}
                 loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
                 reconstruction, loss, _ = sess.run([valid_reconstruction_op, valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
                 metric = ops.core.run(sess, valid_metric_op)

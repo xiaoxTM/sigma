@@ -31,7 +31,6 @@ from . import capsules_dc, capsules_cd
 #                    name=str,
 #                    scope=str)
 def cap_maskout(input_shape,
-            index,
             order='DC',
             onehot=True,
             drop=False,
@@ -49,13 +48,12 @@ def cap_maskout(input_shape,
     if order == 'CD':
         fun = capsules_cd.cap_maskout
     return fun(input_shape,
-                          index,
-                          onehot,
-                          drop,
-                          flatten,
-                          reuse,
-                          name,
-                          scope)
+               onehot,
+               drop,
+               flatten,
+               reuse,
+               name,
+               scope)
 
 # @helpers.typecheck(input_shape=list,
 #                    axis=int,
@@ -113,8 +111,8 @@ def cap_norm(input_shape,
 def cap_fully_connected(input_shape,
                         caps,
                         dims,
+                        iterations=3,
                         order='DC',
-                        iterations=2,
                         leaky=False,
                         share_weights=False,
                         weight_initializer='glorot_uniform',

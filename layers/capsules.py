@@ -21,7 +21,7 @@ from . import core, convs
 
 @core.layer
 def cap_maskout(inputs,
-            index=None,
+            index,
             order='DC',
             onehot=True,
             drop=False,
@@ -39,7 +39,6 @@ def cap_maskout(inputs,
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.cap_maskout(input_shape,
-                                   index,
                                    order,
                                    onehot,
                                    drop,
@@ -47,7 +46,7 @@ def cap_maskout(inputs,
                                    reuse,
                                    name,
                                    scope)
-    x = fun(inputs)
+    x = fun(inputs,index)
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '
@@ -90,9 +89,11 @@ def cap_norm(inputs,
 
 
 @core.layer
-def cap_fully_connected(inputs, caps, dims,
+def cap_fully_connected(inputs,
+                        caps,
+                        dims,
+                        iterations=3,
                         order='DC',
-                        iterations=2,
                         leaky=False,
                         share_weights=False,
                         weight_initializer='glorot_uniform',
@@ -118,8 +119,8 @@ def cap_fully_connected(inputs, caps, dims,
     fun, output = ops.capsules.cap_fully_connected(input_shape,
                                                    caps,
                                                    dims,
-                                                   order,
                                                    iterations,
+                                                   order,
                                                    leaky,
                                                    share_weights,
                                                    weight_initializer,

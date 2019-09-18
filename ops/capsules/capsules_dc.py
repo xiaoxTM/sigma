@@ -16,11 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from sigma import colors
+from sigma import colors, status, helpers
 from .. import core, actives, helper, mm
 import logging
 
-from sigma import helpers
 
 # capsule networks with dynamic routing
 # NOTE: tensor shape:
@@ -259,7 +258,6 @@ def cap_conv(convop,
 #                    name=str,
 #                    scope=str)
 def cap_maskout(input_shape,
-            index,
             onehot=True,
             drop=False,
             flatten=True,
@@ -285,7 +283,7 @@ def cap_maskout(input_shape,
                 #=>index: [batch-size,]
             index = core.argmax(xnorm, -1, dtype=core.int32)
             return index
-        def _maskout(x, index=None):
+        def _maskout(x, index):
             with ops_scope:
                 index = core.cond(status.is_training, lambda:core.identity(index),lambda:_build_index(x))
                 x = core.gather(x, index, axis=2)
@@ -302,9 +300,9 @@ def cap_maskout(input_shape,
             # index shape: [batch-size]
             index = core.argmax(xnorm, -1, dtype=core.int32)
             # [batch-size] => [batch-size, caps]
-            index = core.one_hot(index, input_shape[-1])
+            index = core.one_hot(index, input_shape[-1], dtype=core.int32)
             return index
-        def _maskout(x, index=None):
+        def _maskout(x, index):
             with ops_scope:
                 index = core.cond(status.is_training, lambda:core.identity(index),lambda:_build_index(x))
                 # [batch-size, 1, caps]
@@ -332,7 +330,7 @@ def cap_maskout(input_shape,
 def cap_fully_connected(input_shape,
                         caps,
                         dims,
-                        iterations=2,
+                        iterations=3,
                         leaky=False,
                         share_weights=False,
                         weight_initializer='glorot_uniform',
