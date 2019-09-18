@@ -17,7 +17,7 @@
 """
 
 from sigma import colors, helpers
-from . import core, actives, helper, mm
+from .. import core, actives, helper, mm
 import logging
 
 
