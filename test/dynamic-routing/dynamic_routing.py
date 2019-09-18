@@ -111,9 +111,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
 
     with ops.core.device('/gpu:0'):
         reconstruction_op, loss_op, metrics_op = build_func(inputs, labels)
-        valid_reconstruction_op, valid_loss_op, valid_metrics_op = build_func(inputs, labels, reuse=True, is_training=False)
         metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
-        valid_metric_op, valid_metric_update_op, valid_metric_variable_initialize_op = valid_metrics_op
         learning_rate = tf.train.exponential_decay(0.001, global_step, mnist.train.num_examples / batchsize, 0.998)
         train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(loss_op, global_step=global_step)
         #trainable_variables = tf.trainable_variables()
@@ -158,12 +156,12 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             valid_step = int(mnist.validation.num_examples / batchsize)
             validation_loss = []
             validation_metric = []
-            ops.core.run(sess, valid_metric_variable_initialize_op)
+            ops.core.run(sess, metric_variable_initialize_op)
             for vstep in range(valid_step):
                 xs, ys = mnist.validation.next_batch(batchsize)
                 valid_feed = {inputs:xs, labels:ys, status.is_training:False}
-                loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=valid_feed)
-                metric = ops.core.run(sess, valid_metric_op)
+                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=valid_feed)
+                metric = ops.core.run(sess, metric_op)
                 validation_loss.append(loss)
                 validation_metric.append(metric)
             vloss = np.asarray(validation_loss).mean()
@@ -175,13 +173,12 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             test_step = int(mnist.test.num_examples / batchsize)
             test_loss = []
             test_metric = []
-            ops.core.run(sess, valid_metric_variable_initialize_op)
+            ops.core.run(sess, metric_variable_initialize_op)
             for tstep in range(test_step):
                 xs, ys = mnist.test.next_batch(batchsize)
                 test_feed = {inputs:xs, labels:ys, status.is_training:False}
-                loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
-                reconstruction, loss, _ = sess.run([valid_reconstruction_op, valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
-                metric = ops.core.run(sess, valid_metric_op)
+                reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
+                metric = ops.core.run(sess, metric_op)
                 test_loss.append(loss)
                 test_metric.append(metric)
                 if epoch % 10 == 0:

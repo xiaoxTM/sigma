@@ -21,10 +21,10 @@
 #    is_training
 # this variable is useful for layers like:
 #    - batch-norm
-
+from ..layers import base
 from ..ops import core
 
-is_training = core.placeholder(shape=(), dtype=core.boolean)
+is_training = base.input_spec(inputs=(), dtype=core.boolean)
 
 def get():
     return None

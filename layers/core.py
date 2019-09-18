@@ -270,7 +270,7 @@ def graph_has_edge(graph, input_name, output_name):
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
 """
-def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
+def print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     """ print each layer
         parameters:
             @name: layer name
@@ -283,7 +283,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
         if name is None:
             raise ValueError('name is not given')
         if isinstance(inputs, (list, tuple)):
-            if ops.helper.is_tensor(inputs[0]):
+            if len(inputs) != 0 and ops.helper.is_tensor(inputs[0]):
                 input_shape = [ops.core.shape(x) for x in inputs]
                 # input_name is a tuple of strings
                 input_name = list(ops.helper.scope_name([x.name for x in inputs]))
@@ -460,7 +460,7 @@ def layer(fun):
         kwargs.pop('reuse')
         kwargs.pop('name')
         scope = kwargs.pop('scope')
-        _print_layer(inputs, outputs, fun.__name__, reuse,
+        print_layer(inputs, outputs, fun.__name__, reuse,
                      name, scope, **kwargs)
         return x
     return _wrap
