@@ -20,7 +20,7 @@ from sigma import colors, helpers
 from .. import core, actives, helper, mm
 import logging
 
-import capsules_dc, capsules_cd
+from . import capsules_dc, capsules_cd
 
 
 # @helpers.typecheck(input_shape=list,
