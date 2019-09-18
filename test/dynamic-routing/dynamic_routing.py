@@ -72,7 +72,11 @@ def build_func(inputs, labels, initializer='glorot_uniform', is_training=True, r
         #loss = class_loss
         tf.summary.scalar('classification-loss', class_loss)
         ## reconstruction
+<<<<<<< HEAD
         x = layers.capsules.maskout(x, index=labels, name='maskout')
+=======
+        x = layers.capsules.maskout(x, index=None, name='maskout')
+>>>>>>> a87b815cf14b4f6c60e2b46da2c9d1cf990cf226
         ops.core.summarize('maskout', x)
         x = layers.convs.dense(x, 512, act='relu', name='dense-0')
         ops.core.summarize('dense-0', x)
