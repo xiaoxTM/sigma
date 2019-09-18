@@ -16,11 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-<<<<<<< HEAD
-from sigma import colors, status, helpers
-=======
 from sigma import colors, helpers, status
->>>>>>> a87b815cf14b4f6c60e2b46da2c9d1cf990cf226
 from .. import core, actives, helper, mm
 import logging
 
