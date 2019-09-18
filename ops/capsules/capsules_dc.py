@@ -16,11 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from sigma import colors
+from sigma import colors, helpers, status
 from .. import core, actives, helper, mm
 import logging
 
-from sigma import helpers
 
 # capsule networks with dynamic routing
 # NOTE: tensor shape:
