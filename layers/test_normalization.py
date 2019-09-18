@@ -22,7 +22,7 @@ class NormalizationTest(unittest.TestCase):
         nx = np.random.rand(batchsize, rows, cols, channels)
 
         with self.subTest(idx=0):
-            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=True)
+            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=True, is_training=True)
             batch_norm = tf.keras.layers.BatchNormalization(fused=True)
             tf_x = batch_norm(x, training=True)
             ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
@@ -30,7 +30,7 @@ class NormalizationTest(unittest.TestCase):
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
         with self.subTest(idx=1):
-            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=False)
+            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=False, is_training=True)
             batch_norm = tf.keras.layers.BatchNormalization(fused=False)
             tf_x = batch_norm(x, training=True)
             ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
@@ -38,20 +38,28 @@ class NormalizationTest(unittest.TestCase):
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
         with self.subTest(idx=2):
-            def _batch_norm(reuse):
-                return layers.norms.batch_norm(x, epsilon=0.001, fused=True, name='batch_norm', reuse=reuse)
+            def _batch_norm(reuse, is_training=True):
+                return layers.norms.batch_norm(x, epsilon=0.001, fused=True, name='batch_norm', reuse=reuse, is_training=is_training)
 
             update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
             sigma_x = _batch_norm(reuse=False)
             batch_norm = tf.keras.layers.BatchNormalization(fused=True)
             tf_x = batch_norm(x, training=True)
             ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
+<<<<<<< HEAD
             _sigma_x, _tf_x,_ = ops.core.run(self.sess, [sigma_x, tf_x, update_ops], {x:nx, status.is_training:True})
             # update the moving_mean and moving_variance
             tf_x = batch_norm(x, training=False)
             nnx = np.random.rand(batchsize, rows, cols, channels)
             sigma_x = _batch_norm(reuse=True)
             _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nnx, status.is_training:False})
+=======
+            _sigma_x, _tf_x,_ = ops.core.run(self.sess, [sigma_x, tf_x, update_ops], {x:nx})
+            tf_x = batch_norm(x, training=False)
+            nnx = np.random.rand(batchsize, rows, cols, channels)
+            sigma_x = _batch_norm(reuse=True, is_training=False)
+            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nnx})
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
 

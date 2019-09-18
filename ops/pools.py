@@ -20,8 +20,9 @@ from . import helper
 from . import core
 
 def base_pool2d(input_shape, fun, pshape, stride,
-                padding, reuse, name, scope):
-    helper.check_input_shape(input_shape)
+                padding, check_input_shape, reuse, name, scope):
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     if stride is None:
         stride = pshape
     stride = helper.norm_input_2d(stride)
@@ -46,10 +47,11 @@ def base_pool2d(input_shape, fun, pshape, stride,
     return _base_pool2d, out_shape
 
 
-def base_pool2d_global(input_shape, fun, reuse, name, scope):
+def base_pool2d_global(input_shape, fun, check_input_shape, reuse, name, scope):
     # if none and e.g., fun.__name__ == 'max_pool'
     #    name = max_pool
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     ltype = fun.__name__.rsplit('.', 1)
     if len(ltype) > 1:
         ltype = ltype[1]
@@ -76,11 +78,12 @@ def avg_pool2d(input_shape,
                pshape=2,
                stride=None,
                padding='same',
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
     return base_pool2d(input_shape, core.avg_pool, pshape,
-                       stride, padding, reuse, name, scope)
+                       stride, padding, check_input_shape, reuse, name, scope)
 
 
 # @helpers.typecheck(input_shape=list,
@@ -88,11 +91,12 @@ def avg_pool2d(input_shape,
 #                    name=str,
 #                    scope=str)
 def avg_pool2d_global(input_shape,
+                      check_input_shape,
                       reuse=False,
                       name=None,
                       scope=None):
     return base_pool2d_global(input_shape, core.mean,
-                              reuse, name, scope)
+                              check_input_shape, reuse, name, scope)
 
 
 # @helpers.typecheck(input_shape=list,
@@ -106,11 +110,12 @@ def max_pool2d(input_shape,
                pshape=2,
                stride=None,
                padding='same',
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
     return base_pool2d(input_shape, core.max_pool, pshape,
-                       stride, padding, reuse, name, scope)
+                       stride, padding, check_input_shape, reuse, name, scope)
 
 
 # @helpers.typecheck(input_shape=list,
@@ -118,11 +123,12 @@ def max_pool2d(input_shape,
 #                    name=str,
 #                    scope=str)
 def max_pool2d_global(inputs,
+                      check_input_shape=True,
                       reuse=False,
                       name=None,
                       scope=None):
     return base_pool2d_global(input_shape, core.max,
-                              reuse, name, scope)
+                              check_input_shape, reuse, name, scope)
 
 
 # @helpers.typecheck(input_shape=list,
@@ -138,10 +144,12 @@ def resize(input_shape,
            factor=None,
            mode='bilinear',
            align_corners=False,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     if output_shape is None:
         if factor is None:
             raise ValueError('cannot feed bilinear with both '

@@ -29,7 +29,8 @@ def cap_norm(inputs,
              safe=True,
              act=None,
              return_shape=False,
-             check_shape=True,
+             check_output_shape=True,
+             check_input_shape=True,
              reuse=False,
              name=None,
              scope=None):
@@ -44,10 +45,11 @@ def cap_norm(inputs,
                                         epsilon,
                                         safe,
                                         act,
+                                        check_input_shape,
                                         reuse,
                                         name,
                                         scope)
-    return convs._layers(fun, inputs, output, return_shape, check_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -65,11 +67,12 @@ def cap_fully_connected(inputs, caps, dims,
                         trainable=True,
                         dtype=ops.core.float32,
                         return_shape=False,
-                        check_shape=True,
                         epsilon=ops.core.epsilon,
                         safe=True,
                         collections=None,
                         summary='histogram',
+                        check_output_shape=True,
+                        check_input_shape=True,
                         reuse=False,
                         name=None,
                         scope=None):
@@ -77,10 +80,16 @@ def cap_fully_connected(inputs, caps, dims,
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.cap_fully_connected(input_shape,
+<<<<<<< HEAD
                                                    caps,
                                                    dims,
                                                    order,
+=======
+                                                   channels,
+                                                   dims,
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
                                                    iterations,
+                                                   order,
                                                    leaky,
                                                    share_weights,
                                                    weight_initializer,
@@ -95,10 +104,11 @@ def cap_fully_connected(inputs, caps, dims,
                                                    safe,
                                                    collections,
                                                    summary,
+                                                   check_input_shape,
                                                    reuse,
                                                    name,
                                                    scope)
-    return convs._layers(fun, inputs, output, return_shape, check_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -121,11 +131,12 @@ def cap_conv1d(inputs,
                trainable=True,
                dtype=ops.core.float32,
                return_shape=False,
-               check_shape=True,
                epsilon=ops.core.epsilon,
                safe=True,
                collections=None,
                summary='histogram',
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -152,10 +163,11 @@ def cap_conv1d(inputs,
                                           safe,
                                           collections,
                                           summary,
+                                          check_input_shape,
                                           reuse,
                                           name,
                                           scope)
-    return convs._layers(fun, inputs, output, return_shape, check_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
@@ -176,11 +188,12 @@ def cap_conv2d(inputs, caps, dims,
                trainable=True,
                dtype=ops.core.float32,
                return_shape=False,
-               check_shape=True,
                epsilon=ops.core.epsilon,
                safe=True,
                collections=None,
                summary='histogram',
+               check_output_shape=True,
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -190,6 +203,7 @@ def cap_conv2d(inputs, caps, dims,
                                           dims,
                                           order,
                                           iterations,
+                                          order,
                                           leaky,
                                           kshape,
                                           stride,
@@ -207,10 +221,11 @@ def cap_conv2d(inputs, caps, dims,
                                           safe,
                                           collections,
                                           summary,
+                                          check_input_shape,
                                           reuse,
                                           name,
                                           scope)
-    return convs._layers(fun, inputs, output, return_shape, check_shape)
+    return convs._layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 # alien name
 norm = cap_norm

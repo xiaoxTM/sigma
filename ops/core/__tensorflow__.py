@@ -184,6 +184,8 @@ def padnorm(fun):
         return fun(**kwargs)
     return _padnorm
 
+def runtime_print(*inputs, **kwargs):
+    return tf.print(*inputs, **kwargs)
 
 #= workflow control =====================
 def cond(condition,
@@ -947,10 +949,15 @@ def sigmoid_cross_entropy_with_logits(labels=None,
 
 
 #----- tensorflow summaries -----#
+<<<<<<< HEAD
 def summarize(name, tensor, mode='histogram', norm=True, reuse=False, **kwargs):
     if not reuse:
         if norm:
             name = helper.normalize_name(name)
+=======
+def summarize(name, tensor, mode='histogram', reuse=False, **kwargs):
+    if not reuse:
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
         if mode == 'histogram':
             return tf.summary.histogram(name, tensor)
         elif mode == 'scalar':
@@ -1500,6 +1507,7 @@ def load(session,
                  )
         saver.restore(session, ckpt.model_checkpoint_path)
     elif verbose:
+<<<<<<< HEAD
         if ckpt is None:
             print('{}no checkpoint to restore from{}'
                   .format(colors.fg.green, colors.reset))
@@ -1509,6 +1517,13 @@ def load(session,
                           colors.green(checkpoint),
                           colors.fg.red,
                           colors.reset))
+=======
+        print('{}restoring from checkpoint:{} {}ignored{}'
+              .format(colors.fg.blue,
+                      colors.green(ckpt),
+                      colors.fg.red,
+                      colors.reset))
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     return session, saver
 
 

@@ -51,7 +51,8 @@ def accuracy(from_logits=True,
              reuse=False,
              name=None,
              scope=None):
-    def _accuracy(x, labels):
+    def _accuracy(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -79,7 +80,8 @@ def auc(from_logits=True,
         num_thresholds=200,
         curve='ROC',
         summation_method='trapezoidal'):
-    def _auc(x, labels):
+    def _auc(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -108,7 +110,8 @@ def false_negatives(from_logits=True,
                     name=None,
                     scope=None,
                     thresholds=None):
-    def _false_negatives(x, labels):
+    def _false_negatives(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -141,7 +144,8 @@ def false_positives(from_logits=True,
                     name=None,
                     scope=None,
                     thresholds=None):
-    def _false_positives(x, labels):
+    def _false_positives(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -174,7 +178,8 @@ def true_negatives(from_logits=True,
                    name=None,
                    scope=None,
                    thresholds=None):
-    def _true_negatives(x, labels):
+    def _true_negatives(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -207,7 +212,8 @@ def true_positives(from_logits=True,
                    name=None,
                    scope=None,
                    thresholds=None):
-    def _true_positives(x, labels):
+    def _true_positives(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -242,7 +248,8 @@ def mean_iou(from_logits=True,
              nclass=None): # nclass = None is just for normalizing API
     if nclass is None:
         raise TypeError('`nclass` for `mean_iou` can not be None')
-    def _mean_iou(x, labels):
+    def _mean_iou(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -267,7 +274,8 @@ def precision(from_logits=True,
               reuse=False,
               name=None,
               scope=None):
-    def _precision(x, labels):
+    def _precision(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)
@@ -291,7 +299,8 @@ def recall(from_logits=True,
            reuse=False,
            name=None,
            scope=None):
-    def _recall(x, labels):
+    def _recall(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if from_logits:
                 x = core.argmax(x, core.caxis)

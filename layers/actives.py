@@ -25,11 +25,12 @@ from . import core
 """
 @core.layer
 def squash(inputs,
-           axis,
+           axis=-2,
            epsilon=ops.core.epsilon,
            safe=True,
            reuse=False,
            name=None,
+<<<<<<< HEAD
            scope=None,
            **kwargs):
     return ops.actives.squash(axis, epsilon, safe, True, reuse, name, scope, **kwargs)(inputs)
@@ -38,6 +39,17 @@ def squash(inputs,
 @core.layer
 def crelu(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.crelu(True, reuse, name, scope, **kwargs)(inputs)
+=======
+           scope=None):
+    fun = ops.actives.squash(axis, epsilon, safe, True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+
+
+@core.layer
+def crelu(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.crelu(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ relu activates
@@ -45,8 +57,14 @@ def crelu(inputs, reuse=False, name=None, scope=None, **kwargs):
         max(x, 0)
 """
 @core.layer
+<<<<<<< HEAD
 def relu(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.relu(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def relu(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.relu(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ relu6 activates
@@ -54,8 +72,14 @@ def relu(inputs, reuse=False, name=None, scope=None, **kwargs):
         min(max(x, 0), 6)
 """
 @core.layer
+<<<<<<< HEAD
 def relu6(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.relu6(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def relu6(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.relu6(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ elu activates
@@ -63,8 +87,14 @@ def relu6(inputs, reuse=False, name=None, scope=None, **kwargs):
         exp(x) -1 if x < 0 else x
 """
 @core.layer
+<<<<<<< HEAD
 def elu(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.elu(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def elu(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.elu(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ elu activates
@@ -77,9 +107,15 @@ def selu(inputs,
          scale=1.0507009873554804934193349852946,
          reuse=False,
          name=None,
+<<<<<<< HEAD
          scope=None,
          **kwargs):
     return ops.actives.selu(alpha, scale, True, reuse, name, scope, **kwargs)(inputs)
+=======
+         scope=None):
+    fun = ops.actives.selu(alpha, scale, True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ leaky_relu activates
@@ -87,8 +123,14 @@ def selu(inputs,
         max(x, alpha*x)
 """
 @core.layer
+<<<<<<< HEAD
 def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.leaky_relu(alpha, True, reuse, name, scope, **kwargs)(inputs)
+=======
+def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
+    fun = ops.actives.leaky_relu(alpha, True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ softmax activates
@@ -96,8 +138,14 @@ def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None, **kwargs):
         exp(x) / reduce_sum(exp(x), dim)
 """
 @core.layer
+<<<<<<< HEAD
 def softmax(inputs, dim=-1, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.softmax(dim, True, reuse, name, scope, **kwargs)(inputs)
+=======
+def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
+    fun = ops.actives.softmax(dim, True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ softplus activates
@@ -105,8 +153,14 @@ def softmax(inputs, dim=-1, reuse=False, name=None, scope=None, **kwargs):
         log(exp(x) + 1)
 """
 @core.layer
+<<<<<<< HEAD
 def softplus(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.softplus(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def softplus(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.softplus(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ softsign activates
@@ -114,8 +168,14 @@ def softplus(inputs, reuse=False, name=None, scope=None, **kwargs):
         x / (abs(x) + 1)
 """
 @core.layer
+<<<<<<< HEAD
 def softsign(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.softsign(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def softsign(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.softsign(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ sigmoid activates
@@ -123,8 +183,14 @@ def softsign(inputs, reuse=False, name=None, scope=None, **kwargs):
         1 / (1 + exp(-x))
 """
 @core.layer
+<<<<<<< HEAD
 def sigmoid(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.sigmoid(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def sigmoid(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.sigmoid(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ hyperbolic tangent activates
@@ -132,8 +198,14 @@ def sigmoid(inputs, reuse=False, name=None, scope=None, **kwargs):
         (exp(x) -1) / (exp(x) + 1)
 """
 @core.layer
+<<<<<<< HEAD
 def tanh(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.tanh(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def tanh(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.tanh(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 
 
 """ linear activates
@@ -141,5 +213,11 @@ def tanh(inputs, reuse=False, name=None, scope=None, **kwargs):
         x
 """
 @core.layer
+<<<<<<< HEAD
 def linear(inputs, reuse=False, name=None, scope=None, **kwargs):
     return ops.actives.linear(True, reuse, name, scope, **kwargs)(inputs)
+=======
+def linear(inputs, reuse=False, name=None, scope=None):
+    fun = ops.actives.linear(True, reuse, name, scope)
+    return core.run_and_record_fun(fun, name, inputs)
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a

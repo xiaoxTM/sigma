@@ -30,6 +30,7 @@ def instance_norm(input_shape,
                   trainable=True,
                   collections=None,
                   summary='histogram',
+                  check_input_shape=True,
                   reuse=False,
                   name=None,
                   scope=None):
@@ -106,6 +107,7 @@ def conditional_instance_norm(input_shape,
                               trainable=True,
                               collections=None,
                               summary='histogram',
+                              check_input_shape=True,
                               reuse=False,
                               name=None,
                               scope=None):
@@ -161,7 +163,8 @@ def conditional_instance_norm(input_shape,
         select_offset = core.expand_dims(core.expand_dims(select_offset, 1), 1)
         return select_scale, select_offset
 
-    def _conditional_instance_norm(x, labels):
+    def _conditional_instance_norm(x):
+        x, labels = helper.split_inputs(x)
         with ops_scope:
             mean, variance = core.moments(x, axes, keepdims=True)
             normalized = (x - mean) / core.sqrt(variance + epsilon)
@@ -184,7 +187,11 @@ def conditional_instance_norm(input_shape,
 #                    name=str,
 #                    scope=str)
 def batch_norm(input_shape,
+<<<<<<< HEAD
                axes=None,
+=======
+               axis=None,
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
                momentum=0.99,
                offset_initializer='zeros',
                scale_initializer='ones',
@@ -196,9 +203,9 @@ def batch_norm(input_shape,
                epsilon=core.epsilon,
                act=None,
                trainable=True,
-               fused=False,
                collections=None,
                summary='histogram',
+               check_input_shape=True,
                reuse=False,
                name=None,
                scope=None):
@@ -229,19 +236,29 @@ def batch_norm(input_shape,
         fused : bool
                 use fused_batch_normal if true
     """
-    helper.check_input_shape(input_shape)
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'batch_norm',
                                              reuse)
+<<<<<<< HEAD
     if axes is None:
         axes = list(range(len(input_shape)-1))
         if fused:
             axes = [0 ,1, 2]
         # if not isinstance(axis, (list, tuple)):
         #     axis = [axis]
+=======
+    if axis is None:
+        axis = list(range(len(input_shape)-1))
+    if fused:
+        axis = [0 ,1, 2]
+    # if not isinstance(axis, (list, tuple)):
+    #     axis = [axis]
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     neurons = input_shape[core.caxis]
 
     offset = None
@@ -302,8 +319,13 @@ def batch_norm(input_shape,
                                 summary,
                                 reuse,
                                 scope)
+<<<<<<< HEAD
     act = actives.get(act, deepcopy=True)
     def _train(x):
+=======
+    act = actives.get(act)
+    def _train(x, fused):
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
         if fused is True:
             # fused_batch_norm(x, scale, offset, mean=None, variance=None,
             #                  epsionl=0.001, is_training=True, name=None)
@@ -332,7 +354,7 @@ def batch_norm(input_shape,
                 x = act(x)
         return x
 
-    def _infer(x):
+    def _infer(x, fused):
         if fused is True:
             x_shape = [-1] + core.shape(x)[1:]
             for _ in range(4 - x.get_shape().ndims):
@@ -348,6 +370,7 @@ def batch_norm(input_shape,
 
         return act(x)
 
+<<<<<<< HEAD
     def _batch_norm(x):
         with ops_scope:
             return core.cond(status.is_training,
@@ -387,3 +410,12 @@ def dropout(pkeep,
                              lambda: core.dropout(x, pkeep, noise_shape, seed, name),
                              lambda: x)
     return _dropout
+=======
+    def _batch_norm(x, is_training, fused):
+        with ops_scope:
+            if is_training:
+                return _train(x, fused)
+            else:
+                return _infer(x, fused)
+    return _batch_norm
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a

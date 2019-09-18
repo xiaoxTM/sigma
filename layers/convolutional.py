@@ -20,8 +20,8 @@ from .. import ops, colors
 from . import core
 
 
-def _layers(fun, inputs, output, return_shape, check_shape=True):
-    x = fun(inputs)
+def _layers(fun, inputs, output, name, return_shape, check_shape=True):
+    x = core.run_and_record_fun(fun, name, inputs)
     if check_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
@@ -42,7 +42,7 @@ def _layers(fun, inputs, output, return_shape, check_shape=True):
                 scope of weights / biases. can be used to retrieve them
         inputs : tensor
                  input tensor
-        nouts : int
+        channels : int
                 number of output channels
         weight_initializer : string | callable function | None
                              initializer to initialize weights when allocate memory
@@ -79,7 +79,8 @@ def _layers(fun, inputs, output, return_shape, check_shape=True):
 """ fully connected operation
 """
 @core.layer
-def fully_connected(inputs, nouts,
+def fully_connected(inputs,
+                    channels,
                     weight_initializer=core.__defaults__['weight_initializer'],
                     weight_regularizer=core.__defaults__['weight_regularizer'],
                     bias_initializer=core.__defaults__['bias_initializer'],
@@ -89,15 +90,16 @@ def fully_connected(inputs, nouts,
                     trainable=True,
                     dtype=ops.core.float32,
                     return_shape=False,
-                    check_shape=True,
                     collections=None,
                     summary=core.__defaults__['summary'],
+                    check_output_shape=True,
+                    check_input_shape=True,
                     reuse=False,
                     name=None,
                     scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.fully_connected(input_shape,
-                                            nouts,
+                                            channels,
                                             weight_initializer,
                                             weight_regularizer,
                                             bias_initializer,
@@ -108,10 +110,11 @@ def fully_connected(inputs, nouts,
                                             dtype,
                                             collections,
                                             summary,
+                                            check_input_shape,
                                             reuse,
                                             name,
                                             scope)
-    return _layers(fun, inputs, output, return_shape, check_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 # alias of fully-connected
@@ -121,7 +124,8 @@ dense = fully_connected
 """ 1-D convolutional operation
 """
 @core.layer
-def conv1d(inputs, nouts,
+def conv1d(inputs,
+           channels,
            kshape=3,
            stride=1,
            padding=core.__defaults__['padding'],
@@ -134,15 +138,16 @@ def conv1d(inputs, nouts,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
-           check_shape=True,
            collections=None,
            summary=core.__defaults__['summary'],
+           check_output_shape=True,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.conv1d(input_shape,
-                                   nouts,
+                                   channels,
                                    kshape,
                                    stride,
                                    padding,
@@ -156,11 +161,12 @@ def conv1d(inputs, nouts,
                                    dtype,
                                    collections,
                                    summary,
+                                   check_input_shape,
                                    reuse,
                                    name,
                                    scope)
 
-    return _layers(fun, inputs, output, return_shape, check_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 # @layer
@@ -206,9 +212,10 @@ def conv2d(inputs,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
-           check_shape=True,
            collections=None,
            summary=core.__defaults__['summary'],
+           check_output_shape=True,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
@@ -227,10 +234,11 @@ def conv2d(inputs,
                                    dtype,
                                    collections,
                                    summary,
+                                   check_input_shape,
                                    reuse,
                                    name,
                                    scope)
-    return _layers(fun, inputs, output, return_shape, check_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 """ 2-D soft convolutional operation
@@ -255,7 +263,8 @@ def conv2d(inputs,
             therefore, 'bilinear' have 4 times of length than 'naive' / 'nearest'
 """
 @core.layer
-def soft_conv2d(inputs, nouts,
+def soft_conv2d(inputs,
+                channels,
                 kshape=3,
                 stride=1,
                 padding=core.__defaults__['padding'],
@@ -274,15 +283,16 @@ def soft_conv2d(inputs, nouts,
                 trainable=True,
                 dtype=ops.core.float32,
                 return_shape=False,
-                check_shape=True,
                 collections=None,
                 summary=core.__defaults__['summary'],
+                check_output_shape=True,
+                check_input_shape=True,
                 reuse=False,
                 name=None,
                 scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.soft_conv2d(input_shape,
-                                        nouts,
+                                        channels,
                                         kshape,
                                         stride,
                                         padding,
@@ -301,11 +311,12 @@ def soft_conv2d(inputs, nouts,
                                         dtype,
                                         collections,
                                         summary,
+                                        check_input_shape,
                                         reuse,
                                         name,
                                         scope)
-    x, offsets = fun(inputs)
-    if check_shape:
+    x, offsets = core.run_and_record_fun(fun, name, inputs)
+    if check_output_shape:
         xshape = ops.core.shape(x)
         if output[1:] != xshape[1:]:
             raise ValueError('the predicted output shape and the real'
@@ -325,7 +336,8 @@ def soft_conv2d(inputs, nouts,
 """ 3-D convolutional operation
 """
 @core.layer
-def conv3d(inputs, nouts,
+def conv3d(inputs,
+           channels,
            kshape=3,
            stride=1,
            padding=core.__defaults__['padding'],
@@ -338,16 +350,17 @@ def conv3d(inputs, nouts,
            trainable=True,
            dtype=ops.core.float32,
            return_shape=False,
-           check_shape=True,
            collections=None,
            summary=core.__defaults__['summary'],
+           check_output_shape=True,
+           check_input_shape=True,
            reuse=False,
            name=None,
            scope=None):
     # TODO: atruous_convxd
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.conv3d(input_shape,
-                                   nouts,
+                                   channels,
                                    kshape,
                                    stride,
                                    padding,
@@ -361,17 +374,18 @@ def conv3d(inputs, nouts,
                                    dtype,
                                    collections,
                                    summary,
+                                   check_input_shape,
                                    reuse,
                                    name,
                                    scope)
-    return _layers(fun, inputs, output, return_shape, check_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 """ 2-D transpose convolutional operation
     **TODO** atruos_convxd_tranpose
 """
 @core.layer
-def deconv2d(inputs, output_shape, nouts,
+def deconv2d(inputs, output_shape, channels,
              kshape=3,
              stride=1,
              padding=core.__defaults__['padding'],
@@ -384,16 +398,17 @@ def deconv2d(inputs, output_shape, nouts,
              trainable=True,
              dtype=ops.core.float32,
              return_shape=False,
-             check_shape=True,
              collections=None,
              summary=core.__defaults__['summary'],
+             check_output_shape=True,
+             check_input_shape=True,
              reuse=False,
              name=None,
              scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.deconv2d(input_shape,
                                      output_shape,
-                                     nouts, kshape,
+                                     channels, kshape,
                                      stride, padding,
                                      weight_initializer,
                                      weight_regularizer,
@@ -405,15 +420,16 @@ def deconv2d(inputs, output_shape, nouts,
                                      dtype,
                                      collections,
                                      summary,
+                                     check_input_shape,
                                      reuse,
                                      name,
                                      scope)
 
-    return _layers(fun, inputs, output, return_shape, check_shape)
+    return _layers(fun, inputs, output, name, return_shape, check_output_shape)
 
 
 @core.layer
-def sepconv2d(inputs, nouts,
+def sepconv2d(inputs, channels,
               kshape=3,
               stride=1,
               padding=core.__defaults__['padding'],
@@ -428,15 +444,16 @@ def sepconv2d(inputs, nouts,
               trainable=True,
               dtype=ops.core.float32,
               return_shape=False,
-              check_shape=True,
               collections=None,
               summary=core.__defaults__['summary'],
+              check_output_shape=True,
+              check_input_shape=True,
               reuse=False,
               name=None,
               scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.convs.sepconv2d(input_shape,
-                                      nouts,
+                                      channels,
                                       kshape,
                                       stride,
                                       padding,
@@ -452,7 +469,8 @@ def sepconv2d(inputs, nouts,
                                       dtype,
                                       collections,
                                       summary,
+                                      check_input_shape,
                                       reuse,
                                       name,
                                       scope)
-    return _layer(fun, inputs, output, return_shape, check_shape)
+    return _layer(fun, inputs, output, name, return_shape, check_output_shape)

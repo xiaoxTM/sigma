@@ -16,6 +16,7 @@ class FunsTest(unittest.TestCase):
             self.assertRaises(TypeError, lambda: test('3', [], 20))
         with self.subTest():
             self.assertRaises(TypeError, lambda: test(3, '3', 10))
+<<<<<<< HEAD
 
     def test_hitmap(self):
         #predict=np.random.randint(0, 40, size=50)
@@ -41,3 +42,5 @@ class FunsTest(unittest.TestCase):
             label   = np.asarray([[1,0,0,0],[0,0,1,0],[0,0,0,1],[0,0,0,1],[0,0,1,0]], dtype=np.int32)
             matrix = funs.hitmap(predict, label, 4).astype(np.int32)
             self.assertListEqual(matrix.flatten().tolist(), result)
+=======
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a

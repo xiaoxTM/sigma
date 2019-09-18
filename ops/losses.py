@@ -41,7 +41,8 @@ def binary_cross_entropy(axis,
                          reuse=False,
                          name=None,
                          scope=None):
-    def _binary_cross_entropy(x, labels):
+    def _binary_cross_entropy(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
@@ -65,7 +66,8 @@ def categorical_cross_entropy(axis,
                               reuse=False,
                               name=None,
                               scope=None):
-    def _categorical_cross_entropy(x, labels):
+    def _categorical_cross_entropy(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
@@ -94,7 +96,8 @@ def mean_square_error(axis,
                       reuse=False,
                       name=None,
                       scope=None):
-    def _mean_square_error(x, labels):
+    def _mean_square_error(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
@@ -110,7 +113,8 @@ def mean_absolute_error(axis,
                         reuse=False,
                         name=None,
                         scope=None):
-    def _mean_sabsolute_error(x, labels):
+    def _mean_sabsolute_error(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
@@ -126,7 +130,8 @@ def winner_takes_all(axis,
                      reuse=False,
                      name=None,
                      scope=None):
-    def _winner_takes_all(x, labels):
+    def _winner_takes_all(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             shape = core.shape(x)
             pred = core.argmax(x, axis=axis)
@@ -152,7 +157,8 @@ def margin_loss(axis,
                 downweight=0.5):
     if axis is None:
         axis = core.caxis
-    def _margin_loss(x, labels):
+    def _margin_loss(x):
+        x, labels = helper.split_inputs(x)
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
@@ -199,17 +205,17 @@ def chamfer_loss(axis,
         return distance
 
     def _chamfer_distance_sum(inputs):
-        inputs, targets = inputs
+        inputs, targets = helper.split_inputs(inputs)
         return _chamfer_distance(inputs, targets) * alpha \
              + _chamfer_distance(targets, inputs) * belta
 
-    def _chamfer_loss(x, labels):
+    def _chamfer_loss(x):
         ''' x and labels should have the shape:
             [batchsizez, points, features]
         '''
         with scope:
             return core.mean(
-                    core.map_func(_chamfer_distance_sum, elems=(x, labels), dtype=dtype)
+                    core.map_func(_chamfer_distance_sum, elems=x, dtype=dtype)
                     )
     return _chamfer_loss
 

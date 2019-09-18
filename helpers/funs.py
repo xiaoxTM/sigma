@@ -17,6 +17,7 @@
 """
 import sys
 
+import sys
 from timeit import default_timer as timer
 from datetime import datetime
 from .. import colors
@@ -109,7 +110,7 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, ve
                     raise TypeError('`message` for stampit must be str or None. given {}'
                                     .format(colors.red(type(message))))
             if verbose:
-                print('{}STAMP{}: <{}>'
+                print('{}STAMP{}: => {}'
                       .format(colors.fg.blue,
                               colors.reset,
                               colors.red(ts)))
@@ -136,13 +137,23 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, ve
                         else:
                             splits.insert(npos, ts)
                         kwargs[key] = '/'.join(splits)
+                elif value is not None:
+                    raise TypeError('type of `{}` must be str or None, given {}'.format(key, colors.red(type(value))))
             return fun(**kwargs)
         return _wrap
     return _stampit
 
+<<<<<<< HEAD
 def set_term_title(title):
     sys.stdout.write('\x1b]2;{}\x07'.format(title))
 
+=======
+
+def set_term_title(title):
+    sys.stdout.write('\x1b]2;{}\x07'.format(title))
+
+
+>>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 # @typecheck(x=int)
 def intsize(x, cminus=False):
     if x > 0:
@@ -190,13 +201,13 @@ def print_args(args, argcolor='green', valuecolor='red'):
         print('{}: {}'.format(argcolor(arg), valuecolor(getattr(args, arg))))
 
 
-def timeit(print_it):
+def timeit(verbose=True):
     def _timeit(fun):
         def _wrap(*args, **kwargs):
             beg = timer()
             ret = fun(*args, **kwargs)
             end = timer()
-            if print_it:
+            if verbose:
                 print('Time elapsed for function {}: {}(s)'
                       .format(colors.blue(fun.__name__),
                               colors.red(end-beg)))
@@ -240,12 +251,12 @@ def line(iterable,
                 next(generator) \
                                  V
                     -------------|
-                    |            |
-                    |            V
-                  send         yield
-                    ^            |
-                    |            |
-                    |____________|
+                    |                   |
+                    |                  V
+                  send        yield
+                    ^                 |
+                    |                  |
+                    |_______|
 
         Attibutes
         =========

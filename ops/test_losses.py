@@ -46,12 +46,12 @@ class LossesTest(unittest.TestCase):
 
         with self.subTest(idx=0):
             numpy_out = chamfer_distance_numpy(inputs, targets)
-            tensorflow_out = losses.chamfer_loss(axis=1)(input_tf, target_tf)
+            tensorflow_out = losses.chamfer_loss(axis=1)([input_tf, target_tf])
             tf_out = core.run(self.sess, tensorflow_out)
             self.assertTrue(np.abs(numpy_out-tf_out) < 0.0001)
         with self.subTest(idx=1):
-            tensorflow_out = losses.chamfer_loss(axis=1)(input_tf, target_tf)
+            tensorflow_out = losses.chamfer_loss(axis=1)([input_tf, target_tf])
             tf_out = core.run(self.sess, tensorflow_out)
-            tensorflow_out2 = losses.chamfer_loss(axis=1)(target_tf, input_tf)
+            tensorflow_out2 = losses.chamfer_loss(axis=1)([target_tf, input_tf])
             tf_out2 = core.run(self.sess, tensorflow_out2)
             self.assertTrue(np.abs(tf_out-tf_out2) < 0.00001)
