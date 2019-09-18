@@ -115,9 +115,9 @@ def train_net(batch_size=8,
                 if (iters+1) % 10 == 0:
                     print('train for {}-th iteration: loss: {}, accuracy: {}'.format(iters, loss, accuracy))
                 if train_hitmap is None:
-                    train_hitmap = helpers.hitmap(pred, true)
+                    train_hitmap = helpers.hitmap(pred, true, nclass)
                 else:
-                    train_hitmap += helpers.hitmap(pred, true)
+                    train_hitmap += helpers.hitmap(pred, true, nclass)
             np.savetxt('hitmap/train-{}.hitmap'.format(epoch))
             end = time.time()
             print('time cost:', end-start)

@@ -30,13 +30,14 @@ def squash(inputs,
            safe=True,
            reuse=False,
            name=None,
-           scope=None):
-    return ops.actives.squash(axis, epsilon, safe, True, reuse, name, scope)(inputs)
+           scope=None,
+           **kwargs):
+    return ops.actives.squash(axis, epsilon, safe, True, reuse, name, scope, **kwargs)(inputs)
 
 
 @core.layer
-def crelu(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.crelu(True, reuse, name, scope)(inputs)
+def crelu(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.crelu(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ relu activates
@@ -44,8 +45,8 @@ def crelu(inputs, reuse=False, name=None, scope=None):
         max(x, 0)
 """
 @core.layer
-def relu(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.relu(True, reuse, name, scope)(inputs)
+def relu(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.relu(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ relu6 activates
@@ -53,8 +54,8 @@ def relu(inputs, reuse=False, name=None, scope=None):
         min(max(x, 0), 6)
 """
 @core.layer
-def relu6(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.relu6(True, reuse, name, scope)(inputs)
+def relu6(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.relu6(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ elu activates
@@ -62,8 +63,8 @@ def relu6(inputs, reuse=False, name=None, scope=None):
         exp(x) -1 if x < 0 else x
 """
 @core.layer
-def elu(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.elu(True, reuse, name, scope)(inputs)
+def elu(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.elu(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ elu activates
@@ -76,8 +77,9 @@ def selu(inputs,
          scale=1.0507009873554804934193349852946,
          reuse=False,
          name=None,
-         scope=None):
-    return ops.actives.selu(alpha, scale, True, reuse, name, scope)(inputs)
+         scope=None,
+         **kwargs):
+    return ops.actives.selu(alpha, scale, True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ leaky_relu activates
@@ -85,8 +87,8 @@ def selu(inputs,
         max(x, alpha*x)
 """
 @core.layer
-def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
-    return ops.actives.leaky_relu(alpha, True, reuse, name, scope)(inputs)
+def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.leaky_relu(alpha, True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ softmax activates
@@ -94,8 +96,8 @@ def leaky_relu(inputs, alpha=0.2, reuse=False, name=None, scope=None):
         exp(x) / reduce_sum(exp(x), dim)
 """
 @core.layer
-def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
-    return ops.actives.softmax(dim, True, reuse, name, scope)(inputs)
+def softmax(inputs, dim=-1, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.softmax(dim, True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ softplus activates
@@ -103,8 +105,8 @@ def softmax(inputs, dim=-1, reuse=False, name=None, scope=None):
         log(exp(x) + 1)
 """
 @core.layer
-def softplus(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.softplus(True, reuse, name, scope)(inputs)
+def softplus(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.softplus(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ softsign activates
@@ -112,8 +114,8 @@ def softplus(inputs, reuse=False, name=None, scope=None):
         x / (abs(x) + 1)
 """
 @core.layer
-def softsign(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.softsign(True, reuse, name, scope)(inputs)
+def softsign(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.softsign(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ sigmoid activates
@@ -121,8 +123,8 @@ def softsign(inputs, reuse=False, name=None, scope=None):
         1 / (1 + exp(-x))
 """
 @core.layer
-def sigmoid(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.sigmoid(True, reuse, name, scope)(inputs)
+def sigmoid(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.sigmoid(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ hyperbolic tangent activates
@@ -130,8 +132,8 @@ def sigmoid(inputs, reuse=False, name=None, scope=None):
         (exp(x) -1) / (exp(x) + 1)
 """
 @core.layer
-def tanh(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.tanh(True, reuse, name, scope)(inputs)
+def tanh(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.tanh(True, reuse, name, scope, **kwargs)(inputs)
 
 
 """ linear activates
@@ -139,5 +141,5 @@ def tanh(inputs, reuse=False, name=None, scope=None):
         x
 """
 @core.layer
-def linear(inputs, reuse=False, name=None, scope=None):
-    return ops.actives.linear(True, reuse, name, scope)(inputs)
+def linear(inputs, reuse=False, name=None, scope=None, **kwargs):
+    return ops.actives.linear(True, reuse, name, scope, **kwargs)(inputs)

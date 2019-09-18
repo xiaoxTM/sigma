@@ -160,13 +160,14 @@ def maskout(inputs,
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.base.maskout(input_shape,
+                                   index,
                                    axis,
                                    drop,
                                    flatten,
                                    reuse,
                                    name,
                                    scope)
-    x = fun(inputs, index)
+    x = fun(inputs)
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
         raise ValueError('the predicted output shape and the '

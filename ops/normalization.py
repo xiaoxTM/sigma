@@ -302,7 +302,7 @@ def batch_norm(input_shape,
                                 summary,
                                 reuse,
                                 scope)
-    act = actives.get(act)
+    act = actives.get(act, deepcopy=True)
     def _train(x):
         if fused is True:
             # fused_batch_norm(x, scale, offset, mean=None, variance=None,

@@ -25,17 +25,18 @@ def squash(axis=-2,
            aslayer=False,
            reuse=False,
            name=None,
-           scope=None):
+           scope=None,
+           **kwargs):
     """ squash function to range input into [0, 1) as activation
         used for capsule networks. see :
         @https://papers.nips.cc/paper/6975-dynamic-routing-between-capsules.pdf
 
         input (x) should with shape of
-        [batch-size, dim, channels] for fully_connected capsule
+        [batch-size, dim, caps] for fully_connected capsule
         or
-        [batch-size, neurons, dims, channels] for conv1d
+        [batch-size, neurons, dims, caps] for conv1d
         or
-        [batch-size, rows, cols, dims, channels] for conv2d
+        [batch-size, rows, cols, dims, caps] for conv2d
         capsule layer
         where `ncaps` denotes the number of capsules
         and `cap_dim` denotes the dimension of each capsule
@@ -56,7 +57,8 @@ def squash(axis=-2,
 def crelu(aslayer=False,
           reuse=False,
           name=None,
-          scope=None):
+          scope=None,
+          **kwargs):
     def _crelu(x):
         with helper.maybe_layer(aslayer, name, scope, 'crelu', reuse):
             return core.crelu(x)
@@ -70,7 +72,8 @@ def crelu(aslayer=False,
 def relu(aslayer=False,
          reuse=False,
          name=None,
-         scope=None):
+         scope=None,
+         **kwargs):
     def _relu(x):
         with helper.maybe_layer(aslayer, name, scope, 'relu', reuse):
             return core.relu(x)
@@ -84,7 +87,8 @@ def relu(aslayer=False,
 def relu6(aslayer=False,
           reuse=False,
           name=None,
-          scope=None):
+          scope=None,
+          **kwargs):
     def _relu6(x):
         with helper.maybe_layer(aslayer, name, scope, 'relu6', reuse):
             return core.relu6(x)
@@ -98,7 +102,8 @@ def relu6(aslayer=False,
 def elu(aslayer=False,
         reuse=False,
         name=None,
-        scope=None):
+        scope=None,
+        **kwargs):
     def _elu(x):
         with helper.maybe_layer(aslayer, name, scope, 'elu', reuse):
             return core.elu(x)
@@ -114,7 +119,8 @@ def selu(alpha=1.6732632423543772848170429916717,
          aslayer=False,
          reuse=False,
          name=None,
-         scope=None):
+         scope=None,
+         **kwargs):
     def _selu(x):
         with helper.maybe_layer(aslayer, name, scope, 'selu', reuse):
             return scale * alpha * (core.exp(x) - 1)
@@ -129,7 +135,8 @@ def leaky_relu(alpha=0.2,
                aslayer=False,
                reuse=False,
                name=None,
-               scope=None):
+               scope=None,
+               **kwargs):
     def _leaky_relu(x):
         with helper.maybe_layer(aslayer, name, scope, 'leaky_relu', reuse):
             return core.leaky_relu(x, alpha)
@@ -144,7 +151,8 @@ def softmax(axis=-1,
             aslayer=False,
             reuse=False,
             name=None,
-            scope=None):
+            scope=None,
+            **kwargs):
     def _softmax(x):
         with helper.maybe_layer(aslayer, name, scope, 'softmax', reuse):
             return core.softmax(x, axis)
@@ -158,7 +166,8 @@ def softmax(axis=-1,
 def softplus(aslayer=False,
              reuse=False,
              name=None,
-             scope=None):
+             scope=None,
+             **kwargs):
     def _softplus(x):
         with helper.maybe_layer(aslayer, name, scope, 'softplus', reuse):
             return core.softplus(x)
@@ -172,7 +181,8 @@ def softplus(aslayer=False,
 def softsign(aslayer=False,
              reuse=False,
              name=None,
-             scope=None):
+             scope=None,
+             **kwargs):
     def _softsign(x):
         with helper.maybe_layer(aslayer, name, scope, 'softsign', reuse):
             return core.softsign(x)
@@ -186,7 +196,8 @@ def softsign(aslayer=False,
 def sigmoid(aslayer=False,
             reuse=False,
             name=None,
-            scope=None):
+            scope=None,
+            **kwargs):
     def _sigmoid(x):
         with helper.maybe_layer(aslayer, name, scope, 'sigmoid', reuse):
             return core.sigmoid(x)
@@ -200,7 +211,8 @@ def sigmoid(aslayer=False,
 def tanh(aslayer=False,
          reuse=False,
          name=None,
-         scope=None):
+         scope=None,
+         **kwargs):
     def _tanh(x):
         with helper.maybe_layer(aslayer, name, scope, 'tanh', reuse):
             return core.tanh(x)
@@ -210,13 +222,23 @@ def tanh(aslayer=False,
 """ linear activates
     calculates:
         x
+    deepcopy: create a node in graph if True,
+                           copy x content but not create node in graph if False
+                           This is useful when cooperate with core.control_dependencies:
+                           with core.control_dependencies([variables-list]):
+                               x = linear(deepcopy=True)(inputs)
+                            Otherwise the dependencies between x and variables-list will not be built
 """
-def linear(aslayer=False,
+def linear(deepcopy=False,
+           aslayer=False,
            reuse=False,
            name=None,
-           scope=None):
+           scope=None,
+           **kwargs):
     def _linear(x):
         with helper.maybe_layer(aslayer, name, scope, 'linear', reuse):
+            if deepcopy:
+                return core.identity(x)
             return x
     return _linear
 

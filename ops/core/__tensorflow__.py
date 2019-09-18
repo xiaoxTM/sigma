@@ -227,6 +227,10 @@ def control_dependencies(inputs):
     return tf.control_dependencies(inputs)
 
 
+def identity(x, name=None):
+    return tf.identity(x, name)
+
+
 def map_func(func, elems,
              dtype=None,
              parallel_iterations=None,

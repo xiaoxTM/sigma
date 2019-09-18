@@ -51,7 +51,8 @@ def cap_norm(inputs,
 
 
 @core.layer
-def cap_fully_connected(inputs, channels, capsdims,
+def cap_fully_connected(inputs, caps, dims,
+                        order='DC',
                         iterations=2,
                         leaky=False,
                         share_weights=False,
@@ -76,8 +77,9 @@ def cap_fully_connected(inputs, channels, capsdims,
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.cap_fully_connected(input_shape,
-                                                   channels,
-                                                   capsdims,
+                                                   caps,
+                                                   dims,
+                                                   order,
                                                    iterations,
                                                    leaky,
                                                    share_weights,
@@ -100,58 +102,13 @@ def cap_fully_connected(inputs, channels, capsdims,
 
 
 @core.layer
-def order_invariance_transform(inputs,
-                               channels,
-                               dims,
-                               mode='max',
-                               weight_initializer=core.__defaults__['weight_initializer'],
-                               weight_regularizer=core.__defaults__['weight_regularizer'],
-                               bias_initializer=core.__defaults__['bias_initializer'],
-                               bias_regularizer=core.__defaults__['bias_regularizer'],
-                               cpuid=0,
-                               act=None,
-                               trainable=True,
-                               dtype=ops.core.float32,
-                               return_shape=False,
-                               check_shape=True,
-                               collections=None,
-                               summary=core.__defaults__['summary'],
-                               reuse=False,
-                               name=None,
-                               scope=None):
-    ''' order invariance transform layer
-        i.e., the output feature indepenedent of input order
-        inputs should have shape of
-        [batch-size, indims, incaps]
-    '''
-    input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.order_invariance_transform(input_shape,
-                                                          channels,
-                                                          dims,
-                                                          mode,
-                                                          weight_initializer,
-                                                          weight_regularizer,
-                                                          bias_initializer,
-                                                          bias_regularizer,
-                                                          cpuid,
-                                                          act,
-                                                          trainable,
-                                                          dtype,
-                                                          collections,
-                                                          summary,
-                                                          reuse,
-                                                          name,
-                                                          scope)
-    return convs._layers(fun, inputs, output, return_shape, check_shape)
-
-
-@core.layer
 def cap_conv1d(inputs,
-               channels,
-               capsdims,
-               kshape,
+               caps,
+               dims,
+               order='DC',
                iterations=3,
                leaky=False,
+               kshape=3,
                stride=1,
                padding='valid',
                share_weights=False,
@@ -174,11 +131,12 @@ def cap_conv1d(inputs,
                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.cap_conv1d(input_shape,
-                                          channels,
-                                          capsdims,
-                                          kshape,
+                                          caps,
+                                          dims,
+                                          order,
                                           iterations,
                                           leaky,
+                                          kshape,
                                           stride,
                                           padding,
                                           share_weights,
@@ -201,9 +159,11 @@ def cap_conv1d(inputs,
 
 
 @core.layer
-def cap_conv2d(inputs, channels, capsdims, kshape,
+def cap_conv2d(inputs, caps, dims,
+               order='DC',
                iterations=3,
                leaky=False,
+               kshape=3,
                stride=1,
                padding='valid',
                share_weights=False,
@@ -226,11 +186,12 @@ def cap_conv2d(inputs, channels, capsdims, kshape,
                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.cap_conv2d(input_shape,
-                                          channels,
-                                          capsdims,
-                                          kshape,
+                                          caps,
+                                          dims,
+                                          order,
                                           iterations,
                                           leaky,
+                                          kshape,
                                           stride,
                                           padding,
                                           share_weights,

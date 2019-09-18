@@ -143,6 +143,7 @@ def expand_dims(input_shape,
 #                    name=str,
 #                    scope=str)
 def maskout(input_shape,
+            index,
             axis=-1,
             drop=False,
             flatten=True,
@@ -165,17 +166,19 @@ def maskout(input_shape,
     if drop:
         index_shape[axis] = 1
         output_shape.pop(axis)
+        def _build_index(x):
+            if axis != len(input_shape) - 1:
+                #  x: [batch-size, length of feature, channels]
+                #=>x: [batch-size, channels]
+                xnorm = core.norm(x, -2, safe=False, keepdims=False)
+                #=>index: [batch-size,]
+                index = core.argmax(xnorm, -1, dtype=core.int32)
+            else:
+                raise ValueError('index cannot be None')
+            return index
         def _maskout(x, index=None):
             with ops_scope:
-                if index is None:
-                    if axis != len(input_shape) - 1:
-                        #  x: [batch-size, length of feature, channels]
-                        #=>x: [batch-size, channels]
-                        xnorm = core.norm(x, -2, safe=False, keepdims=False)
-                        #=>index: [batch-size,]
-                        index = core.argmax(xnorm, -1, dtype=core.int32)
-                    else:
-                        raise ValueError('index cannot be None')
+                index = core.cond(status.is_training, lambda:core.identity(index),lambda:_build_index(x))
                 x = core.gather(x, index, axis=axis)
                 return x
     else:
@@ -183,27 +186,22 @@ def maskout(input_shape,
         if flatten:
             output_shape[-1] *= output_shape[axis]
             output_shape.pop(axis)
+        def _build_index(x):
+            ## if index not given, use the max `NORM` as index
+            if axis != len(input_shape) - 1:
+                # x shape: [batch-size, length of feature, channels]
+                # xnorm shape: [batch-size, channels]
+                xnorm = core.norm(x, -2, safe=False, keepdims=False)
+                # index shape: [batch-size]
+                index = core.argmax(xnorm, -1, dtype=core.int32)
+                # [batch-size] => [batch-size, channels]
+                index = core.one_hot(index, input_shape[-1])
+            else:
+                raise ValueError('element cannot be None')
+            return index
         def _maskout(x, index=None):
             with ops_scope:
-                if index is None:
-                    #print('axis: ', axis)
-                    #print('input shape length: ', len(input_shape))
-                    ## if index not given, use the max `NORM` as index
-                    if axis != len(input_shape) - 1:
-                        # x shape: [batch-size, length of feature, channels]
-                        # xnorm shape: [batch-size, channels]
-                        xnorm = core.norm(x, -2, safe=False, keepdims=False)
-                        # index shape: [batch-size]
-                        index = core.argmax(xnorm, -1, dtype=core.int32)
-                        # [batch-size] => [batch-size, channels]
-                        index = core.one_hot(index, input_shape[-1])
-                    else:
-                        raise ValueError('element cannot be None')
-                # onehot to from
-                # [batch-size]
-                # to
-                # [batch-size, nclass]
-                # tile to [batch-size, nclass, depth]
+                index = core.cond(status.is_training, lambda:core.identity(index),lambda:_build_index(x))
                 index = core.expand_dims(index, -2)
                 index = core.cast(index, core.float32)
                 x = core.multiply(x, index)

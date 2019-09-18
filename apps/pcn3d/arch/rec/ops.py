@@ -1,16 +1,107 @@
 import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
+import os
+import numpy as np
 from sigma import colors
 from sigma.ops import helper, core, mm, actives, convs
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+
 def pairwise_euclidean_distance(inputs):
-    batch_size, npoints, channels = core.shape(inputs)
-    #   [batch-size, npoints, channels]
+    #   [batch-size, npoints, dims]
     #=> [batch-size, npoints, npoints]
     inner = -2 * core.matmul(inputs, core.transpose(inputs, perm=(0,2,1)))
+    #   [batch-size, npoints, dims]
+    #=> [batch-size, npoints, 1]
     square = core.sum(core.square(inputs), axis=-1, keepdims=True)
+    #=> [batch-size, 1, npoints]
     transpose = core.transpose(square, perm=(0,2,1))
     return square + inner + transpose
+
+
+def dynamic_neighbours(inputs, k, selfloop=False):
+    # get k neighbours
+    # inputs: [batch-size, npoints, dims]
+    # return: [batch-size, npoints, k, dims]
+    shape = core.shape(inputs)
+    if len(shape) != 3:
+        raise ValueError('`inputs` must be [batch-size, npoints, dims], given {}'
+                         .format(shape))
+    # adjacent matrix: [batch-size, npoints, npoints]
+    adjacent_matrix = pairwise_euclidean_distance(inputs, order)
+    def _knn(adjacent_matrix, k, axis=2, selfloop=False):
+        # get top_k
+        # selfloop: False, exclude self-disance, i.e., no self loop
+        # x [batch-size, npoints, dims]
+        if selfloop:
+            return core.top_k(-adjacent_matrix, k)[1]
+        x = core.top_k(-adjacent_matrix, k+1)[1]
+        idx = core.range(1, k+1)
+        return core.gather(x, idx, axis=axis)
+
+    # nn_idx: [batch-size, npoints, k]
+    nn_idx = _knn(adjacent_matrix, k, axis=2, selfloop=selfloop)
+    batch_size, npoints, dims = shape
+    # [batch-size]
+    idx = core.range(batch_size) * npoints
+    # [batch-size, 1, 1]
+    idx = core.reshape(idx, [batch_size, 1, 1])
+    # [batch-size * npoints, dims]
+    flatten = core.reshape(inputs, [batch_size * npoints, dims])
+    # [batch-size, npoints, k, dims]
+    return core.gather(flatten, nn_idx + idx)
+
+
+def capsule_graph_conv(inputs,
+                       k,
+                       dims,
+                       weight_initializer='glorot_uniform',
+                       weight_regularizer=None,
+                       bias_initializer='zeros',
+                       bias_regularizer=None,
+                       cpuid=0,
+                       act=None,
+                       trainable=True,
+                       dtype=core.float32,
+                       collections=None,
+                       summary='histogram',
+                       check_input_shape=True,
+                       reuse=False,
+                       name=None,
+                       scope=None):
+    batch_size, npoints, indims = core.shape(inputs)
+    # [batch-size, npoints, k+1, indims]
+    neighbours = dynamic_neighbours(inputs, k+1, selfloop=True)
+    neighbours = core.reshape(neighbours, [batch_size * npoints, k+1, indims])
+    # [batch-size * npoints, k+1, dims]
+    x = projection_transform(neighbours,
+                             dims,
+                             'CD',
+                             weight_initializer,
+                             weight_regularizer,
+                             bias_initializer,
+                             bias_regularizer,
+                             cpuid,
+                             act,
+                             trainable,
+                             dtype,
+                             collections,
+                             summary,
+                             check_input_shape,
+                             reuse,
+                             name,
+                             scope)
+    x = core.sum(core.reshape(x, [batch_size, npoints, k+1, dims]), axis=2)
+    return x
+
+
+def edge_feature(inputs, k, selfloop):
+    neighbors = k_neighbours(inputs, k, selfloop)
+    central = core.expand_dims(inputs,axis=-2)
+    # [batch-size, npoints, k, k]
+    central = core.tile(central, [1,1,k,1])
+    # [batch-size, npoints, k, 2k]
+    return core.concat([central, neighbours-central], axis=-1)
 
 
 def edge_conv(inputs,
@@ -39,36 +130,7 @@ def edge_conv(inputs,
     if len(shape) != 3:
         raise ValueError('`inputs` must be [batch-size, npoints, channels], given {}'
                          .format(shape))
-    # adjacent matrix: [batch-size, npoints, npoints]
-    adjacent_matrix = pairwise_euclidean_distance(inputs)
-    def _knn(adjacent_matrix, k, axis=2, selfloop=False):
-        # get top_k
-        # selfloop: False, exclude self-disance, i.e., no self loop
-        # x [batch-size, npoints, channels]
-        if selfloop:
-            return core.top_k(-adjacent_matrix, k)[1]
-        x = core.top_k(-adjacent_matrix, k+1)[1]
-        idx = core.range(1, k+1)
-        return core.gather(x, idx, axis=axis)
-
-    # idx: [batch-size, npoints, k]
-    nn_idx = _knn(adjacent_matrix, k)
-
-    batch_size, npoints, channels = shape
-    # [batch-size]
-    idx = core.range(batch_size) * npoints
-    # [batch-size, 1, 1]
-    idx = core.reshape(idx, [batch_size, 1, 1])
-    # [batch-size * npoints, channels]
-    flatten = core.reshape(inputs, [batch_size * npoints, channels])
-    # [batch-size, npoints, k, channels]
-    neighbours = core.gather(flatten, nn_idx + idx)
-    # [batch-size, npoints, 1, k]
-    central = core.expand_dims(inputs,axis=-2)
-    # [batch-size, npoints, k, k]
-    central = core.tile(central, [1,1,k,1])
-    # [batch-size, npoints, k, 2k]
-    x = core.concat([central, neighbours-central], axis=-1)
+    edge = edge_feature(inputs, k, selfloop)
     xshape = core.shape(x)
     x = convs.conv2d(xshape,
                      channels,
@@ -93,6 +155,7 @@ def edge_conv(inputs,
 
 def projection_transform(inputs,
                          dims,
+                         order='DC',
                          weight_initializer='glorot_uniform',
                          weight_regularizer=None,
                          bias_initializer='zeros',
@@ -117,11 +180,18 @@ def projection_transform(inputs,
                          ' dims, channels]{}, given {}'
                          .format(colors.fg.green, colors.reset,
                                  colors.red(input_shape)))
-    batch_size, indims, incaps = input_shape
-    weight_shape = [1, indims, dims, incaps] # get rid of batch_size axis
-
-    bias_shape = [incaps]
-    output_shape = [input_shape[0], dims, incaps]
+    if order == 'DC':
+        batch_size, indims, incaps = input_shape
+        weight_shape = [1, indims, dims, incaps] # get rid of batch_size axis
+        bias_shape = [incaps]
+        output_shape = [input_shape[0], dims, incaps]
+        axis = 1
+    else:
+        batch_size, incaps, indims = input_shape
+        weight_shape = [1, incaps, dims, indims]
+        bias_shape = [ incaps, 1]
+        output_shape = [input_shape[0], incaps, dims]
+        axis = -1
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'project',
@@ -156,14 +226,24 @@ def projection_transform(inputs,
         bias = 0
     def _projection_transform(x):
         with ops_scope:
+            # order == 'DC':
             #    [batch-size, indims, incaps]
             #=>  [batch-size, indims, 1, incaps]
+            # order == 'CD':
+            #    [batch-size, incaps, indims]
+            #=>  [batch-size, incaps, 1, indims]
             x = core.expand_dims(x, 2)
+            # order == 'DC':
             #    [batch-size, indims, 1, incaps]
             #  * [1, indims, dims, incaps]
             #=>  [batch-size, indims, dims, incaps] (*)
             #=>  [batch-size, dims, incaps] (sum)
-            x = core.sum(x * weights, axis=1) + bias
+            # order == 'CD':
+            #    [batch-size, incaps, 1, indims]
+            #  * [1, incaps, dims, indims]
+            #=>  [batch-size, incaps, dims, indims] (*)
+            #=>  [batch-size, incaps, dims] (sum)
+            x = core.sum(x * weights, axis=axis) + bias
             return act(x)
     return _projection_transform(inputs)
 
@@ -358,3 +438,22 @@ def transform_routing(inputs,
         predictions = core.reshape(predictions, (batch_size, dims*nroutings, channels))
         return predictions
     return _transform_routing(inputs)
+
+
+def kmeans(points):
+    batch_size, npoints, dims = points.shape
+    from sklearn.cluster import KMeans
+    init = np.mean(points[0, :, :], axis=0, keepdims=True)
+    km = KMeans(n_clusters=1, max_iter=3, init=init).fit(points[0, :, :])
+    center = km.cluster_centers_
+    return center
+
+if __name__ == '__main__':
+    import tensorflow as tf
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    batch_size = 2
+    npoints = 100
+    dims = 2
+    points = np.random.rand(batch_size, npoints, dims)

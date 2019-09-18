@@ -21,22 +21,20 @@ class NormalizationTest(unittest.TestCase):
         x = layers.base.input_spec((batchsize, rows, cols, channels))
         nx = np.random.rand(batchsize, rows, cols, channels)
 
-        status.set_phase('train')
-
         with self.subTest(idx=0):
-            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=True, is_training=True)
+            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=True)
             batch_norm = tf.keras.layers.BatchNormalization(fused=True)
             tf_x = batch_norm(x, training=True)
             ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
-            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx})
+            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx, status.is_training:True})
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
         with self.subTest(idx=1):
-            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=False, is_training=True)
+            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=False)
             batch_norm = tf.keras.layers.BatchNormalization(fused=False)
             tf_x = batch_norm(x, training=True)
             ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
-            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx})
+            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx, status.is_training:True})
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
         with self.subTest(idx=2):

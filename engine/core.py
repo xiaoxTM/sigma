@@ -287,7 +287,6 @@ def run(session,
         np.savetxt(filename, records)
 
 
-@phase('train')
 def train(sess,
           generator,
           iterations,
@@ -350,7 +349,6 @@ def train(sess,
                                             feed_dict=samples)
     valid_fun = None
     if valid_gen is not None and valid_iters is not None:
-        @phase('predict')
         def _valid_fun(global_step=None):
             loss = 0
             for iteration in range(iterations):
@@ -379,7 +377,6 @@ def train(sess,
             train_fun = _train_fun
             if valid_fun is not None:
                 valid_op['update'] = metric_update
-                @phase('predict')
                 def _valid_fun(global_step=None):
                     ops.core.run(sess, metric_initializer)
                     loss = 0
@@ -398,7 +395,6 @@ def train(sess,
                 return metric(sess, train_op, samples)
             train_fun = _train_fun
             if valid_fun is not None:
-                @phase('predict')
                 def _valid_fun(global_step=None):
                     loss = 0.0
                     acc  = 0.0
