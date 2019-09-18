@@ -2,7 +2,7 @@ import argparse
 import sys
 sys.path.append('/home/xiaox/studio/src/git-series')
 import sigma
-from sigma import layers, dbs, ops, engine, colors, helpers
+from sigma import layers, dbs, ops, engine, colors, helpers, status
 import os.path
 import numpy as np
 import tensorflow as tf
@@ -14,8 +14,8 @@ import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
-#import skimage as sk
-#import skimage.io as skio
+import skimage as sk
+import skimage.io as skio
 
 logging.basicConfig(level=logging.INFO)
 
@@ -137,7 +137,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             ops.core.run(sess, metric_variable_initialize_op)
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
-                train_feed = {inputs: xs, labels: ys}
+                train_feed = {inputs: xs, labels: ys, status.is_training:True}
                 if summarize is None:
                     _, loss, _ = ops.core.run(sess, [train_op, loss_op, metric_update_op], feed_dict=train_feed)
                 else:
@@ -158,7 +158,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             ops.core.run(sess, valid_metric_variable_initialize_op)
             for vstep in range(valid_step):
                 xs, ys = mnist.validation.next_batch(batchsize)
-                valid_feed = {inputs:xs, labels:ys}
+                valid_feed = {inputs:xs, labels:ys, status.is_training:False}
                 loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=valid_feed)
                 metric = ops.core.run(sess, valid_metric_op)
                 validation_loss.append(loss)
@@ -175,7 +175,7 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
             ops.core.run(sess, valid_metric_variable_initialize_op)
             for tstep in range(test_step):
                 xs, ys = mnist.test.next_batch(batchsize)
-                test_feed = {inputs:xs, labels:ys}
+                test_feed = {inputs:xs, labels:ys, status.is_training:False}
                 loss, _ = sess.run([valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
                 reconstruction, loss, _ = sess.run([valid_reconstruction_op, valid_loss_op, valid_metric_update_op], feed_dict=test_feed)
                 metric = ops.core.run(sess, valid_metric_op)

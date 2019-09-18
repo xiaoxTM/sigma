@@ -109,7 +109,7 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, ve
                     raise TypeError('`message` for stampit must be str or None. given {}'
                                     .format(colors.red(type(message))))
             if verbose:
-                print('{}STAMP{}: <{}>'
+                print('{}STAMP{}: => {}'
                       .format(colors.fg.blue,
                               colors.reset,
                               colors.red(ts)))
