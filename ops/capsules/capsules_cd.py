@@ -251,6 +251,73 @@ def cap_conv(convop,
             return x
     return _conv
 
+# @helpers.typecheck(input_shape=list,
+#                    axis=int,
+#                    drop=bool,
+#                    flatten=bool,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def cap_maskout(input_shape,
+            index,
+            onehot=True,
+            drop=False,
+            flatten=True,
+            check_input_shape=True,
+            reuse=False,
+            name=None,
+            scope=None):
+    """ typical input_shape form:
+            [batch-size, caps, dims]
+        axis: axis of caps
+        flatten works ONLY when drop is `False`
+    """
+    if check_input_shape:
+        helper.check_input_shape(input_shape)
+    ops_scope, name_with_ltype, _ = helper.assign_scope(name,
+                                                        scope,
+                                                        'maskout',
+                                                        reuse)
+    output_shape = input_shape[:]
+    index_shape = output_shape[:]
+    if drop:
+        output_shape.pop(1)
+        def _build_index(x):
+            xnorm = core.norm(x, 2, safe=False, keepdims=False)
+                #=>index: [batch-size,]
+            index = core.argmax(xnorm, -1, dtype=core.int32)
+            return index
+        def _maskout(x, index=None):
+            with ops_scope:
+                index = core.cond(status.is_training, lambda:core.identity(index),lambda:_build_index(x))
+                x = core.gather(x, index, axis=1)
+                return x
+    else:
+        # no need for batch-size axis, therefore -1
+        if flatten:
+            output_shape[2] *= output_shape[1]
+            output_shape.pop(1)
+        def _build_index(x):
+            # x shape: [batch-size, caps, dims]
+            # xnorm shape: [batch-size, caps]
+            xnorm = core.norm(x, 2, safe=False, keepdims=False)
+            # index shape: [batch-size]
+            index = core.argmax(xnorm, -1, dtype=core.int32)
+            # [batch-size] => [batch-size, caps]
+            index = core.one_hot(index, input_shape[1])
+            return index
+        def _maskout(x, index=None):
+            with ops_scope:
+                index = core.cond(status.is_training, lambda:core.identity(index),lambda:_build_index(x))
+                # [batch-size, caps, 1]
+                index = core.expand_dims(index, -1)
+                index = core.cast(index, core.float32)
+                x = core.multiply(x, index)
+                if flatten:
+                    #x = core.flatten(x)
+                    x = core.reshape(x, output_shape)
+                return x
+    return _maskout, output_shape
 
 # @helpers.typecheck(input_shape=list,
 #                    nouts=int,

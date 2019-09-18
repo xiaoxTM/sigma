@@ -23,6 +23,43 @@ import logging
 from .. import helpers
 import capsules_dc, capsules_cd
 
+
+# @helpers.typecheck(input_shape=list,
+#                    axis=int,
+#                    drop=bool,
+#                    flatten=bool,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def cap_maskout(input_shape,
+            index,
+            order='DC',
+            onehot=True,
+            drop=False,
+            flatten=True,
+            check_input_shape=True,
+            reuse=False,
+            name=None,
+            scope=None):
+    """ typical input_shape form:
+            [batch-size, dims, caps]
+        or[batch-size, caps, dims]
+        axis: axis of caps
+        flatten works ONLY when drop is `False`
+    """
+    fun = capsules_dc.cap_maskout
+    if order == 'CD':
+        fun = capsules_cd.cap_maskout
+    return fun(input_shape,
+                          index,
+                          onehot,
+                          drop,
+                          flatten,
+                          check_input_shape,
+                          reuse,
+                          name,
+                          scope)
+
 # @helpers.typecheck(input_shape=list,
 #                    axis=int,
 #                    keepdims=bool,
