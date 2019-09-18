@@ -96,12 +96,7 @@ def transpose(input_shape,
               reuse=False,
               name=None,
               scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'transpose',
@@ -178,7 +173,6 @@ def maskout(input_shape,
     axis = helper.normalize_axes(input_shape, axis)
     if drop:
         output_shape.pop(axis)
-<<<<<<< HEAD
         def _build_index(x):
             if axis != len(input_shape) - 1:
                 #  x: [batch-size, length of feature, channels]
@@ -222,43 +216,6 @@ def maskout(input_shape,
                     #x = core.flatten(x)
                     x = core.reshape(x, output_shape)
                 return x
-=======
-    elif flatten:
-        output_shape[-1] *= output_shape[axis]
-        output_shape.pop(axis)
-    def _maskout(x, index):
-        with ops_scope:
-            if index is None:
-                ## if index not given, use the max `NORM` as index
-                if axis != len(input_shape) - 1:
-                    # x shape: [batch-size, length of feature, nclass]
-                    # xnorm shape: [batch-size, nclass]
-                    xnorm = core.norm(x, -2, safe=True, keepdims=False, epsilon=1e-10)
-                    # index shape: [batch-size]
-                    index = core.argmax(xnorm, -1, dtype=core.int32)
-                    # [batch-size] => [batch-size, nclass]
-                    index = core.one_hot(index, input_shape[-1])
-                else:
-                    raise ValueError('element cannot be None')
-            elif not onehot:
-                index = core.one_hot(index, input_shape[-1])
-            # onehot form
-            # [batch-size, nclass]
-            # to [batch-size, 1, nclass]
-            index = core.expand_dims(index, -2)
-            index = core.cast(index, core.float32)
-            x = core.multiply(x, index)
-            if drop:
-                #     x: [batch-size, length of feature, nclass]
-                # index: [batch-size, 1, nclass]
-                raise AttributeError('`drop` for maskout not implemented yet!')
-                index = core.argmax(index, -1, dtype=core.int32)
-                x = x[:, :, index]
-            elif flatten:
-                #x = core.flatten(x)
-                x = core.reshape(x, output_shape)
-            return x
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     return _maskout, output_shape
 
 

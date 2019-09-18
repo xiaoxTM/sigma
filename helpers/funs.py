@@ -143,17 +143,9 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, ve
         return _wrap
     return _stampit
 
-<<<<<<< HEAD
 def set_term_title(title):
     sys.stdout.write('\x1b]2;{}\x07'.format(title))
 
-=======
-
-def set_term_title(title):
-    sys.stdout.write('\x1b]2;{}\x07'.format(title))
-
-
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
 # @typecheck(x=int)
 def intsize(x, cminus=False):
     if x > 0:

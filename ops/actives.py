@@ -32,19 +32,11 @@ def squash(axis=-2,
         @https://papers.nips.cc/paper/6975-dynamic-routing-between-capsules.pdf
 
         input (x) should with shape of
-<<<<<<< HEAD
         [batch-size, dim, caps] for fully_connected capsule
         or
         [batch-size, neurons, dims, caps] for conv1d
         or
         [batch-size, rows, cols, dims, caps] for conv2d
-=======
-        [batch-size, dims, channels] for fully_connected capsule
-        or
-        [batch-size, neurons, dims, channels] for conv1d
-        or
-        [batch-size, rows, cols, dims, channels] for conv2d
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
         capsule layer
         where `ncaps` denotes the number of capsules
         and `cap_dim` denotes the dimension of each capsule

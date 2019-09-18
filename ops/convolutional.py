@@ -139,12 +139,7 @@ def fully_connected(input_shape, channels,
                     reuse=False,
                     name=None,
                     scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -207,12 +202,7 @@ def conv1d(input_shape, channels, kshape,
            reuse=False,
            name=None,
            scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -285,12 +275,7 @@ def conv2d(input_shape,
            reuse=False,
            name=None,
            scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -357,12 +342,7 @@ def conv3d(input_shape, channels,
            reuse=False,
            name=None,
            scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -438,12 +418,7 @@ def deconv2d(input_shape, output_shape, channels,
     #           [batch-size, ceil((output_shape[1:-1] - kshape[1:-1] + 1) / stride[1:-1])]
     #       else:
     #           [batch-size, ceil((output_shape[1:-1]) / stride[1:-1])]
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -535,12 +510,7 @@ def soft_conv(input_shape,
     # batch_size = input_shape[0]
     # if helper.is_tensor(input_shape):
     #     input_shape = input_shape.as_list()
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'soft_conv',
@@ -882,12 +852,7 @@ def soft_conv2d(input_shape, channels,
                 reuse=False,
                 name=None,
                 scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()
@@ -1127,12 +1092,7 @@ def sepconv2d(input_shape, channels,
               reuse=False,
               name=None,
               scope=None):
-<<<<<<< HEAD
     #helper.check_input_shape(input_shape)
-=======
-    if check_input_shape:
-        helper.check_input_shape(input_shape)
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     batch_size = input_shape[0]
     if helper.is_tensor(input_shape):
         input_shape = input_shape.as_list()

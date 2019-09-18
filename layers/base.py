@@ -186,7 +186,6 @@ def maskout(inputs,
                                    reuse,
                                    name,
                                    scope)
-<<<<<<< HEAD
     x = fun(inputs)
     xshape = ops.core.shape(x)
     if output[1:] != xshape[1:]:
@@ -194,16 +193,6 @@ def maskout(inputs,
                          'real output shape not match. {} vs {}'
                          .format(colors.red(output),
                                  colors.green(xshape)))
-=======
-    x = core.run_and_record_fun(fun, name, inputs, index)
-    if check_output_shape:
-        xshape = ops.core.shape(x)
-        if output[1:] != xshape[1:]:
-            raise ValueError('the predicted output shape and the '
-                             'real output shape not match. {} vs {}'
-                             .format(colors.red(output),
-                                     colors.green(xshape)))
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
     if return_shape:
         x = [x, output]
     return x

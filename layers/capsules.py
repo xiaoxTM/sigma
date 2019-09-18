@@ -80,14 +80,9 @@ def cap_fully_connected(inputs, caps, dims,
     """
     input_shape = ops.helper.norm_input_shape(inputs)
     fun, output = ops.capsules.cap_fully_connected(input_shape,
-<<<<<<< HEAD
                                                    caps,
                                                    dims,
                                                    order,
-=======
-                                                   channels,
-                                                   dims,
->>>>>>> 4e79866044983f5c23842fdffbc02413ebacbf5a
                                                    iterations,
                                                    order,
                                                    leaky,
