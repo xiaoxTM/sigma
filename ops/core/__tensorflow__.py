@@ -1764,3 +1764,11 @@ def feature_writer(filename):
 def feature_reader(filenames):
     reader = tf.TFRecordReader()
     return reader
+
+def runtime_print(inputs,
+                                      *others,
+                                      **kwargs):
+    print_op = tf.print(inputs, *others, **kwargs)
+    with tf.control_dependencies([print_op]):
+        inputs = tf.identity(inputs)
+    return inputs

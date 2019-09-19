@@ -27,11 +27,11 @@ class TensorFlowTest(unittest.TestCase):
     def test_norm(self):
         data = np.asarray([[0.6, 0.8, -7.4]])
         data_norm = la.norm(data)
-
-        x = stf.norm(data,axis=1)
-        _x = stf.run(self.sess, x)
+        data_tf = stf.placeholder(shape=(1,3), dtype=stf.float32)
+        x = stf.norm(data_tf,axis=1)
+        _x = stf.run(self.sess, x, feed_dict={data_tf:data})
         with self.subTest(idx=2):
-            self.assertEqual(data_norm, _x)
+            self.assertAlmostEqual(data_norm, _x)
 
 
     def test_reshape(self):

@@ -18,6 +18,8 @@
 
 from . import mm, helper, actives, core
 from .. import status, helpers
+import sys
+import tensorflow as tf
 
 def instance_norm(input_shape,
                   offset_initializer='zeros',
@@ -275,7 +277,6 @@ def batch_norm(input_shape,
                           reuse,
                           scope)
 
-    moving_mean = None
     moving_mean = mm.malloc('moving-mean',
                             name,
                             neurons,
@@ -289,7 +290,6 @@ def batch_norm(input_shape,
                             reuse,
                             scope)
 
-    moving_variance = None
     moving_variance = mm.malloc('moving-variance',
                                 name,
                                 neurons,
@@ -304,6 +304,7 @@ def batch_norm(input_shape,
                                 scope)
     act = actives.get(act, deepcopy=True)
     def _train(x):
+        # x = core.runtime_print(x, 'sigma mm before update', moving_mean)
         if fused is True:
             # fused_batch_norm(x, scale, offset, mean=None, variance=None,
             #                  epsionl=0.001, is_training=True, name=None)
@@ -325,11 +326,13 @@ def batch_norm(input_shape,
                                 offset, scale, epsilon)
             mean = core.squeeze(mean)
             variance = core.squeeze(variance)
-        if momentum is not None:
-            update_mean=core.moving_average_update(moving_mean, mean, momentum)
-            update_variance=core.moving_average_update(moving_variance, variance, momentum)
-            with core.control_dependencies([update_mean, update_variance]):
-                x = act(x)
+
+        #update_mean=core.moving_average_update(moving_mean, mean, momentum)
+        #update_variance=core.moving_average_update(moving_variance, variance, momentum)
+        update_mean = tf.assign(moving_mean, moving_mean*momentum + mean*(1-momentum))
+        update_variance = tf.assign(moving_variance, moving_variance*momentum + variance*(1-momentum))
+        with core.control_dependencies([update_mean, update_variance]):
+            x = act(x)
         return x
 
     def _infer(x):
@@ -345,7 +348,6 @@ def batch_norm(input_shape,
             mean, variance = core.moments(x, axes, keepdims=True)
             x = core.batch_norm(x, moving_mean, moving_variance,
                                          offset, scale, epsilon)
-
         return act(x)
 
     def _batch_norm(x):

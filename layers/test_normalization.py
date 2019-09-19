@@ -20,8 +20,10 @@ class NormalizationTest(unittest.TestCase):
         channels = 2
         x = layers.base.input_spec((batchsize, rows, cols, channels))
         nx = np.random.rand(batchsize, rows, cols, channels)
+        self.maxDiff = None
 
         with self.subTest(idx=0):
+            # train=True with fused=True
             sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=True)
             batch_norm = tf.keras.layers.BatchNormalization(fused=True)
             tf_x = batch_norm(x, training=True)
@@ -30,6 +32,7 @@ class NormalizationTest(unittest.TestCase):
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
         with self.subTest(idx=1):
+            # train=True with fused=False
             sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=False)
             batch_norm = tf.keras.layers.BatchNormalization(fused=False)
             tf_x = batch_norm(x, training=True)
@@ -38,36 +41,58 @@ class NormalizationTest(unittest.TestCase):
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
         with self.subTest(idx=2):
+            # train=True then train=False with Fused=True
             def _batch_norm(reuse):
                 return layers.norms.batch_norm(x, epsilon=0.001, fused=True, name='batch_norm', reuse=reuse)
-
-            update_ops = ops.core.get_collection(ops.core.Collections.update_ops)
             sigma_x = _batch_norm(reuse=False)
             batch_norm = tf.keras.layers.BatchNormalization(fused=True)
-            tf_x = batch_norm(x, training=True)
+            tf_x_train = batch_norm(x, training=True)
+            # tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, batch_norm.updates)
+            with tf.control_dependencies(batch_norm.updates):
+                tf_x_train = tf.identity(tf_x_train)
             ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
-            _sigma_x, _tf_x,_ = ops.core.run(self.sess, [sigma_x, tf_x, update_ops], {x:nx, status.is_training:True})
+            _sigma_x, _tf_x, = ops.core.run(self.sess, [sigma_x, tf_x_train], {x:nx, status.is_training:True})
+            batch_norm.moving_mean = ops.core.runtime_print(batch_norm.moving_mean, 'keras mm update')
+            self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
             # update the moving_mean and moving_variance
             tf_x = batch_norm(x, training=False)
             nnx = np.random.rand(batchsize, rows, cols, channels)
-            sigma_x = _batch_norm(reuse=True)
             _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nnx, status.is_training:False})
             self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
+        with self.subTest(idx=3):
+            # train=True then train=False with Fused=False
+            def _batch_norm(reuse):
+                return layers.norms.batch_norm(x, epsilon=0.001, fused=False, name='batch_norm_1', reuse=reuse)
+            sigma_x = _batch_norm(reuse=False)
+            batch_norm = tf.keras.layers.BatchNormalization(fused=False)
+            tf_x = batch_norm(x, training=True)
+            ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
+            _sigma_x, _tf_x, = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx, status.is_training:True})
+            self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
+            tf_x = batch_norm(x, training=False)
+            nnx = np.random.rand(batchsize, rows, cols, channels)
+            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nnx, status.is_training:False})
+            self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
-    #def test_batch_norm(self):
-    #    data = np.asarray([[0.6, 0.8, -7.4]])
-    #    data_norm = la.norm(data)
-    #    data_square_norm = data_norm**2
-    #    data_squash = (data_square_norm / (1 + data_square_norm)) * (data / data_norm)
+        with self.subTest(idx=4):
+            # train=False with fused=True
+            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=True)
+            batch_norm = tf.keras.layers.BatchNormalization(fused=True)
+            tf_x = batch_norm(x, training=False)
+            ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
+            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx, status.is_training:False})
+            self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
-    #    variable = ops.core.to_tensor(data)
-    #    squash = actives.squash(variable)
-
-    #    _squash = ops.core.run(self.sess, squash)
-    #    self.assertListEqual(data_squash.tolist(), _squash.tolist())
-
+        with self.subTest(idx=5):
+            # train=False with fused=False
+            sigma_x = layers.norms.batch_norm(x, epsilon=0.001, fused=False)
+            batch_norm = tf.keras.layers.BatchNormalization(fused=False)
+            tf_x = batch_norm(x, training=False)
+            ops.core.run(self.sess, [tf.global_variables_initializer(), tf.local_variables_initializer()])
+            _sigma_x, _tf_x = ops.core.run(self.sess, [sigma_x, tf_x], {x:nx, status.is_training:False})
+            self.assertListEqual(_sigma_x.tolist(), _tf_x.tolist())
 
     @classmethod
     def tearDownClass(cls):
