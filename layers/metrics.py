@@ -23,6 +23,7 @@ from . import core
 @core.layer
 def accuracy(inputs,
              from_logits=True,
+             onehot=True,
              weights=None,
              metrics_collections=None,
              updates_collections=None,
@@ -31,6 +32,7 @@ def accuracy(inputs,
              scope=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.accuracy(from_logits,
+                                onehot,
                                 weights,
                                 metrics_collections,
                                 updates_collections,
@@ -42,6 +44,7 @@ def accuracy(inputs,
 @core.layer
 def auc(inputs,
         from_logits=True,
+        onehot=True,
         weights=None,
         num_thresholds=200,
         metrics_collections=None,
@@ -53,6 +56,7 @@ def auc(inputs,
         scope=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.auc(from_logits,
+                           onehot,
                            weights,
                            metrics_collections,
                            updates_collections,
@@ -67,6 +71,7 @@ def auc(inputs,
 @core.layer
 def false_negatives(inputs,
                     from_logits=True,
+                    onehot=True,
                     weights=None,
                     metrics_collections=None,
                     updates_collections=None,
@@ -76,6 +81,7 @@ def false_negatives(inputs,
                     thresholds=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.false_negatives(from_logits,
+                                       onehot,
                                        weights,
                                        metrics_collections,
                                        updates_collections,
@@ -88,6 +94,7 @@ def false_negatives(inputs,
 @core.layer
 def false_positives(inputs,
                     from_logits=True,
+                    onehot=True,
                     weights=None,
                     metrics_collections=None,
                     updates_collections=None,
@@ -97,6 +104,7 @@ def false_positives(inputs,
                     thresholds=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.false_positives(from_logits,
+                                       onehot,
                                        weights,
                                        metrics_collections,
                                        updates_collections,
@@ -109,6 +117,7 @@ def false_positives(inputs,
 @core.layer
 def true_negatives(inputs,
                    from_logits=True,
+                   onehot=True,
                    weights=None,
                    metrics_collections=None,
                    updates_collections=None,
@@ -118,6 +127,7 @@ def true_negatives(inputs,
                    thresholds=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.true_negatives(from_logits,
+                                      onehot,
                                       weights,
                                       metrics_collections,
                                       updates_collections,
@@ -130,6 +140,7 @@ def true_negatives(inputs,
 @core.layer
 def true_positives(inputs,
                    from_logits=True,
+                   onehot=True,
                    weights=None,
                    metrics_collections=None,
                    updates_collections=None,
@@ -139,6 +150,7 @@ def true_positives(inputs,
                    thresholds=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.true_positives(from_logits,
+                                      onehot,
                                       weights,
                                       metrics_collections,
                                       updates_collections,
@@ -151,6 +163,7 @@ def true_positives(inputs,
 @core.layer
 def mean_iou(inputs,
              from_logits=True,
+             onehot=True,
              weights=None,
              metrics_collections=None,
              updates_collections=None,
@@ -160,6 +173,7 @@ def mean_iou(inputs,
              nclass=None): # nclass = None is just for normalizing API
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.mean_iou(from_logits,
+                                onehot,
                                 weights,
                                 metrics_collections,
                                 updates_collections,
@@ -172,6 +186,7 @@ def mean_iou(inputs,
 @core.layer
 def precision(inputs,
               from_logits=True,
+              onehot=True,
               weights=None,
               metrics_collections=None,
               updates_collections=None,
@@ -180,6 +195,7 @@ def precision(inputs,
               scope=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.precision(from_logits,
+                                 onehot,
                                  weights,
                                  metrics_collections,
                                  updates_collections,
@@ -190,6 +206,7 @@ def precision(inputs,
 @core.layer
 def recall(inputs,
            from_logits=True,
+           onehot=True,
            weights=None,
            metrics_collections=None,
            updates_collections=None,
@@ -198,6 +215,7 @@ def recall(inputs,
            scope=None):
     inputs, labels = core.split_inputs(inputs)
     return ops.metrics.recall(from_logits,
+                              onehot,
                               weights,
                               metrics_collections,
                               updates_collections,

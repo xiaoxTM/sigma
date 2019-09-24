@@ -21,6 +21,7 @@ from . import helper, core
 
 def metric(fun):
     def _metric(from_logits=True,
+               onehot=True,
                 weights=None,
                 metrics_collections=None,
                 updates_collections=None,
@@ -33,6 +34,7 @@ def metric(fun):
                                                  fun.__name__,
                                                  reuse)
         return fun(from_logits,
+                   onehot,
                    weights,
                    metrics_collections,
                    updates_collections,
@@ -45,6 +47,7 @@ def metric(fun):
 
 @metric
 def accuracy(from_logits=True,
+             onehot=True,
              weights=None,
              metrics_collections=None,
              updates_collections=None,
@@ -54,7 +57,9 @@ def accuracy(from_logits=True,
     def _accuracy(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             x = core.metrics_accuracy(labels,
                                       x,
@@ -70,6 +75,7 @@ def accuracy(from_logits=True,
 
 @metric
 def auc(from_logits=True,
+        onehot=True,
         weights=None,
         metrics_collections=None,
         updates_collections=None,
@@ -82,8 +88,10 @@ def auc(from_logits=True,
     def _auc(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
-                labels = core.argmax(labels, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(x, core.caxis)
             x = core.metrics_auc(labels,
                                  x,
                                  weights,
@@ -101,6 +109,7 @@ def auc(from_logits=True,
 
 @metric
 def false_negatives(from_logits=True,
+                    onehot=True,
                     weights=None,
                     metrics_collections=None,
                     updates_collections=None,
@@ -111,7 +120,9 @@ def false_negatives(from_logits=True,
     def _false_negatives(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_false_negatives_at_threshold(labels,
@@ -134,6 +145,7 @@ def false_negatives(from_logits=True,
 
 @metric
 def false_positives(from_logits=True,
+                   onehot=True,
                     weights=None,
                     metrics_collections=None,
                     updates_collections=None,
@@ -144,7 +156,9 @@ def false_positives(from_logits=True,
     def _false_positives(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_false_positives_at_threshold(labels,
@@ -167,6 +181,7 @@ def false_positives(from_logits=True,
 
 @metric
 def true_negatives(from_logits=True,
+                   onehot=True,
                    weights=None,
                    metrics_collections=None,
                    updates_collections=None,
@@ -177,7 +192,9 @@ def true_negatives(from_logits=True,
     def _true_negatives(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_true_negatives_at_threshold(labels,
@@ -200,6 +217,7 @@ def true_negatives(from_logits=True,
 
 @metric
 def true_positives(from_logits=True,
+                  onehot=True,
                    weights=None,
                    metrics_collections=None,
                    updates_collections=None,
@@ -210,7 +228,9 @@ def true_positives(from_logits=True,
     def _true_positives(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_true_positives_at_threshold(labels,
@@ -233,6 +253,7 @@ def true_positives(from_logits=True,
 
 @metric
 def mean_iou(from_logits=True,
+             onehot=True,
              weights=None,
              metrics_collections=None,
              updates_collections=None,
@@ -245,7 +266,9 @@ def mean_iou(from_logits=True,
     def _mean_iou(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             x = core.metrics_mean_iou(labels,
                                       x,
@@ -261,6 +284,7 @@ def mean_iou(from_logits=True,
 
 @metric
 def precision(from_logits=True,
+              onehot=True,
               weights=None,
               metrics_collections=None,
               updates_collections=None,
@@ -270,7 +294,9 @@ def precision(from_logits=True,
     def _precision(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             x = core.metrics_precision(labels,
                                        x,
@@ -285,6 +311,7 @@ def precision(from_logits=True,
 
 @metric
 def recall(from_logits=True,
+           onehot=True,
            weights=None,
            metrics_collections=None,
            updates_collections=None,
@@ -294,7 +321,9 @@ def recall(from_logits=True,
     def _recall(x, labels):
         with scope:
             if from_logits:
-                x = core.argmax(x, core.caxis)
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
                 labels = core.argmax(labels, core.caxis)
             x = core.metrics_recall(labels,
                                     x,

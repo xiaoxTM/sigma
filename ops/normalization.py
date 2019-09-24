@@ -21,6 +21,12 @@ from .. import status, helpers
 import sys
 import tensorflow as tf
 
+"""
+    batch normalization: work on batch, normalize along NHW dimension (small batch size works poor)
+    layer normalization : work on channel, normalize  along HWC (RNN)
+    instance normalization: work on pixel, normalize along HW (style transfer)
+"""
+
 def instance_norm(input_shape,
                   offset_initializer='zeros',
                   scale_initializer='ones',
@@ -176,16 +182,7 @@ def conditional_instance_norm(input_shape,
     return _conditional_instance_norm
 
 
-# @helpers.typecheck(input_shape=list,
-#                    momentum=float,
-#                    trainable=bool,
-#                    fused=bool,
-#                    collections=str,
-#                    summary=str,
-#                    reuse=bool,
-#                    name=str,
-#                    scope=str)
-def batch_norm(input_shape,
+def batch_norm_mmv(input_shape,
                axes=None,
                momentum=0.99,
                offset_initializer='zeros',
@@ -356,6 +353,179 @@ def batch_norm(input_shape,
                              lambda: _train(x),
                              lambda: _infer(x))
     return _batch_norm
+
+
+def batch_norm_ema(input_shape,
+               axes=None,
+               momentum=0.99,
+               offset_initializer='zeros',
+               scale_initializer='ones',
+               offset_regularizer=None,
+               scale_regularizer=None,
+               cpuid=0,
+               epsilon=core.epsilon,
+               act=None,
+               trainable=True,
+               collections=None,
+               summary='histogram',
+               reuse=False,
+               name=None,
+               scope=None):
+    helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'batch_norm',
+                                             reuse)
+    neurons = input_shape[core.caxis]
+    act = actives.get(act)
+    offset = None
+    if not isinstance(offset_initializer, bool) or \
+       offset_initializer is not False:
+        offset = mm.malloc('offset',
+                           name,
+                           neurons,
+                           core.float32,
+                           offset_initializer,
+                           offset_regularizer,
+                           cpuid,
+                           trainable,
+                           collections,
+                           summary,
+                           reuse,
+                           scope)
+    scale = None
+    if not isinstance(scale_initializer, bool) or \
+       scale_initializer is not False:
+        scale = mm.malloc('scale',
+                          name,
+                          neurons,
+                          core.float32,
+                          scale_initializer,
+                          scale_regularizer,
+                          cpuid,
+                          trainable,
+                          collections,
+                          summary,
+                          reuse,
+                          scope)
+
+    ema = tf.train.ExponentialMovingAverage(decay=momentum)
+    def _update(ema_apply_op, mean, variance):
+        with core.control_dependencies([ema_apply_op]):
+            return core.identity(mean), core.identity(variance)
+
+    def _batch_norm(x):
+        with ops_scope:
+            mean, variance = tf.nn.moments(x, axis)
+            # operator that maintains moving averages of variables.
+            ema_apply_op = tf.cond(status.is_training,
+                                                               lambda: ema.apply([mean, variance]),
+                                                               lambda: tf.no_op())
+
+            # ema.average returns the Variable holding the average of var.
+            mean, variance = tf.cond(status.is_training,
+                            lambda: _update(ema_apply_op, mean, variancce),
+                            lambda: (ema.average(mean), ema.average(variance)))
+            x =  tf.nn.batch_normalization(x, mean, variance, scale, offset, epsilon)
+            return act(x)
+
+# @helpers.typecheck(input_shape=list,
+#                    momentum=float,
+#                    trainable=bool,
+#                    fused=bool,
+#                    collections=str,
+#                    summary=str,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def batch_norm(input_shape,
+               axes=None,
+               momentum=0.99,
+               offset_initializer='zeros',
+               scale_initializer='ones',
+               offset_regularizer=None,
+               scale_regularizer=None,
+               moving_mean_initializer='zeros',
+               moving_variance_initializer='ones',
+               update_strategy='ema',
+               cpuid=0,
+               epsilon=core.epsilon,
+               act=None,
+               trainable=True,
+               fused=False,
+               collections=None,
+               summary='histogram',
+               reuse=False,
+               name=None,
+               scope=None):
+    """ batch normalization layer
+        Attributes
+        ==========
+        input_shape : list / tuple
+                      input tensor shape
+        momentum : float | None
+                   momentum to update moving mean and variance
+                   if None, moving mean and variance
+                   will not be updated
+        offset_initializer : string / callable function | None | bool
+                             initializer to initialize offset
+                             if False, offset will be ignored
+                             (output will not be centered)
+        offset_regularizer : string
+                             penalty for offset
+        scale_initializer : string / callable function | None | bool
+                            initializer to initialize scale
+                            if False, scale will be ignored
+        scale_regularizer : string
+                            penalty for scale
+        moving_mean_initializer : string / callable function | None
+                                  initializer for moving_mean
+        moving_variance_initializer : string / callable function | None
+                                      initializer for moving_variance
+        fused : bool
+                use fused_batch_normal if true
+    """
+    if update_strategy == 'ema':
+        return batch_norm_ema(input_shape,
+                                                             axes,
+                                                             momentum,
+                                                             offset_initializer,
+                                                             scale_regularizer,
+                                                             offset_regularize,
+                                                             scale_regularizer,
+                                                             cpuid,
+                                                             epsilon,
+                                                             act,
+                                                             trainable,
+                                                             collections,
+                                                             summary,
+                                                             reuse,
+                                                             name,
+                                                             scope)
+    elif update_strategy == 'mmv':
+        return batch_norm_mmv(input_shape,
+                                                              axes,
+                                                              momentum,
+                                                              offset_initializer,
+                                                              scale_initializer,
+                                                              offset_regularizer,
+                                                              scale_regularizer,
+                                                              moving_mean_initializer,
+                                                              moving_variance_initializer,
+                                                              cpuid,
+                                                              epsilon,
+                                                              act,
+                                                              trainable,
+                                                              fused,
+                                                              collections,
+                                                              summary,
+                                                              reuse,
+                                                              name,
+                                                              scope)
+    else:
+        raise ValueError('`update_strategy` must be "ema" or "mmv", given {}'.format(colors.red(update_strategy)))
 
 
 # @helpers.typecheck(kpeep=float,

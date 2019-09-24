@@ -26,6 +26,10 @@ def loss(fun):
               name=None,
               scope=None,
               *args):
+        """
+        :param from_logits: whether input (x) is before softmax (True), after softmax (False)
+        :param onehot: whether label is onehot format or not
+        """
         ops_scope, _, _ = helper.assign_scope(name,
                                                  scope,
                                                  fun.__name__,
@@ -82,8 +86,8 @@ def categorical_cross_entropy(axis,
                               len(x.get_shape())-1,
                               True)
                 x = core.clip(x, 1e-5, 1-1e-5)
-            return -core.sum(label * core.log(x),
-                             len(output.get_shape())-1)
+                return -core.sum(label * core.log(x),
+                                 len(output.get_shape())-1)
     return _categorical_cross_entropy
 
 
@@ -99,6 +103,8 @@ def mean_square_error(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
+            if from_logits:
+                x = core.softmax(x, axis)
             return core.mean(core.square(x - labels), axis=axis)
     return _mean_square_error
 
@@ -115,6 +121,8 @@ def mean_absolute_error(axis,
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
+            if from_logits:
+                x = core.softmax(x, axis)
             return core.mean(core.abs(x - labels), axis=axis)
     return _mean_absolute_error
 
@@ -132,6 +140,8 @@ def winner_takes_all(axis,
             pred = core.argmax(x, axis=axis)
             if not onehot:
                 labels = core.one_hot(labels, shape[axis])
+            if from_logits:
+                x = core.softmax(x, axis)
             loss_tensor = core.where(pred==labels,
                                    core.zeros_like(labels),
                                    core.ones_like(labels))
@@ -154,6 +164,8 @@ def margin_loss(axis,
         axis = core.caxis
     def _margin_loss(x, labels):
         with scope:
+            if from_logits:
+                x = core.softmax(x, axis)
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
@@ -208,6 +220,8 @@ def chamfer_loss(axis,
             [batchsizez, points, features]
         '''
         with scope:
+            if from_logits:
+                x = core.softmax(x, axis)
             return core.mean(
                     core.map_func(_chamfer_distance_sum, elems=(x, labels), dtype=dtype)
                     )
