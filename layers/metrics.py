@@ -19,10 +19,26 @@
 from .. import ops
 from . import core
 
+@core.layer
+def batch_accuracy(inputs,
+             from_logits=False,
+             onehot=True,
+             weights=None,
+             reuse=False,
+             name=None,
+             scope=None):
+    inputs, labels = core.split_inputs(inputs)
+    return ops.metrics.batch_accuracy(from_logits,
+                                onehot,
+                                weights,
+                                reuse,
+                                name,
+                                scope)(inputs, labels)
+
 
 @core.layer
 def accuracy(inputs,
-             from_logits=True,
+             from_logits=False,
              onehot=True,
              weights=None,
              metrics_collections=None,
@@ -43,7 +59,7 @@ def accuracy(inputs,
 
 @core.layer
 def auc(inputs,
-        from_logits=True,
+        from_logits=False,
         onehot=True,
         weights=None,
         num_thresholds=200,
@@ -70,7 +86,7 @@ def auc(inputs,
 
 @core.layer
 def false_negatives(inputs,
-                    from_logits=True,
+                    from_logits=False,
                     onehot=True,
                     weights=None,
                     metrics_collections=None,
@@ -93,7 +109,7 @@ def false_negatives(inputs,
 
 @core.layer
 def false_positives(inputs,
-                    from_logits=True,
+                    from_logits=False,
                     onehot=True,
                     weights=None,
                     metrics_collections=None,
@@ -116,7 +132,7 @@ def false_positives(inputs,
 
 @core.layer
 def true_negatives(inputs,
-                   from_logits=True,
+                   from_logits=False,
                    onehot=True,
                    weights=None,
                    metrics_collections=None,
@@ -139,7 +155,7 @@ def true_negatives(inputs,
 
 @core.layer
 def true_positives(inputs,
-                   from_logits=True,
+                   from_logits=False,
                    onehot=True,
                    weights=None,
                    metrics_collections=None,
@@ -162,7 +178,7 @@ def true_positives(inputs,
 
 @core.layer
 def mean_iou(inputs,
-             from_logits=True,
+             from_logits=False,
              onehot=True,
              weights=None,
              metrics_collections=None,
@@ -185,7 +201,7 @@ def mean_iou(inputs,
 
 @core.layer
 def precision(inputs,
-              from_logits=True,
+              from_logits=False,
               onehot=True,
               weights=None,
               metrics_collections=None,
@@ -205,7 +221,7 @@ def precision(inputs,
 
 @core.layer
 def recall(inputs,
-           from_logits=True,
+           from_logits=False,
            onehot=True,
            weights=None,
            metrics_collections=None,

@@ -28,8 +28,9 @@ from . import core
 @core.layer
 def binary_cross_entropy(inputs,
                          axis=None,
-                         from_logits=True,
+                         from_logits=False,
                          onehot=True,
+                         epsilon=ops.core.epsilon,
                          reuse=False,
                          name=None,
                          scope=None):
@@ -51,14 +52,16 @@ def binary_cross_entropy(inputs,
                                            onehot,
                                            reuse,
                                            name,
-                                           scope)(inputs, labels)
+                                           scope,
+                                           epsilon)(inputs, labels)
 
 
 @core.layer
 def categorical_cross_entropy(inputs,
                               axis=None,
-                              from_logits=True,
+                              from_logits=False,
                               onehot=True,
+                              epsilon=ops.core.epsilon,
                               reuse=False,
                               name=None,
                               scope=None):
@@ -68,7 +71,8 @@ def categorical_cross_entropy(inputs,
                                                 onehot,
                                                 reuse,
                                                 name,
-                                                scope)(inputs, labels)
+                                                scope,
+                                                epsilon)(inputs, labels)
 
 
 @core.layer
@@ -91,7 +95,7 @@ def mean_square_error(inputs,
 @core.layer
 def mean_absolute_error(inputs,
                         axis=None,
-                        from_logits=True,
+                        from_logits=False,
                         onehot=True,
                         reuse=False,
                         name=None,
@@ -108,7 +112,7 @@ def mean_absolute_error(inputs,
 @core.layer
 def winner_takes_all(inputs,
                      axis=None,
-                     from_logits=True,
+                     from_logits=False,
                      onehot=True,
                      reuse=False,
                      name=None,

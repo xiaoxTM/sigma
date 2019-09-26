@@ -411,6 +411,8 @@ def batch_norm_ema(input_shape,
                           reuse,
                           scope)
 
+    if axes is None:
+        axes = list(range(input_shape)-1)
     ema = tf.train.ExponentialMovingAverage(decay=momentum)
     def _update(ema_apply_op, mean, variance):
         with core.control_dependencies([ema_apply_op]):
@@ -418,7 +420,7 @@ def batch_norm_ema(input_shape,
 
     def _batch_norm(x):
         with ops_scope:
-            mean, variance = tf.nn.moments(x, axis)
+            mean, variance = tf.nn.moments(x, axes)
             # operator that maintains moving averages of variables.
             ema_apply_op = tf.cond(status.is_training,
                                                                lambda: ema.apply([mean, variance]),
@@ -426,10 +428,11 @@ def batch_norm_ema(input_shape,
 
             # ema.average returns the Variable holding the average of var.
             mean, variance = tf.cond(status.is_training,
-                            lambda: _update(ema_apply_op, mean, variancce),
+                            lambda: _update(ema_apply_op, mean, variance),
                             lambda: (ema.average(mean), ema.average(variance)))
             x =  tf.nn.batch_normalization(x, mean, variance, scale, offset, epsilon)
             return act(x)
+    return _batch_norm
 
 # @helpers.typecheck(input_shape=list,
 #                    momentum=float,
@@ -489,43 +492,44 @@ def batch_norm(input_shape,
     """
     if update_strategy == 'ema':
         return batch_norm_ema(input_shape,
-                                                             axes,
-                                                             momentum,
-                                                             offset_initializer,
-                                                             scale_regularizer,
-                                                             offset_regularize,
-                                                             scale_regularizer,
-                                                             cpuid,
-                                                             epsilon,
-                                                             act,
-                                                             trainable,
-                                                             collections,
-                                                             summary,
-                                                             reuse,
-                                                             name,
-                                                             scope)
+                              axes,
+                              momentum,
+                              offset_initializer,
+                              scale_regularizer,
+                              offset_regularizer,
+                              scale_regularizer,
+                              cpuid,
+                              epsilon,
+                              act,
+                              trainable,
+                              collections,
+                              summary,
+                              reuse,
+                              name,
+                              scope)
     elif update_strategy == 'mmv':
         return batch_norm_mmv(input_shape,
-                                                              axes,
-                                                              momentum,
-                                                              offset_initializer,
-                                                              scale_initializer,
-                                                              offset_regularizer,
-                                                              scale_regularizer,
-                                                              moving_mean_initializer,
-                                                              moving_variance_initializer,
-                                                              cpuid,
-                                                              epsilon,
-                                                              act,
-                                                              trainable,
-                                                              fused,
-                                                              collections,
-                                                              summary,
-                                                              reuse,
-                                                              name,
-                                                              scope)
+                              axes,
+                              momentum,
+                              offset_initializer,
+                              scale_initializer,
+                              offset_regularizer,
+                              scale_regularizer,
+                              moving_mean_initializer,
+                              moving_variance_initializer,
+                              cpuid,
+                              epsilon,
+                              act,
+                              trainable,
+                              fused,
+                              collections,
+                              summary,
+                              reuse,
+                              name,
+                              scope)
     else:
-        raise ValueError('`update_strategy` must be "ema" or "mmv", given {}'.format(colors.red(update_strategy)))
+        raise ValueError('`update_strategy` must be "ema" or "mmv", given {}'
+                         .format(colors.red(update_strategy)))
 
 
 # @helpers.typecheck(kpeep=float,

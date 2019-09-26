@@ -44,6 +44,28 @@ def metric(fun):
                    *args)
     return _metric
 
+@metric
+def batch_accuracy(from_logits=True,
+             onehot=True,
+             weights=None,
+             reuse=False,
+             name=None,
+             scope=None):
+    ops_scope, _, name = helper.assign_scope(name,
+                                              scope,
+                                              fun.__name__,
+                                              reuse)
+    def _accuracy(x, labels):
+        with ops_scope:
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
+            nsamples = helper.norm_input_shape(core.shape(x))[0]
+            return core.cast(core.sum(core.eq(x, labels)) / nsamples, core.float32)
+    return _accuracy
+
 
 @metric
 def accuracy(from_logits=True,
@@ -69,7 +91,6 @@ def accuracy(from_logits=True,
             variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
-            #return *x
     return _accuracy
 
 
