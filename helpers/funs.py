@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import sys
-
+import os
 from timeit import default_timer as timer
 from datetime import datetime
 from .. import colors
@@ -130,6 +130,8 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, re
                 log = open(os.path.join(readme, ts, 'README.md'), 'w')
             if log is not None:
                 log.write('# {}{}\n'.format(fun.__name__, str(signature)))
+                if message is not None:
+                    log.write('***{}***'.format(message))
                 log.write('|KEY|TYPE|VALUE|\n')
                 log.write('|:---:|:----:|:----:|\n')
             for key, value in kwargs.items():
@@ -153,8 +155,8 @@ def stampit(targets, date=None, fmt='%Y%m%d%H%M%S', message=None, split=None, re
                         else:
                             splits.insert(npos, ts)
                         kwargs[key] = '/'.join(splits)
-                if log is not None:
-                    log.close()
+            if log is not None:
+                log.close()
             return fun(**kwargs)
         return _wrap
     return _stampit

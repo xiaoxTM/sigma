@@ -22,7 +22,6 @@ import logging
 
 from . import capsules_dc, capsules_cd
 
-
 # @helpers.typecheck(input_shape=list,
 #                    axis=int,
 #                    drop=bool,
@@ -30,7 +29,7 @@ from . import capsules_dc, capsules_cd
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_maskout(input_shape,
+def maskout(input_shape,
             order='DC',
             onehot=True,
             drop=False,
@@ -64,7 +63,7 @@ def cap_maskout(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_norm(input_shape,
+def norm(input_shape,
              axis,
              keepdims=False,
              ord='euclidean',
@@ -108,7 +107,7 @@ def cap_norm(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_fully_connected(input_shape,
+def fully_connected(input_shape,
                         caps,
                         dims,
                         iterations=3,
@@ -179,7 +178,7 @@ def cap_fully_connected(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_conv1d(input_shape,
+def conv1d(input_shape,
                caps,
                dims,
                order='DC',
@@ -261,7 +260,7 @@ def cap_conv1d(input_shape,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def cap_conv2d(input_shape,
+def conv2d(input_shape,
                caps,
                dims,
                iterations=3,

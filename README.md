@@ -24,6 +24,7 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
     - [x] expand_dims
     - [x] input_spec
     - [x] label_spec
+    - [x] random_spec
     - [ ] embedding
   - convolutional
     - [x] fully_connected [aka. dense]
@@ -36,8 +37,9 @@ sigma is short for `S`oftware `I`ntegration `G`roup `M`achine-Learning `A`rmory.
   - capsules (different capsules use same weights)
     - [x] norm
     - [ ] conv1d
-    - [x] conv2d
+    - [ ] conv2d
     - [x] fully_connected [aka. dense]
+    - [x] batch_norm
   - losses
     - [x] binary_cross_entropy
     - [x] categorical_cross_entropy

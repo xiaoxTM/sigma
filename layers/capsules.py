@@ -20,7 +20,7 @@ from .. import ops, colors
 from . import core, convs
 
 @core.layer
-def cap_maskout(inputs,
+def maskout(inputs,
             index,
             order='DC',
             onehot=True,
@@ -38,7 +38,7 @@ def cap_maskout(inputs,
         > outputs: [batch-size, channels] if indices have only one indices
     """
     input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.cap_maskout(input_shape,
+    fun, output = ops.capsules.maskout(input_shape,
                                    order,
                                    onehot,
                                    drop,
@@ -59,7 +59,7 @@ def cap_maskout(inputs,
 
 
 @core.layer
-def cap_norm(inputs,
+def norm(inputs,
              axis,
              keepdims=False,
              ord='euclidean',
@@ -75,7 +75,7 @@ def cap_norm(inputs,
         input vector output scalar
     """
     input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.cap_norm(input_shape,
+    fun, output = ops.capsules.norm(input_shape,
                                         axis,
                                         keepdims,
                                         ord,
@@ -89,7 +89,7 @@ def cap_norm(inputs,
 
 
 @core.layer
-def cap_fully_connected(inputs,
+def fully_connected(inputs,
                         caps,
                         dims,
                         iterations=3,
@@ -116,7 +116,7 @@ def cap_fully_connected(inputs,
     """ fully_connected operation between capsules
     """
     input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.cap_fully_connected(input_shape,
+    fun, output = ops.capsules.fully_connected(input_shape,
                                                    caps,
                                                    dims,
                                                    iterations,
@@ -142,7 +142,7 @@ def cap_fully_connected(inputs,
 
 
 @core.layer
-def cap_conv1d(inputs,
+def conv1d(inputs,
                caps,
                dims,
                order='DC',
@@ -170,7 +170,7 @@ def cap_conv1d(inputs,
                name=None,
                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.cap_conv1d(input_shape,
+    fun, output = ops.capsules.conv1d(input_shape,
                                           caps,
                                           dims,
                                           order,
@@ -199,7 +199,7 @@ def cap_conv1d(inputs,
 
 
 @core.layer
-def cap_conv2d(inputs, caps, dims,
+def conv2d(inputs, caps, dims,
                order='DC',
                iterations=3,
                leaky=False,
@@ -225,7 +225,7 @@ def cap_conv2d(inputs, caps, dims,
                name=None,
                scope=None):
     input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.capsules.cap_conv2d(input_shape,
+    fun, output = ops.capsules.conv2d(input_shape,
                                           caps,
                                           dims,
                                           order,
@@ -253,9 +253,10 @@ def cap_conv2d(inputs, caps, dims,
     return convs._layers(fun, inputs, output, return_shape, check_shape)
 
 # alien name
-maskout = cap_maskout
-norm = cap_norm
-fully_connected = cap_fully_connected
-dense = cap_fully_connected
-conv1d = cap_conv1d
-conv2d = cap_conv2d
+cap_maskout = maskout
+cap_norm = norm
+cap_fully_connected = fully_connected
+cap_dense = fully_connected
+dense = fully_connected
+cap_conv1d = conv1d
+cap_conv2d = conv2d
