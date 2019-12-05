@@ -43,9 +43,9 @@ def maskout(input_shape,
         axis: axis of caps
         flatten works ONLY when drop is `False`
     """
-    fun = capsules_dc.cap_maskout
+    fun = capsules_dc.maskout
     if order == 'CD':
-        fun = capsules_cd.cap_maskout
+        fun = capsules_cd.maskout
     return fun(input_shape,
                onehot,
                drop,
@@ -140,9 +140,9 @@ def fully_connected(input_shape,
         caps_dims : int
                     output capsule dimension
     """
-    fun = capsules_dc.cap_fully_connected
+    fun = capsules_dc.fully_connected
     if order == 'CD':
-        fun = capsules_cd.cap_fully_connected
+        fun = capsules_cd.fully_connected
     return fun(input_shape,
                caps,
                dims,
@@ -219,9 +219,9 @@ def conv1d(input_shape,
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
-    fun = capsules_dc.cap_conv1d
+    fun = capsules_dc.conv1d
     if order == 'CD':
-        fun = capsules_cd.cap_conv1d
+        fun = capsules_cd.conv1d
     return fun(input_shape,
                caps,
                dims,
@@ -301,9 +301,9 @@ def conv2d(input_shape,
         kshape : int / list / tuple
                  kernel shape for convolving operation
     """
-    fun = capsules_dc.cap_conv2d
+    fun = capsules_dc.conv2d
     if order == 'CD':
-        fun = capsules_cd.cap_conv2d
+        fun = capsules_cd.conv2d
     return fun(input_shape,
                caps,
                dims,
