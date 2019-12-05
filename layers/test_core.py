@@ -31,6 +31,10 @@ def make_test4(a, b=0.1, c='test4'):
     return (x, setb(), z)
 
 
+def make_test5(a, b=200):
+    return (a, b)
+
+
 class CoreTest(unittest.TestCase):
     def test_split_inputs(self):
         x = [3,4]
@@ -104,6 +108,17 @@ class CoreTest(unittest.TestCase):
                 self.assertEqual(y, 101)
             with self.subTest():
                 self.assertEqual(z, 'test4')
+            y, z = make_test3()
+            with self.subTest():
+                self.assertEqual(y, 101)
+            with self.subTest():
+                self.assertEqual(z, 'test2')
+        with core.defaults(a=30, b=11):
+            x, y = make_test5(a=20)
+            with self.subTest():
+                self.assertEqual(x, 20)
+            with self.subTest():
+                self.assertEqual(y, 200)
 
         with core.defaults(c='test41'):
             x, y, z = make_test4(a=10)

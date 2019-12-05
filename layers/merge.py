@@ -43,3 +43,14 @@ def concat(inputs,
     inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
     fun, output = ops.merge.concat(inputs_shape, axis, reuse, name, scope)
     return _merge(fun, inputs, output, 'concat', return_shape)
+
+@core.layer
+def stack(inputs,
+           axis=-1,
+           return_shape=False,
+           reuse=False,
+           name=None,
+           scope=None):
+    inputs_shape = [ops.helper.norm_input_shape(ip) for ip in inputs]
+    fun, output = ops.merge.stack(inputs_shape, axis, reuse, name, scope)
+    return _merge(fun, inputs, output, 'stack', return_shape)

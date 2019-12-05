@@ -2,8 +2,9 @@ from sigma import ops
 
 def load(session, checkpoints,
          saver=None,
+         var_list=None,
          verbose=True):
-    return ops.core.load(session, checkpoints, saver, verbose)
+    return ops.core.load(session, checkpoints, saver, var_list, verbose)
 
 
 def save(session, checkpoints,

@@ -18,7 +18,9 @@
 
 import numpy as np
 from . import helper, core, mm
-from .. import helpers
+from .. import helpers, colors
+
+import tensorflow as tf
 
 def embedding(table_shape,
               strategy='mod',
@@ -43,6 +45,7 @@ def embedding(table_shape,
     # - ops_scope       : [scope/]layername/layertype
     # - name_with_ltype : layername/layertype
     # - name            : original name | layername
+    helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name,
                                              scope,
                                              'embedding',
@@ -65,23 +68,52 @@ def flatten(input_shape,
             scope=None):
     helper.check_input_shape(input_shape)
     ops_scope, _, name = helper.assign_scope(name, scope, 'flatten', reuse)
-    output_shape = [-1, np.prod(input_shape[1:])]
+    output_shape = [input_shape[0], np.prod(input_shape[1:])]
     def _flatten(x):
         with ops_scope:
             return core.reshape(x, output_shape)
     return _flatten, output_shape
 
 
-# @helpers.typecheck(output_shape=list, reuse=bool, name=str, scope=str)
-def reshape(output_shape,
+# @helpers.typecheck(target_shape=list, reuse=bool, name=str, scope=str)
+def reshape(target_shape,
             reuse=False,
             name=None,
             scope=None):
     ops_scope, _, name = helper.assign_scope(name, scope, 'reshape', reuse)
     def _reshape(x):
         with ops_scope:
-            return core.reshape(x, output_shape)
-    return _reshape, output_shape
+            return core.reshape(x, target_shape)
+    return _reshape, target_shape
+
+
+# @heplers.typecheck(input_shape=list, conjugate=bool, name=str, scope=str)
+def transpose(input_shape,
+              perm,
+              conjugate=False,
+              reuse=False,
+              name=None,
+              scope=None):
+    helper.check_input_shape(input_shape)
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'transpose',
+                                             reuse)
+    if not isinstance(perm, (list, tuple)):
+        raise TypeError('`perm` must be list/tuple, given `{}`'
+                        .format(colors.red(type(perm))))
+    if len(input_shape) != len(perm):
+        raise AttributeError('`input_shape` and `perm` must have same length. given `{}` vs `{}`'
+                             .format(colors.red(len(input_shape)), colors.blue(len(perm))))
+    output_shape = []
+    for p in perm:
+        output_shape.append(input_shape[p])
+    def _transpose(x):
+        with ops_scope:
+            return core.transpose(x,
+                                  perm=perm,
+                                  conjugate=conjugate)
+    return _transpose, output_shape
 
 
 # @helpers.typecheck(input_shape=list, axis=int, reuse=bool, name=str, scope=str)
@@ -96,105 +128,40 @@ def expand_dims(input_shape,
                                           'expand_dims',
                                           reuse)
     output_shape = input_shape[:]
-    output_shape.insert(axis if axis >= 0 else axis + 1, 1)
+    naxis = helper.normalize_axes(input_shape, axis)
+    output_shape.insert(axis if axis >= 0 else naxis+1, 1)
     def _expand_dims(x):
         with ops_scope:
             return core.expand_dims(x, axis)
     return _expand_dims, output_shape
 
 
-# @helpers.typecheck(input_shape=list,
-#                    axis=int,
-#                    drop=bool,
-#                    flatten=bool,
+# @helpers.typecheck(kpeep=float,
+#                    noise_shape=list,
+#                    aslayer=bool,
 #                    reuse=bool,
 #                    name=str,
 #                    scope=str)
-def maskout(input_shape,
-            indices=None,
-            axis=-2,
-            drop=False,
-            flatten=True,
+def dropout(pkeep,
+            noise_shape=None,
+            seed=None,
+            aslayer=False,
             reuse=False,
             name=None,
             scope=None):
-    """ typical input_shape form:
-        [batch-size, nclass, depth]
-    """
-    helper.check_input_shape(input_shape)
-    ops_scope, name_with_ltype, _ = helper.assign_scope(name,
-                                                        scope,
-                                                        'maskout',
-                                                        reuse)
-    output_shape = input_shape[:]
-    index_shape = output_shape[:]
-    ones = [1] * len(input_shape)
-    axis = helper.normalize_axes(input_shape, axis)
-    if drop:
-        prepare_scope = '{}/preprocess'.format(name_with_ltype)
-        if scope is not None:
-            prepare_scope = '{}/{}'.format(scope, prepare_scope)
-        if indices is None:
-            index_shape[axis] = 1
-            output_shape.pop(axis)
-            nelems = 1
-        else:
-            nelems = len(indices)
-            index_shape[axis] = nelems
-            output_shape[axis] = nelems
-            if flatten:
-                output_shape[-1] *= output_shape[axis]
-                output_shape.pop(axis)
-        with core.name_scope(prepare_scope):
-            def _index(i, index=None):
-                if index is None:
-                    index = core.range(input_shape[i])
-                shape = ones[:]
-                shape[i] = input_shape[i]
-                index = core.reshape(index, shape)
-                multiples = [int(x / y) for x, y in zip(index_shape, shape)]
-                index = core.reshape(core.tile(index, multiples), (-1,1))
-                return index
-            indexlist = [_index(i) for i in range(len(input_shape)) \
-                         if i != axis]
-
-        def _maskout(x, elements=None):
-            with ops_scope:
-                if elements is None:
-                    if axis != len(input_shape) - 1:
-                        xnorm = core.norm(x, -1, safe=False)
-                        elements = core.argmax(xnorm, -1, dtype=core.int32)
-                    elements = _index(0, elements)
-                positions = indexlist[:]
-                positions.insert(axis, elements)
-                positions = core.concat(positions, axis=1)
-                x = core.gather_nd(x, positions)
-                reshape_target = [-1] + output_shape[1:]
-                return core.reshape(x, reshape_target)
-    else:
-        tiles = ones
-        tiles[core.axis] = input_shape[core.axis]
-        if flatten:
-            output_shape[-1] *= output_shape[axis]
-            output_shape.pop(axis)
-        def _maskout(x, elements=None):
-            with ops_scope:
-                if elements is None:
-                    if axis != len(input_shape) - 1:
-                        # x shape: [batch-size, nclass, depth]
-                        # xnorm shape: [batch-size, nclass]
-                        xnorm = core.norm(x, -1, safe=False)
-                        # elements shape: [batch-size]
-                        elements = core.argmax(xnorm, -1, dtype=core.int32)
-                # onehot to from
-                # [batch-size]
-                # to
-                # [batch-size, nclass]
-                elements = core.one_hot(elements, input_shape[-2])
-                # tile to [batch-size, nclass, depth]
-                elements = core.tile(core.expand_dims(elements, -1), tiles)
-                x = x * elements
-                if flatten:
-                    x = core.flatten(x)
-                return x
-    return _maskout, output_shape
+    # if aslayer:
+    #     ops_scope, _, name = helper.assign_scope(name,
+    #                                              scope,
+    #                                              'dropout',
+    #                                              reuse)
+    #     def _dropout(x):
+    #         with ops_scope:
+    #             return core.dropout(x, pkeep, noise_shape, seed, name)
+    # else:
+    #     def _dropout(x):
+    #         return core.dropout(x, pkeep, noise_shape, seed, name)
+    # return _dropout
+    def _dropout(x):
+        with helper.maybe_layer(aslayer, name, scope, 'dropout', reuse):
+            return core.dropout(x, pkeep, noise_shape, seed, name)
+    return _dropout

@@ -21,7 +21,8 @@ from .. import ops
 from . import core
 
 @core.layer
-def embedding(inputs, table_size,
+def embedding(inputs,
+              table_size,
               strategy='mod',
               dtype=ops.core.float32,
               initializer='glorot_uniform',
@@ -45,8 +46,7 @@ def embedding(inputs, table_size,
                               reuse,
                               name,
                               scope)
-    x = fun(inputs)
-    return x
+    return fun(inputs)
 
 
 @core.layer
@@ -70,16 +70,17 @@ def flatten(inputs,
 
 
 @core.layer
-def reshape(inputs, output_shape,
+def reshape(inputs,
+            target_shape,
             return_shape=False,
             reuse=False,
             name=None,
             scope=None):
     # input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.base.reshape(output_shape, reuse, name, scope)
+    fun, output = ops.base.reshape(target_shape, reuse, name, scope)
     x = fun(inputs)
     xshape = ops.core.shape(x)
-    if output[1:] != output_shape[1:]:
+    if output[1:] != target_shape[1:]:
         raise ValueError('the predicted output shape and the '
                          'real output shape not match. {} vs {}'
                          .format(colors.red(output),
@@ -87,6 +88,35 @@ def reshape(inputs, output_shape,
     if return_shape:
         x = [x, output]
     return x
+
+
+@core.layer
+def transpose(inputs,
+              perm,
+              conjugate=False,
+              return_shape=False,
+              reuse=False,
+              name=None,
+              scope=None):
+    input_shape = ops.helper.norm_input_shape(inputs)
+    fun, output = ops.base.transpose(input_shape,
+                                     perm,
+                                     conjugate,
+                                     reuse,
+                                     name,
+                                     scope)
+    x = fun(inputs)
+    xshape = ops.core.shape(x)
+    if output[1:] != xshape[1:]:
+        raise ValueError('the predicted output shape and the '
+                         'real output shape not match. {} vs {}'
+                         .format(colors.red(output),
+                                 colors.green(xshape)))
+    if return_shape:
+        x = [x, output]
+    return x
+
+
 
 
 @core.layer
@@ -109,44 +139,21 @@ def expand_dims(inputs,
         x = [x, output]
     return x
 
-
 @core.layer
-def maskout(inputs,
-            indices=None,
-            axis=-2, # axis according to which to maskout
-            drop=False,
-            flatten=True,
-            return_shape=False,
+def dropout(inputs, pkeep,
+            noise_shape=None,
+            seed=None,
             reuse=False,
             name=None,
             scope=None):
-    """ maskout specificated features given by `indices`
-        NOTE this layer will drop if `drop` is True the other indices
-        > inputs: [batch-size, nclass, depth]
-        > outputs: [batch-size, len(indices), depth] if indices
-          have more than one indices
-        > outputs: [batch-size, depth] if indices have only one indices
-    """
-    input_shape = ops.helper.norm_input_shape(inputs)
-    fun, output = ops.base.maskout(input_shape,
-                                   indices,
-                                   axis,
-                                   drop,
-                                   flatten,
-                                   reuse,
-                                   name,
-                                   scope)
-    x = fun(inputs, indices)
-    xshape = ops.core.shape(x)
-    if output[1:] != xshape[1:]:
-        raise ValueError('the predicted output shape and the '
-                         'real output shape not match. {} vs {}'
-                         .format(colors.red(output),
-                                 colors.green(xshape)))
-    if return_shape:
-        x = [x, output]
-    return x
-
+    fun = ops.base.dropout(pkeep,
+                             noise_shape,
+                             seed,
+                             True, #interpret as layer
+                             reuse,
+                             name,
+                             scope)
+    return fun(inputs)
 
 @core.layer
 def input_spec(inputs,
@@ -160,7 +167,6 @@ def input_spec(inputs,
         therefore use `inputs` instead of `input_shape`
         for naming parameter
     """
-    ops.helper.check_input_shape(inputs)
     ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
                                                                scope,
                                                                'inputs',
@@ -179,7 +185,6 @@ def label_spec(inputs,
         parameter must be `inputs`.
         therefore use `inputs` instead of `input_shape`
     """
-    ops.helper.check_input_shape(inputs)
     ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
                                                                scope,
                                                                'labels',
@@ -195,7 +200,6 @@ def random_spec(inputs,
                 name=None,
                 scope=None,
                 **kwargs):
-    ops.helper.check_input_shape(inputs)
     ops_scope, name_with_ltype, name = ops.helper.assign_scope(name,
                                                                scope,
                                                                'random',

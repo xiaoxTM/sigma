@@ -18,6 +18,14 @@
 
 from . import mm, helper, actives, core
 from .. import status, helpers
+import sys
+import tensorflow as tf
+
+"""
+    batch normalization: work on batch, normalize along NHW dimension (small batch size works poor)
+    layer normalization : work on channel, normalize  along HWC (RNN)
+    instance normalization: work on pixel, normalize along HW (style transfer)
+"""
 
 def instance_norm(input_shape,
                   offset_initializer='zeros',
@@ -163,7 +171,7 @@ def conditional_instance_norm(input_shape,
 
     def _conditional_instance_norm(x, labels):
         with ops_scope:
-            mean, variance = core.moments(x, axes, keep_dims=True)
+            mean, variance = core.moments(x, axes, keepdims=True)
             normalized = (x - mean) / core.sqrt(variance + epsilon)
             select_scale, select_offset = _condition_on(labels)
             if select_scale is not None:
@@ -174,16 +182,8 @@ def conditional_instance_norm(input_shape,
     return _conditional_instance_norm
 
 
-# @helpers.typecheck(input_shape=list,
-#                    momentum=float,
-#                    trainable=bool,
-#                    fused=bool,
-#                    collections=str,
-#                    summary=str,
-#                    reuse=bool,
-#                    name=str,
-#                    scope=str)
-def batch_norm(input_shape,
+def batch_norm_mmv(input_shape,
+               axes=None,
                momentum=0.99,
                offset_initializer='zeros',
                scale_initializer='ones',
@@ -225,7 +225,6 @@ def batch_norm(input_shape,
                                   initializer for moving_mean
         moving_variance_initializer : string / callable function | None
                                       initializer for moving_variance
-        is_training : bool
         fused : bool
                 use fused_batch_normal if true
     """
@@ -236,12 +235,13 @@ def batch_norm(input_shape,
                                              scope,
                                              'batch_norm',
                                              reuse)
-    axis = list(range(len(input_shape)-1))
-    if fused:
-        axis = [0 ,1, 2]
-    # if not isinstance(axis, (list, tuple)):
-    #     axis = [axis]
-    neurons = input_shape[core.axis]
+    if axes is None:
+        axes = list(range(len(input_shape)-1))
+        if fused:
+            axes = [0 ,1, 2]
+        # if not isinstance(axis, (list, tuple)):
+        #     axis = [axis]
+    neurons = input_shape[core.caxis]
 
     offset = None
     if not isinstance(offset_initializer, bool) or \
@@ -274,7 +274,6 @@ def batch_norm(input_shape,
                           reuse,
                           scope)
 
-    moving_mean = None
     moving_mean = mm.malloc('moving-mean',
                             name,
                             neurons,
@@ -282,13 +281,12 @@ def batch_norm(input_shape,
                             moving_mean_initializer,
                             None,
                             cpuid,
-                            trainable,
+                            False,
                             collections,
                             summary,
                             reuse,
                             scope)
 
-    moving_variance = None
     moving_variance = mm.malloc('moving-variance',
                                 name,
                                 neurons,
@@ -296,14 +294,15 @@ def batch_norm(input_shape,
                                 moving_variance_initializer,
                                 None,
                                 cpuid,
-                                trainable,
+                                False,
                                 collections,
                                 summary,
                                 reuse,
                                 scope)
-    act = actives.get(act)
+    act = actives.get(act, deepcopy=True)
     def _train(x):
-        if fused:
+        # x = core.runtime_print(x, 'sigma mm before update', moving_mean)
+        if fused is True:
             # fused_batch_norm(x, scale, offset, mean=None, variance=None,
             #                  epsionl=0.001, is_training=True, name=None)
             # x must be 4-d tensor
@@ -312,24 +311,29 @@ def batch_norm(input_shape,
             for _ in range(4 - x.get_shape().ndims):
                 x = core.expand_dims(x, 1)
             x, mean, variance = core.fused_batch_norm(x, scale,
-                                                      offset, epsilon=epsilon)
+                                                      offset,
+                                                      is_training=True,
+                                                      epsilon=epsilon)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = core.moments(x, axis, keep_dims=True)
+            mean, variance = core.moments(x, axes, keepdims=True)
             # batch_normalize(x, mean, variance, offset,
             #                 scale, variance_epsilon, name)
-            x = core.batch_normalization(x, mean, variance,
-                                         offset, scale, epsilon)
+            x = core.batch_norm(x, mean, variance,
+                                offset, scale, epsilon)
             mean = core.squeeze(mean)
             variance = core.squeeze(variance)
-        if momentum is not None:
-            moving_mean.assign(moving_mean * momentum + mean * (1 - momentum))
-            moving_variance.assign(
-                       moving_variance * momentum + variance * (1 - momentum))
-        return act(x)
+
+        #update_mean=core.moving_average_update(moving_mean, mean, momentum)
+        #update_variance=core.moving_average_update(moving_variance, variance, momentum)
+        update_mean = tf.assign(moving_mean, moving_mean*momentum + mean*(1-momentum))
+        update_variance = tf.assign(moving_variance, moving_variance*momentum + variance*(1-momentum))
+        with core.control_dependencies([update_mean, update_variance]):
+            x = act(x)
+        return x
 
     def _infer(x):
-        if fused:
+        if fused is True:
             x_shape = [-1] + core.shape(x)[1:]
             for _ in range(4 - x.get_shape().ndims):
                 x = core.expand_dims(x, 1)
@@ -338,19 +342,194 @@ def batch_norm(input_shape,
                                  epsilon, is_training=False)
             x = core.reshape(x, x_shape)
         else:
-            mean, variance = core.moments(x, axis, keep_dims=True)
-            x = core.batch_normalization(x, moving_mean, moving_variance,
+            mean, variance = core.moments(x, axes, keepdims=True)
+            x = core.batch_norm(x, moving_mean, moving_variance,
                                          offset, scale, epsilon)
         return act(x)
 
     def _batch_norm(x):
         with ops_scope:
-            x = core.cond(core.cast(status.is_training, core.boolean),
-                        lambda: _train(x),
-                        lambda: _infer(x))
-            # if update moving_mean and moving_variance
-            return x
+            return core.cond(status.is_training,
+                             lambda: _train(x),
+                             lambda: _infer(x))
     return _batch_norm
+
+
+def batch_norm_ema(input_shape,
+               axes=None,
+               momentum=0.99,
+               offset_initializer='zeros',
+               scale_initializer='ones',
+               offset_regularizer=None,
+               scale_regularizer=None,
+               cpuid=0,
+               epsilon=core.epsilon,
+               act=None,
+               trainable=True,
+               collections=None,
+               summary='histogram',
+               reuse=False,
+               name=None,
+               scope=None):
+    helper.check_input_shape(input_shape)
+    if helper.is_tensor(input_shape):
+        input_shape = input_shape.as_list()
+    ops_scope, _, name = helper.assign_scope(name,
+                                             scope,
+                                             'batch_norm',
+                                             reuse)
+    neurons = input_shape[core.caxis]
+    act = actives.get(act)
+    offset = None
+    if not isinstance(offset_initializer, bool) or \
+       offset_initializer is not False:
+        offset = mm.malloc('offset',
+                           name,
+                           neurons,
+                           core.float32,
+                           offset_initializer,
+                           offset_regularizer,
+                           cpuid,
+                           trainable,
+                           collections,
+                           summary,
+                           reuse,
+                           scope)
+    scale = None
+    if not isinstance(scale_initializer, bool) or \
+       scale_initializer is not False:
+        scale = mm.malloc('scale',
+                          name,
+                          neurons,
+                          core.float32,
+                          scale_initializer,
+                          scale_regularizer,
+                          cpuid,
+                          trainable,
+                          collections,
+                          summary,
+                          reuse,
+                          scope)
+
+    if axes is None:
+        axes = list(range(input_shape)-1)
+    ema = tf.train.ExponentialMovingAverage(decay=momentum)
+    def _update(ema_apply_op, mean, variance):
+        with core.control_dependencies([ema_apply_op]):
+            return core.identity(mean), core.identity(variance)
+
+    def _batch_norm(x):
+        with ops_scope:
+            mean, variance = tf.nn.moments(x, axes)
+            # operator that maintains moving averages of variables.
+            ema_apply_op = tf.cond(status.is_training,
+                                                               lambda: ema.apply([mean, variance]),
+                                                               lambda: tf.no_op())
+
+            # ema.average returns the Variable holding the average of var.
+            mean, variance = tf.cond(status.is_training,
+                            lambda: _update(ema_apply_op, mean, variance),
+                            lambda: (ema.average(mean), ema.average(variance)))
+            x =  tf.nn.batch_normalization(x, mean, variance, scale, offset, epsilon)
+            return act(x)
+    return _batch_norm
+
+# @helpers.typecheck(input_shape=list,
+#                    momentum=float,
+#                    trainable=bool,
+#                    fused=bool,
+#                    collections=str,
+#                    summary=str,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def batch_norm(input_shape,
+               axes=None,
+               momentum=0.99,
+               offset_initializer='zeros',
+               scale_initializer='ones',
+               offset_regularizer=None,
+               scale_regularizer=None,
+               moving_mean_initializer='zeros',
+               moving_variance_initializer='ones',
+               update_strategy='ema',
+               cpuid=0,
+               epsilon=core.epsilon,
+               act=None,
+               trainable=True,
+               fused=False,
+               collections=None,
+               summary='histogram',
+               reuse=False,
+               name=None,
+               scope=None):
+    """ batch normalization layer
+        Attributes
+        ==========
+        input_shape : list / tuple
+                      input tensor shape
+        momentum : float | None
+                   momentum to update moving mean and variance
+                   if None, moving mean and variance
+                   will not be updated
+        offset_initializer : string / callable function | None | bool
+                             initializer to initialize offset
+                             if False, offset will be ignored
+                             (output will not be centered)
+        offset_regularizer : string
+                             penalty for offset
+        scale_initializer : string / callable function | None | bool
+                            initializer to initialize scale
+                            if False, scale will be ignored
+        scale_regularizer : string
+                            penalty for scale
+        moving_mean_initializer : string / callable function | None
+                                  initializer for moving_mean
+        moving_variance_initializer : string / callable function | None
+                                      initializer for moving_variance
+        fused : bool
+                use fused_batch_normal if true
+    """
+    if update_strategy == 'ema':
+        return batch_norm_ema(input_shape,
+                              axes,
+                              momentum,
+                              offset_initializer,
+                              scale_regularizer,
+                              offset_regularizer,
+                              scale_regularizer,
+                              cpuid,
+                              epsilon,
+                              act,
+                              trainable,
+                              collections,
+                              summary,
+                              reuse,
+                              name,
+                              scope)
+    elif update_strategy == 'mmv':
+        return batch_norm_mmv(input_shape,
+                              axes,
+                              momentum,
+                              offset_initializer,
+                              scale_initializer,
+                              offset_regularizer,
+                              scale_regularizer,
+                              moving_mean_initializer,
+                              moving_variance_initializer,
+                              cpuid,
+                              epsilon,
+                              act,
+                              trainable,
+                              fused,
+                              collections,
+                              summary,
+                              reuse,
+                              name,
+                              scope)
+    else:
+        raise ValueError('`update_strategy` must be "ema" or "mmv", given {}'
+                         .format(colors.red(update_strategy)))
 
 
 # @helpers.typecheck(kpeep=float,
@@ -380,5 +559,7 @@ def dropout(pkeep,
     # return _dropout
     def _dropout(x):
         with helper.maybe_layer(aslayer, name, scope, 'dropout', reuse):
-            return core.dropout(x, pkeep, noise_shape, seed, name)
+            return core.cond(status.is_training,
+                             lambda: core.dropout(x, pkeep, noise_shape, seed, name),
+                             lambda: x)
     return _dropout

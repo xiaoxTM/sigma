@@ -28,8 +28,9 @@ from . import core
 @core.layer
 def binary_cross_entropy(inputs,
                          axis=None,
-                         from_logits=True,
+                         from_logits=False,
                          onehot=True,
+                         epsilon=ops.core.epsilon,
                          reuse=False,
                          name=None,
                          scope=None):
@@ -51,14 +52,16 @@ def binary_cross_entropy(inputs,
                                            onehot,
                                            reuse,
                                            name,
-                                           scope)(inputs, labels)
+                                           scope,
+                                           epsilon)(inputs, labels)
 
 
 @core.layer
 def categorical_cross_entropy(inputs,
                               axis=None,
-                              from_logits=True,
+                              from_logits=False,
                               onehot=True,
+                              epsilon=ops.core.epsilon,
                               reuse=False,
                               name=None,
                               scope=None):
@@ -68,7 +71,8 @@ def categorical_cross_entropy(inputs,
                                                 onehot,
                                                 reuse,
                                                 name,
-                                                scope)(inputs, labels)
+                                                scope,
+                                                epsilon)(inputs, labels)
 
 
 @core.layer
@@ -91,7 +95,7 @@ def mean_square_error(inputs,
 @core.layer
 def mean_absolute_error(inputs,
                         axis=None,
-                        from_logits=True,
+                        from_logits=False,
                         onehot=True,
                         reuse=False,
                         name=None,
@@ -108,7 +112,7 @@ def mean_absolute_error(inputs,
 @core.layer
 def winner_takes_all(inputs,
                      axis=None,
-                     from_logits=True,
+                     from_logits=False,
                      onehot=True,
                      reuse=False,
                      name=None,
@@ -148,6 +152,37 @@ def margin_loss(inputs,
                                   positive_margin,
                                   negative_margin,
                                   downweight)(inputs, labels)
+
+
+@core.layer
+def chamfer_loss(inputs,
+                 axis=None,
+                 dtype=ops.core.float64,
+                 metric=None,
+                 alpha=0.5,
+                 belta=0.5,
+                 from_logits=True,
+                 onehot=True,
+                 reuse=False,
+                 name=None,
+                 scope=None):
+    """ chamfer distance as loss function
+        chamfer distance of two sets of points is the
+        MEAN MIN distance of each points in each set
+        that is:
+            mean(min(each point in setA, setB)) + mean(min(setA, each point in setB))
+    """
+    inputs, labels = core.split_inputs(inputs)
+    return ops.losses.chamfer_loss(axis,
+                                   from_logits,
+                                   onehot,
+                                   reuse,
+                                   name,
+                                   scope,
+                                   dtype,
+                                   metric,
+                                   alpha,
+                                   belta)(inputs, labels)
 
 
 # short alias for each losses

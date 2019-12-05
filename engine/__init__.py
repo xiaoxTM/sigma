@@ -20,7 +20,7 @@ from .core import session, run, build_model, build_reader, train, predict, build
 from .io import mnist, cifar
 from ..ops.core import __backend__
 from ..layers.core import set_print, set_defaults, export_graph
-
+from ..layers import base
 
 def get():
     return {'backend':__backend__}

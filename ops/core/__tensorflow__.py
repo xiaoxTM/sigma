@@ -27,12 +27,34 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.examples.tutorials import mnist
 from tensorflow.python import debug as tf_debug
+from tensorflow.python.training import moving_averages
 
 from . import commons
 from sigma import colors
+from sigma.ops import helper
 
 # backend version
 version = tf.__version__
+
+def version_convert(version):
+    v = version.split('.')
+    if len(v) == 3:
+        major, mid, minor = v
+    elif len(v) == 2:
+        major, mid = v
+        minor = '0'
+    else:
+        raise ValueError('`version` must be major.mid[.minor], given {}'
+                         .format(version))
+    major = int(major)
+    mid = int(mid)
+    minor = int(minor)
+    return major * 100000 + mid * 100 + minor
+
+def version_compare_great(ver1, ver2):
+    v1 = version_convert(ver1)
+    v2 = version_convert(ver2)
+    return v1 > v2
 
 # floating data type
 float16 = tf.float16
@@ -95,7 +117,7 @@ Optimizer = tf.train.Optimizer
   - [ ] TRAINABLE_RESOURCE_VARIABLES
   - [x] TRAINABLE_VARIABLES
   - [ ] TRAIN_OP
-  - [ ] UPDATE_OPS
+  - [X] UPDATE_OPS
   - [x] VARIABLES
   - [x] WEIGHTS
   - [ ] WHILE_CONTEXT
@@ -130,6 +152,11 @@ class Collections():
     @property
     def weights():
         return tf.GraphKeys.WEIGHTS
+
+    @staticmethod
+    @property
+    def update_ops():
+        return tf.GraphKeys.UPDATE_OPS
 
 
 def is_tensor(x):
@@ -194,6 +221,36 @@ def while_loop(cond,
                          swap_memory,
                          name,
                          **kwargs)
+
+
+def control_dependencies(inputs):
+    return tf.control_dependencies(inputs)
+
+
+def identity(x, name=None):
+    return tf.identity(x, name)
+
+
+def map_func(func, elems,
+             dtype=None,
+             parallel_iterations=None,
+             back_prop=True,
+             swap_memory=False,
+             infer_shape=True,
+             name=None):
+    if parallel_iterations is None:
+        parallel_iterations = 1
+    return tf.map_fn(func,
+                     elems,
+                     dtype,
+                     parallel_iterations,
+                     back_prop,
+                     swap_memory,
+                     infer_shape,
+                     name)
+
+def stop_gradient(x, name=None):
+    return tf.stop_gradient(x, name)
 
 
 #----- tensorflow scop -----#
@@ -319,8 +376,11 @@ def unstack(x, num=None, axis=0, name='unstack'):
     return tf.unstack(x, num, axis, name)
 
 
-def transpose(x, orders):
-    return tf.transpose(x, orders)
+def transpose(x, perm, conjugate=False, name=None):
+    return tf.transpose(x,
+                        perm=perm,
+                        conjugate=conjugate,
+                        name=name)
 
 
 def concat(inputs, axis, name='concat'):
@@ -390,10 +450,10 @@ def reshape(x, output_shape, smart=True, name=None):
     return tf.reshape(x, output_shape, name)
 
 
-def flatten(x, name=None):
-    xshape = shape(x)
-    nshape = [xshape[0], -1]
-    return tf.reshape(x, nshape, name)
+#def flatten(x, name=None):
+#    xshape = shape(x)
+#    nshape = [xshape[0], -1]
+#    return tf.reshape(x, nshape, name)
 
 
 def tile(x, multiples, name=None):
@@ -412,7 +472,7 @@ def argmax(x,
            axis=None,
            dtype=int64,
            name=None):
-    if tf.__version__ >= '1.4.0':
+    if version_compare_great(tf.__version__,'1.4.0'):
         return tf.argmax(x, axis=axis, output_type=dtype, name=name)
     return tf.argmax(x, axis=axis, name=name)
 
@@ -421,7 +481,7 @@ def argmin(x,
            axis=None,
            dtype=int64,
            name=None):
-    if tf.__version__ >= '1.4.0':
+    if version_comare(tf.__version__ ,'1.4.0'):
         return tf.argmin(x, axis=axis, output_type=dtype, name=name)
     return tf.argmin(x, axis=axis, name=name)
 
@@ -500,11 +560,11 @@ def sqrt(x, name=None):
 
 
 def norm(x,
-         axis=None,
+         axis,
          keepdims=False,
          ord='euclidean',
-         epsilon=1e-8,
-         safe=False,
+         epsilon=commons.epsilon,
+         safe=True,
          return_squared=False,
          name=None):
     if not safe:
@@ -636,12 +696,14 @@ def selu(x,
 
 
 def leaky_relu(x, alpha=0.2, name=None):
-    if tf.__version__ >= '1.4.0':
+    if version_compare_great(tf.__version__, '1.4.0'):
         return tf.nn.leaky_relu(x, alpha, name)
     return tf.maximum(x, x * alpha, name)
 
 
 def softmax(x, axis=-1, name=None):
+    if not version_compare_great(tf.__version__, '1.5'):
+        axis = helper.normalize_axes(shape(x), axis)
     return tf.nn.softmax(x, axis, name)
 
 
@@ -665,6 +727,9 @@ def tanh(x, name=None):
 
 def seed(x):
     tf.set_random_seed(x)
+
+def group(*inputs, **kwargs):
+    return tf.group(*inputs, **kwargs)
 
 
 def random_normal(shape,
@@ -727,7 +792,7 @@ def embedding(params,
 @padnorm
 def conv1d(x, filters, stride, padding,
            use_cudnn_on_gpu=None,
-           data_format=commons.data_format,
+           data_format=commons.data_format[1],
            name=None):
     return tf.nn.conv1d(x,
                         filters,
@@ -741,10 +806,10 @@ def conv1d(x, filters, stride, padding,
 @padnorm
 def conv2d(x, filters, strides, padding,
            use_cudnn_on_gpu=None,
-           data_format=commons.data_format,
+           data_format=commons.data_format[2],
            dilations=[1,1,1,1],
            name=None):
-    if tf.__version__ >= '1.5':
+    if version_compare_great(tf.__version__,'1.5.0'):
         return tf.nn.conv2d(x,
                             filters,
                             strides,
@@ -765,10 +830,10 @@ def conv2d(x, filters, strides, padding,
 @padnorm
 def conv3d(x, filters, strides, padding,
            use_cudnn_on_gpu=None,
-           data_format=commons.data_format,
+           data_format=commons.data_format[3],
            dilations=[1,1,1,1],
            name=None):
-    if tf.__version__ >= '1.5':
+    if version_compare_great(tf.__version__,'1.5.0'):
         return tf.nn.conv3d(x,
                             filters,
                             strides,
@@ -792,7 +857,7 @@ def deconv2d(x,
              output_shape,
              strides,
              padding='SAME',
-             data_format=commons.data_format,
+             data_format=commons.data_format[2],
              name=None):
     return tf.nn.conv2d_transpose(x,
                                   filters,
@@ -806,7 +871,7 @@ def deconv2d(x,
 @padnorm
 def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
               rate=None,
-              data_format=commons.data_format,
+              data_format=commons.data_format[2],
               name=None):
     return tf.nn.separable_conv2d(x,
                                   depthwise_filter,
@@ -821,7 +886,7 @@ def sepconv2d(x, depthwise_filter, pointwise_filter, strides, padding,
 @padnorm
 def depthwise_conv2d(x, kernels, strides, padding,
                      rate=None,
-                     data_format=commons.data_format,
+                     data_format=commons.data_format[2],
                      name=None):
     return tf.nn.depthwise_conv2d(x,
                                   kernels,
@@ -857,12 +922,11 @@ def tensordot(a, b, axes, name=None):
 #----- tensorflow losses -----#
 def softmax_cross_entropy_with_logits(labels=None,
                                       logits=None,
-                                      axis=commons.axis,
+                                      axis=commons.caxis,
                                       name=None):
 
-    if tf.__version__ >= '1.5':
-        return tf.nn.softmax_cross_entropy_with_logits_v2(_sentinel=None,
-                                                          labels=labels,
+    if version_compare_great(tf.__version__,'1.5.0'):
+        return tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels,
                                                           logits=logits,
                                                           dim=axis,
                                                           name=name)
@@ -883,16 +947,19 @@ def sigmoid_cross_entropy_with_logits(labels=None,
 
 
 #----- tensorflow summaries -----#
-def summarize(name, tensor, mode='histogram', **kwargs):
-    if mode == 'histogram':
-        return tf.summary.histogram(name, tensor)
-    elif mode == 'scalar':
-        return tf.summary.scalar(name, tensor)
-    elif mode == 'image':
-        return tf.summary.image(name, tensor, **kwargs)
-    else:
-        raise ValueError('`{}` mode for summary not supported'
-                         .format(mode))
+def summarize(name, tensor, mode='histogram', norm=True, reuse=False, **kwargs):
+    if not reuse:
+        if norm:
+            name = helper.normalize_name(name)
+        if mode == 'histogram':
+            return tf.summary.histogram(name, tensor)
+        elif mode == 'scalar':
+            return tf.summary.scalar(name, tensor)
+        elif mode == 'image':
+            return tf.summary.image(name, tensor, **kwargs)
+        else:
+            raise ValueError('`{}` mode for summary not supported'
+                             .format(mode))
 
 
 #----- tensorflow log gradients -----#
@@ -1119,23 +1186,154 @@ def metrics_recall(labels,
 
 
 #----- tensorflow optimizer -----#
+def AdadeltaOptimizer(learning_rate=0.001,
+                      rho=0.95,
+                      epsilon=1e-08,
+                      use_locking=False,
+                      name='Adadelta'):
+    return tf.train.AdadeltaOptimizer(learning_rate,
+                                      rho,
+                                      epsilon,
+                                      use_locking,
+                                      name)
+
+def AdagradOptimizer(learning_rate,
+                     initial_accumulator_value=0.1,
+                     use_locking=False,
+                     name='Adagrad'):
+    return tf.train.AdagradOptimizer(learning_rate,
+                                     initial_accumulator_value,
+                                     use_locking,
+                                     name)
+
+
+def AdagradDAOptimizer(learning_rate,
+                       global_step,
+                       initial_gradient_squared_accumulator_value=0.1,
+                       l1_regularization_strength=0.0,
+                       l2_regularization_strength=0.0,
+                       use_locking=False,
+                       name='AdagradDA'):
+    return tf.train.AdagradDAOptimizer(learning_rate,
+                                       global_step,
+                                       initial_gradient_squared_accumulator_value,
+                                       l1_regularization_strength,
+                                       l2_regularization_strength,
+                                       use_locking,
+                                       name)
+
+def AdamOptimizer(learning_rate=0.001,
+                  beta1=0.9,
+                  beta2=0.999,
+                  epsilon=1e-08,
+                  use_locking=False,
+                  name='Adam'):
+    return tf.train.AdamOptimizer(learning_rate,
+                                  beta1,
+                                  beta2,
+                                  epsilon,
+                                  use_locking,
+                                  name)
+
+def GradientDescentOptimizer(learning_rate,
+                             use_locking=False,
+                             name='GradientDescent'):
+    return tf.train.GradientDescentOptimizer(learning_rate,
+                                             use_locking,
+                                             name)
+
+def ProximalAdagradOptimizer(learning_rate=0.1,
+                             initial_accumulator_value=0.1,
+                             l1_regularization_strength=0.0,
+                             l2_regularization_strength=0.0,
+                             use_locking=False,
+                             name='ProximalAdagrad'):
+    return tf.train.ProximalAdagradOptimizer(learning_rate,
+                                             initial_accumulator_value,
+                                             l1_regularization_strength,
+                                             l2_regularization_strength,
+                                             use_locking,
+                                             name)
+
+def ProximalGradientDescentOptimizer(learning_rate,
+                                     l1_regularization_strength=0.0,
+                                     l2_regularization_strength=0.0,
+                                     use_locking=False,
+                                     name='ProximalGradientDescent'):
+    return tf.train.ProximalGradientDescentOptimizer(learning_rate,
+                                                     l1_regularization_strength,
+                                                     l2_regularization_strength,
+                                                     use_locking,
+                                                     name)
+
+def RMSPropOptimizer(learning_rate,
+                     decay=0.9,
+                     momentum=0.0,
+                     epsilon=1e-10,
+                     use_locking=False,
+                     centered=False,
+                     name='RMSProp'):
+    return tf.train.RMSPropOptimizer(learning_rate,
+                                     decay,
+                                     momentum,
+                                     epsilon,
+                                     use_locking,
+                                     centered,
+                                     name)
+
+def MomentumOptimizer(learning_rate,
+                      momentum,
+                      use_locking=False,
+                      name='Momentum',
+                      use_nesterov=False):
+    return tf.train.MomentumOptimizer(learning_rate,
+                                      momentum,
+                                      use_locking,
+                                      name,
+                                      use_nesterov)
+
+def FtrlOptimizer(learning_rate,
+                  learning_rate_power=-0.5,
+                  initial_accumulator_value=0.1,
+                  l1_regularization_strength=0.0,
+                  l2_regularization_strength=0.0,
+                  use_locking=False,
+                  name='Ftrl',
+                  accum_name=None,
+                  linear_name=None,
+                  l2_shrinkage_regularization_strength=0.0):
+    return tf.train.FtrlOptimizer(learning_rate,
+                                  learning_rate_power,
+                                  initial_accumulator_value,
+                                  l1_regularization_strength,
+                                  l2_regularization_strength,
+                                  use_locking,
+                                  name,
+                                  accum_name,
+                                  linear_name,
+                                  l2_shrinkage_regularization_strength)
+
+
 def get_optimizer(optimizer, **kwargs):
-    if optimizer not in ['Optimizer', 'GradientDescentOptimizer',
-                         'AdadeltaOptimizer', 'AdagradOptimizer',
-                         'AdagradDAOptimizer', 'MomentumOptimizer',
-                         'AdamOptimizer', 'FtrlOptimizer',
+    if optimizer not in ['GradientDescentOptimizer',
+                         'AdadeltaOptimizer',
+                         'AdagradOptimizer',
+                         'AdagradDAOptimizer',
+                         'MomentumOptimizer',
+                         'AdamOptimizer',
+                         'FtrlOptimizer',
                          'ProximalGradientDescentOptimizer',
                          'ProximalAdagradOptimizer',
                          'RMSPropOptimizer']:
         raise NotImplementedError('optimizer `{}` not implemented'
                                   .format(optimizer))
-    return eval('tf.train.{}(**kwargs)'.format(optimizer))
+    return eval('{}(**kwargs)'.format(optimizer))
 
 
 #------ tensorflow pooling -----#
 @padnorm
 def avg_pool(x, ksize, strides, padding,
-             data_format=commons.data_format,
+             data_format=commons.data_format[2],
              name=None):
     return tf.nn.avg_pool(x,
                           ksize,
@@ -1147,7 +1345,7 @@ def avg_pool(x, ksize, strides, padding,
 
 @padnorm
 def max_pool(x, ksize, strides, padding,
-            data_format=commons.data_format,
+            data_format=commons.data_format[2],
             name=None):
     return tf.nn.max_pool(x,
                           ksize,
@@ -1235,8 +1433,8 @@ def fused_batch_norm(x,
                      offset,
                      mean=None,
                      variance=None,
-                     epsilon=commons.epsilon,
-                     data_format=commons.data_format,
+                     epsilon=0.001,
+                     data_format=commons.data_format[2],
                      is_training=True,
                      name=None):
     return tf.nn.fused_batch_norm(x,
@@ -1255,15 +1453,15 @@ def batch_norm(x,
                variance,
                offset,
                scale,
-               variance_epsilon,
+               variance_epsilon=commons.epsilon,
                name=None):
-    return tf.nn.batch_norm(x,
-                            mean,
-                            variance,
-                            offset,
-                            scale,
-                            variance_epsilon,
-                            name)
+    return tf.nn.batch_normalization(x,
+                                     mean,
+                                     variance,
+                                     offset,
+                                     scale,
+                                     variance_epsilon,
+                                     name)
 
 
 #----- tensorflow save model / weights -----#
@@ -1271,11 +1469,13 @@ def load_mnist(path, one_hot):
     return mnist.input_data.read_data_set(path, one_hot)
 
 
-def load(session, checkpoint,
+def load(session,
+         checkpoint,
          saver=None,
+         var_list=None,
          verbose=True):
     if saver is None:
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(var_list)
     if not isinstance(saver, tf.train.Saver):
         raise TypeError('`{}saver{}` must be instance of {}tf.train.Saver{}. '
                         'given {}'
@@ -1283,7 +1483,7 @@ def load(session, checkpoint,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
     sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
-    if version >= '1.5':
+    if version_compare_great(tf.__version__, '1.12.0'):
         sessions.append(tf_debug.TensorBoardDebugWrapperSession)
     if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
@@ -1300,8 +1500,15 @@ def load(session, checkpoint,
                  )
         saver.restore(session, ckpt.model_checkpoint_path)
     elif verbose:
-        print('{}restoring from checkpoint {}ignored{}'
-              .format(colors.fg.blue, colors.fg.red, colors.reset))
+        if ckpt is None:
+            print('{}no checkpoint to restore from{}'
+                  .format(colors.fg.green, colors.reset))
+        else:
+            print('{}restoring from checkpoint: {} {}ignored{}'
+                  .format(colors.fg.blue,
+                          colors.green(checkpoint),
+                          colors.fg.red,
+                          colors.reset))
     return session, saver
 
 
@@ -1319,7 +1526,7 @@ def save(session,
                                 colors.fg.blue, colors.reset,
                                 colors.red(type(saver))))
     sessions = [tf.Session, tf_debug.LocalCLIDebugWrapperSession]
-    if version >= '1.5':
+    if version_compare_great(tf.__version__, '1.12.0'):
         sessions.append(tf_debug.TensorBoardDebugWrapperSession)
     if not isinstance(session, tuple(sessions)):
         raise TypeError('`{}session{}` must be instance of {}tf.Session{}. '
@@ -1382,7 +1589,7 @@ def export_weights(filename, session,
         if graph is None:
             graph = session.graph
         f.attrs['sigma_version'] = sigma.__version__.encode('utf-8')
-        f.attrs['data_format'] = commons.data_format.encode('utf-8')
+        f.attrs['data_format'] = ' '.join(map(str,commons.data_format)).encode('utf-8')
         if collections is None:
             collections = graph.get_all_collection_keys()
         elif isinstance(collections, str):
@@ -1463,11 +1670,13 @@ def session(target='',
     sess = tf.Session(target, graph, config)
     if debug:
         if address is not None:
-            sess = tf_debug.TensorBoardDebugWrapperSession(sess, address)
+            sess = tf_debug.TensorBoardDebugWrapperSession(sess,
+                                                           address,
+                                                           send_traceback_and_source_code=False)
         else:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
-    sess.run([tf.global_variables_initializer(),
-              tf.local_variables_initializer()])
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     if initializers is not None:
         sess.run(initializers)
     return sess
@@ -1506,3 +1715,60 @@ def add_summary(filewriter, summary, global_step=None):
 
 def device(name_or_function):
     return tf.device(name_or_function)
+
+
+def idle():
+    tf.no_op()
+
+def extract_patches(x,
+                    ksize,
+                    strides,
+                    rates,
+                    padding,
+                    name=None):
+    return tf.extract_image_patches(x,
+                              ksize,
+                              strides,
+                              rates,
+                              padding,
+                              name)
+
+
+def moving_average_update(x,
+                          value,
+                          decay,
+                          zero_debias=True,
+                          name=None):
+    return moving_averages.assign_moving_average(x,
+                                                 value,
+                                                 decay,
+                                                 zero_debias,
+                                                 name)
+
+def int64_feature(value):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+
+def float_feature(value):
+    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+
+def bytes_feature(value):
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+
+def make_feature(features):
+    example = tf.train.Example(features=tf.train.Features(feature=features))
+    return example.SerializeToString()
+
+def feature_writer(filename):
+    return tf.python_io.TFRecordWriter(filename)
+
+def feature_reader(filenames):
+    reader = tf.TFRecordReader()
+    return reader
+
+def runtime_print(inputs,
+                                      *others,
+                                      **kwargs):
+    print_op = tf.print(inputs, *others, **kwargs)
+    with tf.control_dependencies([print_op]):
+        inputs = tf.identity(inputs)
+    return inputs

@@ -21,6 +21,7 @@ from . import helper, core
 
 def metric(fun):
     def _metric(from_logits=True,
+               onehot=True,
                 weights=None,
                 metrics_collections=None,
                 updates_collections=None,
@@ -33,6 +34,7 @@ def metric(fun):
                                                  fun.__name__,
                                                  reuse)
         return fun(from_logits,
+                   onehot,
                    weights,
                    metrics_collections,
                    updates_collections,
@@ -42,9 +44,32 @@ def metric(fun):
                    *args)
     return _metric
 
+@metric
+def batch_accuracy(from_logits=True,
+             onehot=True,
+             weights=None,
+             reuse=False,
+             name=None,
+             scope=None):
+    ops_scope, _, name = helper.assign_scope(name,
+                                              scope,
+                                              fun.__name__,
+                                              reuse)
+    def _accuracy(x, labels):
+        with ops_scope:
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
+            nsamples = helper.norm_input_shape(core.shape(x))[0]
+            return core.cast(core.sum(core.eq(x, labels)) / nsamples, core.float32)
+    return _accuracy
+
 
 @metric
 def accuracy(from_logits=True,
+             onehot=True,
              weights=None,
              metrics_collections=None,
              updates_collections=None,
@@ -53,16 +78,17 @@ def accuracy(from_logits=True,
              scope=None):
     def _accuracy(x, labels):
         with scope:
-            #if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_accuracy(labels,
                                       x,
                                       weights,
                                       metrics_collections,
-                                      updates_collections,
-                                      name)
-            variables = core.get_collection('local_variables', name)
+                                      updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _accuracy
@@ -70,6 +96,7 @@ def accuracy(from_logits=True,
 
 @metric
 def auc(from_logits=True,
+        onehot=True,
         weights=None,
         metrics_collections=None,
         updates_collections=None,
@@ -81,9 +108,11 @@ def auc(from_logits=True,
         summation_method='trapezoidal'):
     def _auc(x, labels):
         with scope:
-            #if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(x, core.caxis)
             x = core.metrics_auc(labels,
                                  x,
                                  weights,
@@ -91,9 +120,9 @@ def auc(from_logits=True,
                                  metrics_collections,
                                  updates_collections,
                                  curve,
-                                 name,
+                                 None,
                                  summation_method)
-            variables = core.get_collection('local_variables', name)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _auc
@@ -101,6 +130,7 @@ def auc(from_logits=True,
 
 @metric
 def false_negatives(from_logits=True,
+                    onehot=True,
                     weights=None,
                     metrics_collections=None,
                     updates_collections=None,
@@ -110,25 +140,25 @@ def false_negatives(from_logits=True,
                     thresholds=None):
     def _false_negatives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_false_negatives_at_threshold(labels,
                                                               x,
                                                               thresholds,
                                                               weights,
                                                               metrics_collections,
-                                                              updates_collections,
-                                                              name)
+                                                              updates_collections)
             else:
                 x = core.metrics_false_negatives(labels,
                                                  x,
                                                  weights,
                                                  metrics_collections,
-                                                 updates_collections,
-                                                 name)
-            variables = core.get_collection('local_variables', name)
+                                                 updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _false_negatives
@@ -136,6 +166,7 @@ def false_negatives(from_logits=True,
 
 @metric
 def false_positives(from_logits=True,
+                   onehot=True,
                     weights=None,
                     metrics_collections=None,
                     updates_collections=None,
@@ -145,25 +176,25 @@ def false_positives(from_logits=True,
                     thresholds=None):
     def _false_positives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_false_positives_at_threshold(labels,
                                                               x,
                                                               thresholds,
                                                               weights,
                                                               metrics_collections,
-                                                              updates_collections,
-                                                              name)
+                                                              updates_collections)
             else:
                 x = core.metrics_false_positives(labels,
                                                  x,
                                                  weights,
                                                  metrics_collections,
-                                                 updates_collections,
-                                                 name)
-            variables = core.get_collection('local_variables', name)
+                                                 updates_collections)
+            variables = core.get_collection(Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _false_positives
@@ -171,6 +202,7 @@ def false_positives(from_logits=True,
 
 @metric
 def true_negatives(from_logits=True,
+                   onehot=True,
                    weights=None,
                    metrics_collections=None,
                    updates_collections=None,
@@ -180,25 +212,25 @@ def true_negatives(from_logits=True,
                    thresholds=None):
     def _true_negatives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_true_negatives_at_threshold(labels,
                                                              x,
                                                              thresholds,
                                                              weights,
                                                              metrics_collections,
-                                                             updates_collections,
-                                                             name)
+                                                             updates_collections)
             else:
                 x = core.metrics_true_negatives(labels,
                                                 x,
                                                 weights,
                                                 metrics_collections,
-                                                updates_collections,
-                                                name)
-            variables = core.get_collection('local_variables', name)
+                                                updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _true_negatives
@@ -206,6 +238,7 @@ def true_negatives(from_logits=True,
 
 @metric
 def true_positives(from_logits=True,
+                  onehot=True,
                    weights=None,
                    metrics_collections=None,
                    updates_collections=None,
@@ -215,25 +248,25 @@ def true_positives(from_logits=True,
                    thresholds=None):
     def _true_positives(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             if thresholds is not None:
                 x = core.metrics_true_positives_at_threshold(labels,
                                                              x,
                                                              thresholds,
                                                              weights,
                                                              metrics_collections,
-                                                             updates_collections,
-                                                             name)
+                                                             updates_collections)
             else:
                 x = core.metrics_true_positives(labels,
                                                 x,
                                                 weights,
                                                 metrics_collections,
-                                                updates_collections,
-                                                name)
-            variables = core.get_collection('local_variables', name)
+                                                updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _true_positives
@@ -241,6 +274,7 @@ def true_positives(from_logits=True,
 
 @metric
 def mean_iou(from_logits=True,
+             onehot=True,
              weights=None,
              metrics_collections=None,
              updates_collections=None,
@@ -252,17 +286,18 @@ def mean_iou(from_logits=True,
         raise TypeError('`nclass` for `mean_iou` can not be None')
     def _mean_iou(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_mean_iou(labels,
                                       x,
                                       nclass,
                                       weights,
                                       metrics_collections,
-                                      updates_collections,
-                                      name)
-            variables = core.get_collection('local_variables', name)
+                                      updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _mean_iou
@@ -270,6 +305,7 @@ def mean_iou(from_logits=True,
 
 @metric
 def precision(from_logits=True,
+              onehot=True,
               weights=None,
               metrics_collections=None,
               updates_collections=None,
@@ -278,16 +314,17 @@ def precision(from_logits=True,
               scope=None):
     def _precision(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_precision(labels,
                                        x,
                                        weights,
                                        metrics_collections,
-                                       updates_collections,
-                                       name)
-            variables = core.get_collection('local_variables', name)
+                                       updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _precision
@@ -295,6 +332,7 @@ def precision(from_logits=True,
 
 @metric
 def recall(from_logits=True,
+           onehot=True,
            weights=None,
            metrics_collections=None,
            updates_collections=None,
@@ -303,16 +341,17 @@ def recall(from_logits=True,
            scope=None):
     def _recall(x, labels):
         with scope:
-            # if from_logits:
-            x = core.argmax(x, core.axis)
-            labels = core.argmax(labels, core.axis)
+            if from_logits:
+                x = core.softmax(x, core.caxis)
+            x = core.argmax(x, core.caxis)
+            if onehot:
+                labels = core.argmax(labels, core.caxis)
             x = core.metrics_recall(labels,
                                     x,
                                     weights,
                                     metrics_collections,
-                                    updates_collections,
-                                    name)
-            variables = core.get_collection('local_variables', name)
+                                    updates_collections)
+            variables = core.get_collection(core.Collections.local_variables, name)
             initializer = core.variables_initializer(var_list=variables)
             return (*x, initializer)
     return _recall

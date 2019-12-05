@@ -24,8 +24,10 @@ __backend__ = 'tensorflow'
 if __backend__ == 'tensorflow':
     from .__tensorflow__ import *
 elif __backend__ == 'theano':
+    raise Exception('NotImplementedError')
     from .__theano__ import *
 elif __backend__ == 'pytorch':
+    raise Exception('NotImplementedError')
     from .__pytorch__ import *
 else:
     raise ValueError('`{}` backend for sigma is not supported'
@@ -34,3 +36,5 @@ print('Using {} {}<{}>{} backend'.format(colors.red(__backend__),
                                        colors.fg.green,
                                        version,
                                        colors.reset))
+
+floatx = float32

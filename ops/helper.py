@@ -24,6 +24,17 @@ import collections
 import os.path
 from contextlib import contextmanager
 
+def normalize_name(x):
+    if x is None:
+        raise ValueError('`x` must be non None for name normalize')
+    if not isinstance(x, str):
+        raise TypeError('`x` must be string for name normalize. given `{}`'.format(type(x)))
+    if x[0] != '.':
+        x = '.'+x
+    if x[-1] != '.':
+        x = x+'.'
+    return x
+
 def name_space():
     name_maps = collections.OrderedDict()
     def _name_space(x=None, index=None):
@@ -36,21 +47,21 @@ def name_space():
             raise TypeError('index space requires int but given {}'
                            .format(type(index)))
         if x is None:
-            return '{}-{}'.format(*list(name_maps.items())[index])
+            return normalize_name('{}-{}'.format(*list(name_maps.items())[index]))
         else:
             if index is None:
                 if x not in name_maps.keys():
                     name_maps[x] = -1
                 nid = name_maps[x] + 1
                 name_maps[x] = nid
-                return '{}-{}'.format(x, nid)
+                return normalize_name('{}-{}'.format(x, nid))
             else:
                 if x not in name_maps.keys():
                     raise ValueError('`{}` not in name maps for indexing {}'
                                      .format(x, index))
                 size = name_maps[x] + 1
                 nid = (size + index) % size
-                return '{}-{}'.format(x, nid)
+                return normalize_name('{}-{}'.format(x, nid))
     return _name_space
 
 
@@ -69,6 +80,7 @@ def assign_scope(name, scope, ltype, reuse=False):
             name = dispatch_name(ltype, -1)
         else:
             name = dispatch_name(ltype)
+    name = normalize_name(name)
     name_with_ltype = '{}/{}'.format(name, ltype)
     if scope is None:
         ops_scope = core.name_scope('{}'.format(name_with_ltype))
@@ -81,7 +93,7 @@ def assign_scope(name, scope, ltype, reuse=False):
 @contextmanager
 def maybe_layer(aslayer=False, name=None, scope=None, ltype=None, reuse=False):
     if aslayer:
-        ops_scope = assign_scope(name, scope, ltype, reuse)
+        ops_scope, _, _ = assign_scope(name, scope, ltype, reuse)
         yield ops_scope
     else:
         yield
@@ -92,12 +104,12 @@ def is_tensor(x):
 
 
 def depth(x):
-    return core.shape(x)[core.axis]
+    return core.shape(x)[core.caxis]
 
 
 def feature_dims(x):
     dims = list(range(core.rank(x)))
-    shape.pop(core.axis)
+    shape.pop(core.caxis)
     shape.pop(0)
     return shape
 
@@ -105,7 +117,13 @@ def split_scope(name):
     def _split_scope(n):
         scope = n.rsplit(':', 1)
         if len(scope) == 2:
-            scope = scope[0]
+            if scope[1].isnumeric():
+                # in case of name:index
+                scope = scope[0].rsplit(':', 1)
+            if len(scope) == 2:
+                scope = scope[0]
+            else:
+                scope = 'None'
         else:
             scope = 'None'
         return scope
@@ -123,18 +141,15 @@ def concat_scope_and_name(names):
             raise TypeError('name type must be list. given {}'
                             .format(type(name)))
         length = len(name)
-        if length < 1 or length > 4 or length == 2:
-            raise ValueError('name must have length in [3, 4] or 1, given {}'
+        if length < 1 or length > 2:
+            raise ValueError('name must have length in [1, 2], given {}'
                              .format(length))
         elif length == 1:
-            # name = [variable]
+            # name = [layer-name]
             return '{}'.format(name[0])
-        elif length == 3:
-            # name = [layer-name, layer-type, variable]
-            return '{}'.format(name[0])
-        else: #length == 4
-            # name = [scope+, layer-name, layer-type, variable]
-            return '{}:{}'.format(name[0], name[1])
+        else: #length == 2
+            # name = [scope+, layer-name]
+            return '{}-{}'.format(name[0], name[1])
     if isinstance(names, list):
         return _concat_scope_and_name(names)
     elif isinstance(names, tuple):
@@ -146,16 +161,26 @@ def concat_scope_and_name(names):
 def split_name(names, nameonly=True):
     """ split variable name (or say, remove variable index)
         generally, `names` are a list of :
-            [scope/]*/layer-name/layer-type/variable-name:index
-        return scope(s), layer-name, layer-type, variable-name:index
+            [scope/]*/.layer-name./layer-type/[subspace/*/]variable-name:index
+        return [scope(s),] layer-name
     """
     def _split(name):
-        name = name.rsplit(':', 1)[0]
-        splits = name.rsplit('/', 3)
-        if nameonly is True:
-            return splits[-3]
+        if name.find('/.') == -1:
+            # no scope
+            # .layer-name./layer-type/[subspace*/]variable-name:index
+            # ==> layer-name
+            name = name.split('./')[0]
+            if name[0] == '.':
+                name = name[1:]
+            name = [name]
         else:
-            return splits
+            # [scope/]*/.layer-name./layer-type/[subspace*/]variable-name:index
+            # ==> scope/*, layer-name
+            name = name.split('./')[0].split('/.')
+        if nameonly is True:
+            return name[-1]
+        else:
+            return name
     if isinstance(names, str):
         return _split(names)
     elif isinstance(names, (tuple, list, np.ndarray)):
@@ -174,7 +199,7 @@ def scope_name(names):
     for example: tensor shape [batch size, rows, cols, channels], axis = -1
         return axis=3
 """
-def normalize_axes(shape, axis=core.axis):
+def normalize_axes(shape, axis=core.caxis):
     if not isinstance(shape, (list, tuple)):
         raise TypeError('shape must be list/tuple, given {}[{}]'
                         .format(colors.red(type(shape)), shape))
@@ -256,7 +281,7 @@ def norm_input_shape(input_tensor):
         will be assigned to Tensor as batch_size
     """
     input_shape = core.shape(input_tensor)
-    if input_shape[0] is None:
+    if len(input_shape) != 0 and input_shape[0] is None:
         input_shape[0] = core.tshape(input_tensor)[0]
     return input_shape
 
@@ -277,6 +302,35 @@ def check_input_shape(input_shape):
         raise ValueError('input shape `{}` contains both None and -1'
                          .format(colors.red(input_shape)))
 
+def check_shape_consistency(input_shapes):
+    if not isinstance(input_shapes, (list, tuple)):
+        raise TypeError('requires inputs as '
+                        '{}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(input_shapes))))
+    elif len(input_shapes) < 2:
+        raise ValueError('requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(input_shapes))))
+    output_shape = input_shapes[0]
+    check_input_shape(output_shape)
+    for idx, ip in enumerate(input_shapes[1:]):
+        check_input_shape(ip)
+        # ignore the batch-size dimension in case of value `None`
+        if len(output_shape) == 0:
+            if len(ip) != 0:
+                raise ValueError('shape of {}-input '
+                                 'has length {} while '
+                                 '0-input is scalar'
+                                 .format(colors.red(idx+1),
+                                         colors.red(len(ip)))
+                                )
+        if not np.all(output_shape[1:] == ip[1:]):
+            raise ValueError('shape of {}-input differ '
+                             'from first one. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
 
 def norm_input_1d(shape):
     """ norm input for 1d convolving operation
@@ -285,6 +339,7 @@ def norm_input_1d(shape):
         > input shape : 2
         > output shape: [1, 2, 1]
 
+    print('name in ops/transpose after assign_scope:', name)
         > input shape : [2]
         > output shape: [1, 2, 1]
 

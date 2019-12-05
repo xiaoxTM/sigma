@@ -19,10 +19,20 @@
 import numpy as np
 import pickle
 import gzip
+from PIL import Image
 
 """ numpy utils
 """
 
+def imread(filename, mode='r'):
+    return np.array(Image.open(filename, mode))
+
+def imsave(filename, arr, fmt=None, **kwargs):
+    Image.fromarray(arr).save(filename, fmt, **kwargs)
+
+def imresize(arr, size, interp='bilinear'):
+    mode = eval('Image.{}'.format(interp.upper()))
+    Image.fromarray(arr).resize(size, mode)
 
 ######################################################
 def dense_argmax(x,
@@ -310,8 +320,8 @@ def stack(array, axis=0, interval=0, value=0.0):
            .format(type(array))
 
     shape = array[0].shape
-    for a in array:
-        assert isinstance(a, np.ndarray)
+    for i, a in enumerate(array):
+        assert isinstance(a, np.ndarray), '{} element of array is {} type rather than np.ndarray'.format(i, type(a))
         assert a.shape == shape
     length = len(array)
     # if np.ndarray of array, shape = [col, length]
