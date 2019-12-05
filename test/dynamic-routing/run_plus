@@ -1,6 +1,0 @@
-#! /usr/bin/env bash
-
-CHECKPOINT=checkpoint
-LOG=log
-
-python3 dynamic_routing_plus.py --checkpoint $CHECKPOINT --log $LOG --epochs 200 --batch-size 50
