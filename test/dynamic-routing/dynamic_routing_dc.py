@@ -17,6 +17,10 @@ from tensorflow.examples.tutorials.mnist import input_data
 import skimage as sk
 import skimage.io as skio
 
+from sklearn.metrics import accuracy_score, balanced_accuracy_score
+
+tf.set_random_seed(1024)
+
 logging.basicConfig(level=logging.INFO)
 
 def build_func(inputs, labels, initializer='glorot_uniform', is_training=True, reuse=False):
@@ -85,11 +89,34 @@ def build_func(inputs, labels, initializer='glorot_uniform', is_training=True, r
         recon_loss = layers.losses.mse([reconstruction, image], name='reconstruction-loss')
         tf.summary.scalar('reconstruction-loss', recon_loss)
         loss = layers.math.add([class_loss, recon_loss], [1, 0.392], name='add') #0.392 = 0.0005 * 784
-        metric = layers.metrics.accuracy([classification, labels], name='accuracy')
+        #metric = layers.metrics.accuracy([classification, labels], name='accuracy')
         ops.core.summarize('loss', loss, 'scalar')
-        ops.core.summarize('acc', metric[0], 'scalar')
-    return reconstruction, loss, metric
+        #ops.core.summarize('acc', metric[0], 'scalar')
+    return reconstruction, classification, loss
     #return None, loss, metric
+
+def valid(sess, dataset, inputs, labels, loss_op, classification_op, batch_size):
+    steps = int(dataset.num_examples * 1.0 / batch_size)
+    loss = 0
+    preds = []
+    truth = []
+    total = 0
+    for step in range(steps):
+        xs, ys = dataset.next_batch(batch_size)
+        size = ys.shape[0]
+        feed = {inputs:xs, labels:ys, status.is_training:False}
+        l, p = sess.run([loss_op, classification_op], feed_dict=feed)
+        loss += (l * size)
+        p = p.argmax(1)
+        ys = ys.argmax(1)
+        preds.extend(p)
+        truth.extend(ys)
+        total += size
+
+    mean_loss = loss * 1.0 / total
+    acc = accuracy_score(truth, preds)
+    bac = balanced_accuracy_score(truth, preds)
+    return mean_loss, acc, bac
 
 @helpers.stampit({'checkpoint':-2}, message='capsnet_mnist')
 def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
@@ -110,8 +137,8 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
     global_step = tf.Variable(0, trainable=False)
 
     with ops.core.device('/gpu:0'):
-        reconstruction_op, loss_op, metrics_op = build_func(inputs, labels)
-        metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
+        reconstruction_op, classification_op, loss_op = build_func(inputs, labels)
+        #metric_op, metric_update_op, metric_variable_initialize_op = metrics_op
         learning_rate = tf.train.exponential_decay(0.001, global_step, mnist.train.num_examples / batchsize, 0.998)
         train_op = ops.optimizers.get('AdamOptimizer', learning_rate=learning_rate).minimize(loss_op, global_step=global_step)
         #trainable_variables = tf.trainable_variables()
@@ -130,86 +157,62 @@ def train(epochs=100, batchsize=100, checkpoint=None, logdir=None):
         #tf.global_variables_initializer().run()
         #tf.local_variables_initializer().run()
 
-        mlog = np.ones([epochs, 5])
-
+        mlog = np.ones([epochs, 3])
+        best_acc = 0
         steps = int(mnist.train.num_examples / batchsize)
         for epoch in range(epochs):
             start = time.time()
-            ops.core.run(sess, metric_variable_initialize_op)
+            trainloss = 0
+            total = 0
+            preds = []
+            truth = []
             for step in range(steps):
                 xs, ys = mnist.train.next_batch(batchsize, shuffle=True)
+                size = ys.shape[0]
                 train_feed = {inputs: xs, labels: ys, status.is_training:True}
                 if summarize is None:
-                    _, loss, _ = ops.core.run(sess, [train_op, loss_op, metric_update_op], feed_dict=train_feed)
+                    _, loss, pred = ops.core.run(sess, [train_op, loss_op, classification_op], feed_dict=train_feed)
                 else:
-                    _, loss, _, summary = ops.core.run(sess, [train_op, loss_op, metric_update_op, summarize], feed_dict=train_feed)
-
-                #loss, _, summary = sess.run([loss_op, metric_update_op, summarize], feed_dict=train_feed)
-                metric = sess.run(metric_op)
+                    _, loss, pred, summary = ops.core.run(sess, [train_op, loss_op, classification_op, summarize], feed_dict=train_feed)
+                trainloss += (loss * size)
+                total += size
+                preds.extend(pred.argmax(1))
+                truth.extend(ys.argmax(1))
                 if summarize is not None:
                     ops.core.add_summary(writer, summary, global_step=(epoch * steps) + step)
-                if step % 20 == 0:
-                    print('train for {}-th iteration: loss:{}, accuracy:{}'.format(step, loss, metric))
+                #if step % 100 == 0:
+                #    print('train for {}-th iteration: loss:{}'.format(step, loss))
+            train_loss = trainloss * 1.0 / total
+            train_acc = accuracy_score(truth ,preds)
+            train_bac = balanced_accuracy_score(truth, preds)
+            print('train:{}, loss:{}, acc:{}, avg acc:{}'.format(epoch, train_loss, train_acc, train_bac))
             end = time.time()
-            mlog[epoch][4] = end - start
-            print("time cost:", mlog[epoch][4])
-            valid_step = int(mnist.validation.num_examples / batchsize)
-            validation_loss = []
-            validation_metric = []
-            ops.core.run(sess, metric_variable_initialize_op)
-            for vstep in range(valid_step):
-                xs, ys = mnist.validation.next_batch(batchsize)
-                valid_feed = {inputs:xs, labels:ys, status.is_training:False}
-                loss, _ = sess.run([loss_op, metric_update_op], feed_dict=valid_feed)
-                metric = ops.core.run(sess, metric_op)
-                validation_loss.append(loss)
-                validation_metric.append(metric)
-            vloss = np.asarray(validation_loss).mean()
-            vmetric = np.asarray(validation_metric).mean()
-            mlog[epoch][0] = vloss
-            mlog[epoch][1] = vmetric
-            print('valid for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, vloss, vmetric))
 
-            test_step = int(mnist.test.num_examples / batchsize)
-            test_loss = []
-            test_metric = []
-            ops.core.run(sess, metric_variable_initialize_op)
-            for tstep in range(test_step):
-                xs, ys = mnist.test.next_batch(batchsize)
-                test_feed = {inputs:xs, labels:ys, status.is_training:False}
-                reconstruction, loss, _ = sess.run([reconstruction_op, loss_op, metric_update_op], feed_dict=test_feed)
-                metric = ops.core.run(sess, metric_op)
-                test_loss.append(loss)
-                test_metric.append(metric)
-                if epoch % 10 == 0:
-                    for idx, (predict, origin) in enumerate(zip(reconstruction, xs)):
-                        origin = sk.img_as_ubyte(np.reshape(origin, [28, 28, 1]))
-                        predict = sk.img_as_ubyte(predict)
-                        #print(origin.shape, predict.shape)
-                        os.makedirs('{}/{}/{}'.format(base, epoch, tstep), exist_ok=True)
-                        images = np.concatenate([origin, predict], axis=1)
-                        skio.imsave('{}/{}/{}/{}.png'.format(base, epoch, tstep, idx), images)
-            tloss = np.asarray(test_loss).mean()
-            tmetric = np.asarray(test_metric).mean()
-            mlog[epoch][2] = tloss
-            mlog[epoch][3] = tmetric
-            print('test for {}-th epoch: loss:{}, accuracy:{}'.format(epoch, tloss, tmetric))
-            if epoch % 10 == 0:
+            valid_loss, valid_acc, valid_bac = valid(sess, mnist.validation, inputs, labels, loss_op, classification_op, batchsize)
+            print('valid:{}, loss:{}, acc:{}, avg acc:{}'.format(epoch,valid_loss, valid_acc, valid_bac))
+
+            test_loss, test_acc, test_bac = valid(sess, mnist.test, inputs, labels, loss_op, classification_op, batchsize)
+            print('test :{}, loss:{}, acc:{}, avg acc:{}'.format(epoch, test_loss, test_acc, test_bac))
+
+            mlog[epoch, 0] = train_acc
+            mlog[epoch, 1] = valid_acc
+            mlog[epoch, 2] = test_acc
+            if test_acc > best_acc:
+                best_acc = test_acc
                 helpers.save(sess, checkpoint, saver, True)
         ops.core.close_summary_writer(writer)
-        np.savetxt('log', mlog)
+        np.savetxt('dc_log', mlog)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', '-c', type=str, default='checkpoint/model.ckpt',)
+parser.add_argument('--checkpoint', '-c', type=str, default='checkpoint',)
 parser.add_argument('--log', '-l', type=str, default=None)
-parser.add_argument('--epochs', '-e', type=int, default=100)
+parser.add_argument('--epochs', '-e', type=int, default=200)
 parser.add_argument('--batch-size', '-b', type=int, default=100)
 
 if __name__=='__main__':
     args = parser.parse_args()
     exp = '/home/xiaox/studio/exp/sigma/capsules/dynamic-routing'
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     checkpoint = None
     log = None
     if args.checkpoint is not None:
