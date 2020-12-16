@@ -15,42 +15,44 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+__version__ = '1.0.0'
 
-from . import status, ops, layers, helpers, engine, dbs, colors
-from .layers import defaults
-from .ops.core import placeholder, seed
-from .engine import session, predict, build_experiment, build_parser
 import os
 import os.path
 import json
 import logging
 
+from .utils import *
+from .fontstyles import *
+from sigma import nn
 
-__version__ = '0.1.3.4'
-
-
-__packages__ = {'sigma.status' : status,
-                'sigma.ops' : ops,
-                'sigma.layers' : layers,
-                'sigma.helpers' : helpers,
-                'sigma.engine' : engine,
-                'sigma.dbs' : dbs,
-                'sigma.colors' : colors
-               }
-
+epsilon = 1e-9
 
 config_path = os.path.join(os.environ['HOME'], '.sigma', 'config.json')
 if os.path.isfile(config_path):
     with open(config_path, 'r') as f:
         config = json.load(f)
-    for key, package in __packages__.items():
-        package.set(config.get(key, {}))
+    logging_level = config.get('logging-level',logging.INFO)
+    logging_format = config.get('logging-format', '%(asctime)s %(filename)s@%(lineno)s %(levelname)s %(message)s')
+    logging_datefmt = config.get('logging-date-format','%Y-%m-%d %H:%M:%S %a')
+    logging.basicConfig(level=logging_level,
+                        format=logging_format,
+                        datefmt=logging_datefmt)
+    epsilon = config.get('epsilon', 1e-9)
+    conf = config.get('nn', None)
+    if conf is not None:
+        nn.set(conf)
     logging.debug(config)
 else:
     os.makedirs(os.path.join(os.environ['HOME'], '.sigma'), exist_ok=True)
     config = {}
-    for key, package in __packages__.items():
-        config[key] = package.get()
+    conf = nn.get()
+    if conf is not None:
+        config['nn'] = conf
+    config['logging-level'] = logging.WARNING
+    config['logging-format'] = '%(asctime)s %(filename)s@%(lineno)s %(levelname)s %(message)s'
+    config['logging-date-format'] = '%Y-%m-%d %H:%M:%S %a'
+    config['epsilon'] = epsilon
     logging.debug(config)
     with open(config_path, 'w') as f:
         json.dump(config, f)
