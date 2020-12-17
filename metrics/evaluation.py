@@ -5,14 +5,14 @@ try:
     from sklearn import metrics
     from sklearn.metrics import pairwise
 
-    def confusion_matrix(y_true, y_pred, *args, **kwargs):
-        return metrics.confusion_matrix(y_true, y_pred, *args, **kwargs)
+    def confusion_matrix(preds, trues, *args, **kwargs):
+        return metrics.confusion_matrix(trues, preds, *args, **kwargs)
 
-    def accuracy_score(y_true, y_pred, *args, **kwargs):
-        return metrics.accuracy_score(y_true, y_pred, *args, **kwargs)
+    def accuracy_score(preds, trues, *args, **kwargs):
+        return metrics.accuracy_score(trues, preds, *args, **kwargs)
 
-    def mean_accuracy_score(y_true, y_pred, *args, **kwargs):
-        return metrics.balanced_accuracy_score(y_true, y_pred, *args, **kwargs)
+    def mean_accuracy_score(preds, trues, *args, **kwargs):
+        return metrics.balanced_accuracy_score(trues, preds, *args, **kwargs)
 
     def cosine_similarity(x, y=None, *args, **kwargs):
         return pairwise.cosine_similarity(x, y, *args, **kwargs)
