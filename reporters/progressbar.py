@@ -147,7 +147,7 @@ def line(message,epochs,iters,epoch=0,iter=0,is_train=True,spec='<{{:0>{}}}{}{{}
     else:
         space = len(head)
         size = head.find(marker)
-        print('{}|{}> {}'.format(' '*size,'-'*(space-size-1),message),flush=True)
+        print('{}|{}> {}'.format(' '*size,'-'*(space-size-2),message),flush=True)
 
 # if __name__ == '__main__':
 #     from time import sleep

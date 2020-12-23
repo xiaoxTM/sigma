@@ -16,7 +16,7 @@ except Exception as e:
     visualization=False
 
 from . import losses
-from . import metrics as protocols
+from sigma.metrics import metrics as protocols
 
 class BaseModule(nn.Module):
     def __init__(self,

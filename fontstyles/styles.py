@@ -1,5 +1,5 @@
 from .base import fontstyle,reset
-from .fontattrib import *
+from . import fontattrib as fa
 
 @fontstyle
 def bold(value, fmt=None):

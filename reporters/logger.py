@@ -1,6 +1,7 @@
 import traceback
 from sigma.fontstyles import colors
-from sigma.metrics import timer
+from sigma.utils import timestamp
+import os.path
 
 class Logger():
     def __init__(self, name, mode='w', log_time=True, flush=False):
@@ -22,7 +23,7 @@ class Logger():
         if not self.suspend and message is not None:
             string = self.phase
             if self.log_time:
-                string = '{} {}'.format(timer.timestamp(), string)
+                string = '{} {}'.format(timestamp(), string)
             if epoch is not None:
                 string = '{} {}'.format(string, epoch)
             if iteration is not None:

@@ -39,6 +39,10 @@ def set_seed(seed=1024, deterministic=False):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = '{}'.format(seed)
 
+def seed_workers(seed):
+    def _seed_workers(worker_id):
+        np.random.seed(seed+worker_id)
+    return _seed_workers
 
 @sigma.defaultable
 def build_conv3d(cin, couts,

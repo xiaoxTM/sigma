@@ -50,3 +50,6 @@ def walk(x,y,endpoint_marker=None,labels=None,xlabel=None,ylabel=None,**kwargs):
     if ylabel is not None:
         ax.set_ylabel(ylabel)
     return fig,ax
+    
+def closefig(fig):
+    plt.close(fig)

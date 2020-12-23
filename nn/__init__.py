@@ -59,8 +59,7 @@ def set(config):
             conf = config.get('torch', None)
             if conf is not None:
                 sigma.nn.torch.set(conf)
-            logging.info('using {}<{}> backend'.format(colors.red(backend),
-                                                                                                    colors.green(sigma.nn.torch.__version__)))
+            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.torch.__version__)))
         except Exception as e:
             logging.warning('torch backend disabled because:', e)
             logging.warning(traceback.print_exc())
@@ -70,8 +69,7 @@ def set(config):
             conf = config.get('tensorflow', None)
             if conf is not None:
                 sigma.nn.tensorflow.set(conf)
-            logging.info('using {}<{}> backend'.format(colors.red(backend),
-                                                                                                    colors.green(sigma.nn.tensorflow.__version__)))
+            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.tensorflow.__version__)))
         except Exception as e:
             logging.warning('tensorflow backend disabled because:', e)
             logging.warning(traceback.print_exc())

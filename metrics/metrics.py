@@ -339,7 +339,7 @@ def metric_class_miou(num_classes):
         iou = metric_iou(preds, trues, num_classes)
         iou = [i for i in iou  if i >= 0]
         # class mIoU
-        return i{'miou':np.mean(iou)}
+        return {'miou':np.mean(iou)}
     return _metric_class_miou
 
 def benchmark_miou(num_classes):

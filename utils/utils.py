@@ -103,15 +103,15 @@ def print_args(args, keycolor='green', valuecolor='red'):
         print('{}: {}'.format(keycolor(arg), valuecolor(getattr(args, arg))))
 
 
-def dict2str(x, includes=None, excludes=None, spec='{}:{:0<.6F}'):
+def dict2str(x, includes=None, excludes=None):
     assert isinstance(x, dict)
     string=None
     for k,v in x.items():
         if (includes is None or k in includes) and (excludes is None or k not in excludes):
             if string is None:
-                string = spec.format(k, v)
+                string = '{}:{}'.format(k,v)
             else:
-                string = '{} {}'.format(string, spec.format(k, v))
+                string = '{}|{}:{}'.format(string, k, v)
     return string
 
 
