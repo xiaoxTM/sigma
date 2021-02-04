@@ -4,7 +4,7 @@ from sigma.utils import timestamp
 import os.path
 
 class Logger():
-    def __init__(self, name, mode='w', log_time=True, flush=False):
+    def __init__(self, name, mode='w', log_time=True, flush=True):
         self.log_time= log_time
         try:
             self.__logger = open(name, mode=mode)
@@ -50,7 +50,7 @@ class Logger():
 
 
 def save_config(path, args, mode='w'):
-    with open(os.path.join(path, 'config'), mode=mode) as config:
+    with open(path, mode=mode) as config:
         if mode == 'a':
             config.write('>>>>>><<<<<<\n')
         config.write('============\n')
@@ -60,9 +60,20 @@ def save_config(path, args, mode='w'):
         for key, value in a.items():
             config.write('{} | {}\n'.format(key, value))
 
+            
+def load_config(path):
+    config = {}
+    with open(path, mode='r') as fp:
+        lines = fp.readlines()
+        for line in lines[3:]:
+            line = line.strip('\n')
+            key,value = line.split('|',1)
+            config[key.strip(' ')] = value.strip(' ')
+    return config
+
 
 def save_configs(path, margs, args, mode='w'):
-    with open(os.path.join(path, 'config'), mode=mode) as config:
+    with open(path, mode=mode) as config:
         if mode == 'a':
             config.write('>>>>>><<<<<<\n')
         config.write('============\n')

@@ -22,7 +22,7 @@ def heatmap(preds,trues,labels=None,normalize=None,rotation=45,annotate=False,cb
                            ha='center',va='center',color='w')
     return fig,ax
 
-def scatter(preds,trues,labels=None,size=10,xticks=None,grid=True,pm='+',tm='o',pargs={},targs={},**kwargs):
+def hitmap(preds,trues,labels=None,size=10,xticks=None,grid=True,pm='+',tm='o',pargs={},targs={},**kwargs):
     fig,ax = plt.subplots(**kwargs)
     x = np.arange(len(preds))
     ax.scatter(x,preds,marker=pm,label='pred',**pargs)

@@ -81,9 +81,11 @@ class SelfAttention(Attention):
                  bias_initializer=None,
                  bias=True,
                  rank=3,
+                 residual=False,
                  data_format='NCH'):
         if cout is None:
             cout = cin
+        self.residual = residual
         super(SelfAttention, self).__init__(cout,weight_initializer,bias_initializer,bias,rank,data_format)
         if data_format == 'NHC':
             self._project_q = nn.Linear(cin, cout, bias)
@@ -108,7 +110,10 @@ class SelfAttention(Attention):
         q = self._project_q(x)
         k = self._project_k(x)
         v = self._project_v(x)
-        return self._attention(q, k, v) # according to ``Attention Is All You Need''
+        y = self._attention(q, k, v) # according to ``Attention Is All You Need''
+        if self.residual:
+            y = y + v
+        return y
 
 
 class MultiheadAttention(nn.Module):

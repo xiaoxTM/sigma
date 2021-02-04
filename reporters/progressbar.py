@@ -138,6 +138,8 @@ class ProgressBar():
         self.__index = -1
         return self
 
+
+
 def line(message,epochs,iters,epoch=0,iter=0,is_train=True,spec='<{{:0>{}}}{}{{}}>[{{:0>{}}}/{{}},{{:3}}%]',marker='@',newline='auto'):
     assert epochs >= epoch and iters >= iter
     head = spec.format(intsize(epochs),marker,intsize(iters)).format(epoch,epochs,iter,iters,iter*100//iters)
@@ -149,6 +151,16 @@ def line(message,epochs,iters,epoch=0,iter=0,is_train=True,spec='<{{:0>{}}}{}{{}
         size = head.find(marker)
         print('{}|{}> {}'.format(' '*size,'-'*(space-size-2),message),flush=True)
 
+
+class Line():
+    def __init__(self,epochs,iters,spec='<{{:0>{}}}{}{{}}>[{{:0>{}}}/{{}},{{:3}}%]',marker='@'):
+        self.epochs = epochs
+        self.iters = iters
+        self.spec = spec
+        self.marker = marker
+    def __call__(self,message,epoch=0,iter=0,is_train=True,newline='auto'):
+        line(message,self.epochs,self.iters,epoch,iter,is_train,self.spec,self.marker,newline)
+        
 # if __name__ == '__main__':
 #     from time import sleep
 #     ## one hierarchy

@@ -53,7 +53,8 @@ class Webviz():
 
     def line(self, key, *args, **kwargs):
         return self.autoplot(self._visdom.line, key, True, *args, **kwargs)
-
+    # markersymbol: https://plotly.com/python/marker-style/
+    # markersize
     def scatter(self, key, *args, **kwargs):
         return self.autoplot(self._visdom.scatter, key, True, *args, **kwargs)
 
@@ -98,9 +99,14 @@ class Webviz():
 
     def dual_axis_lines(self, key, *args, **kwargs):
         return self.autoplot(self._visdom.dual_axis_lines, key, False, *args, **kwargs)
-        
+
     def heatmap(self, key, *args, **kwargs):
         return self.autoplot(self._visdom.heatmap, key, False, *args, **kwargs)
+
+    #   matplot(self,plot,opts=None,env=None,win=None)
+    def matplot(self, key, plt_or_figure, env=None, opts=None):
+        win=self._visdom.matplot(plt_or_figure, opts=opts, env=env, win=self._wins.get(key,None))
+        self._wins.update({key:win})
 
 
 # if __name__ == '__main__':

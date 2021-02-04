@@ -245,42 +245,40 @@ def part_segment_iou(cat2labels,is_logits=True,ignore_not_exist_labels=True):
         class_miou = np.sum(list(object_iou.values())) / total_counts
         # weighted category level iou
         weighted_miou = np.sum(list(object_miu.values())) #/ len(cat2labels.keys())
-        return {'point-acc':acc,
-                'class-acc':mac,
-                'weighted-class-acc':bac,
-                'instance-iou':instance_miou,
-                'class-iou':class_miou,
-                'weighted-class-iou':weighted_miou,
-                'object-acc':object_acc,
-                'object-iou':object_iou}
+        return {'point-acc':acc, # scalar
+                'class-acc':mac, # scalar: mean of (tp points of class / total points of class)
+                'weighted-class-acc':bac, # scalar
+                'instance-iou':instance_miou, # scalar: overall iou
+                'class-iou':class_miou, # scalar
+                'weighted-class-iou':weighted_miou, # scalar
+                'object-acc':object_acc, # len(cat2labels.keys())
+                'object-iou':object_iou} # len(cat2labels.keys())
     return _part_segment_iou
 
-def shapenet_part_iou(ignore_not_exist_labels=True):
-    def _shapenet_part_iou(logits, trues):
-        # logits: list of [batch-size, num-points, num-part-classes]
-        # true: list of [batch-size, num-points]
-        # labels2name: dict that mapping label to object name
-        # cat2labels: dict that mapping object name to label
-        # NOTE: labels inside the part of an object must be continuous
-        #       e.g., {'Airplane': [34,35,36]}
-        cat2labels = {'Earphone': [16, 17, 18],
-                      'Motorbike': [30, 31, 32, 33, 34, 35],
-                      'Rocket': [41, 42, 43],
-                      'Car': [8, 9, 10, 11],
-                      'Laptop': [28, 29],
-                      'Cap': [6, 7],
-                      'Skateboard': [44, 45, 46],
-                      'Mug': [36, 37],
-                      'Guitar': [19, 20, 21],
-                      'Bag': [4, 5],
-                      'Lamp': [24, 25, 26, 27],
-                      'Table': [47, 48, 49],
-                      'Airplane': [0, 1, 2, 3],
-                      'Pistol': [38, 39, 40],
-                      'Chair': [12, 13, 14, 15],
-                      'Knife': [22, 23]}
-        return part_segment_iou(logits, trues, cat2labels, ignore_not_exist_labels)
-    return _shapenet_part_iou
+def shapenet_part_iou(is_logits=True,ignore_not_exist_labels=True):
+    # logits: list of [batch-size, num-points, num-part-classes]
+    # true: list of [batch-size, num-points]
+    # labels2name: dict that mapping label to object name
+    # cat2labels: dict that mapping object name to label
+    # NOTE: labels inside the part of an object must be continuous
+    #       e.g., {'Airplane': [34,35,36]}
+    cat2labels = {'Earphone': [16, 17, 18],
+                  'Motorbike': [30, 31, 32, 33, 34, 35],
+                  'Rocket': [41, 42, 43],
+                  'Car': [8, 9, 10, 11],
+                  'Laptop': [28, 29],
+                  'Cap': [6, 7],
+                  'Skateboard': [44, 45, 46],
+                  'Mug': [36, 37],
+                  'Guitar': [19, 20, 21],
+                  'Bag': [4, 5],
+                  'Lamp': [24, 25, 26, 27],
+                  'Table': [47, 48, 49],
+                  'Airplane': [0, 1, 2, 3],
+                  'Pistol': [38, 39, 40],
+                  'Chair': [12, 13, 14, 15],
+                  'Knife': [22, 23]}
+    return part_segment_iou(cat2labels,is_logits,ignore_not_exist_labels)
 
 def semantic_segment_iou():
     def _semantic_segment_iou(logits, trues):
@@ -403,92 +401,3 @@ def register(key, metric):
     assert key not in __metrics__.keys(), 'key {} already registered'.format(key)
     assert callable(metric), 'metric must be function, given {}'.format(type(metric))
     __metrics__.update({key:metric})
-
-
-#if __name__ == '__main__':
-#    batch_size = 3
-#    num_points = 2
-#    num_classes = 6 #(0,1,2), (3,4,5)
-#    for i in range(1000):
-#        logits = np.random.rand(batch_size, num_points, num_classes)
-#        trues = np.random.randint(0,3, (batch_size,num_points)) + np.random.randint(0,2, (batch_size,1)) * 3
-#        #print('logits:\n',logits)
-#        #print('trues:\n',trues)
-#        #acc, bac, miou = semantic_segment_iou(logits, trues)
-#        #print('acc:',acc,'/ bac:',bac,'/ mIoU:',miou)
-#        print('>>>>>>>>>>><<<<<<<<<<<')
-#        label2name = {0:'a', 1:'a', 2:'a', 3:'b', 4:'b', 5:'b'}
-#        cat2label = {'a':[0,1,2], 'b':[3,4,5]}
-#        print("'a':[0,1,2], 'b':[3,4,5]}")
-#        acc, bac, class_miou, instance_miou, total_class_ious = part_segment_iou(logits, trues, label2name, cat2label)
-#        print('acc:',acc,'/ bac:',bac,'/ class mean iou:',class_miou, '/ instance miou:',instance_miou)
-#
-#        # code borrowed from pointnet.pytorch
-#        num_part = num_classes
-#        seg_classes = cat2label
-#        test_metrics = {}
-#        total_correct = 0
-#        total_seen = 0
-#        # num part: total number of labels for shapenet parts
-#        total_seen_class = [0] * num_part #[0 for _ in range(num_part)]
-#        total_correct_class = [0] * num_part #[0 for _ in range(num_part)]
-#        # shape_ious: [Airplane:[], Rocket:[], ...]
-#        shape_ious = {cat: [] for cat in seg_classes.keys()}
-#        # global `seg_label_to_cat` to local `seg_label_to_cat`
-#        seg_label_to_cat = {}  # {0:Airplane, 1:Airplane, ...49:Table}
-#        for key, labels in seg_classes.items():
-#            for label in labels:
-#                seg_label_to_cat[label] = key
-#
-#        cur_pred_val_logit = logits
-#        cur_pred_val = np.zeros((batch_size, num_points)).astype(np.int32)
-#        # true: [batch-size, num-part]
-#        # i.e., [batch-size, 50]
-#        true = trues
-#        for i in range(batch_size):
-#            #cat: name of the category, e.g., `Airplane` or `Motorbike`
-#            # true[i,j] = true[i,k]
-#            cat = seg_label_to_cat[true[i, 0]]
-#            # the `i-th` logits in current batch
-#            # logits: num-points, num-parts
-#            logit = cur_pred_val_logit[i, :, :]
-#            # logits[:, seg_classes[cat]] indicates all [part-]classes in category `cat`
-#            # note that, classes in `cat` is a subset of total classes(50)
-#            # i.e., object classes (parts-label) <= total classes (object-label) (50)
-#            #                                                             `+` convert parts-label to object label
-#            # NOTE that, part-labels belong to the same object are continuous, e.g., 12, 13,14
-#            cur_pred_val[i, :] = np.argmax(logit[:, seg_classes[cat]], 1) + seg_classes[cat][0]
-#        correct = np.sum(cur_pred_val == true) # AND
-#        total_correct += correct
-#        total_seen += (batch_size * num_points)
-#
-#        for l in range(num_part):
-#            # all classes that exist in ground truth, i.e., total positive points
-#            total_seen_class[l] += np.sum(true == l)
-#            # total true positive points for each parts
-#            total_correct_class[l] += (np.sum((cur_pred_val == l) & (true == l)))
-#
-#        for i in range(batch_size):
-#            segp = cur_pred_val[i, :]
-#            segl = true[i, :]
-#            cat = seg_label_to_cat[segl[0]]
-#            part_ious = [0.0] * (len(seg_classes[cat]))
-#            for l in seg_classes[cat]:
-#                if (np.sum(segl == l) == 0) and (
-#                        np.sum(segp == l) == 0):  # part is not present, no prediction as well
-#                    part_ious[l - seg_classes[cat][0]] = 1.0
-#                else:
-#                    part_ious[l - seg_classes[cat][0]] = np.sum((segl == l) & (segp == l)) / float(
-#                        np.sum((segl == l) | (segp == l)))
-#            shape_ious[cat].append(np.mean(part_ious))
-#
-#        all_shape_ious = []
-#        for cat in shape_ious.keys():
-#            for iou in shape_ious[cat]:
-#                all_shape_ious.append(iou)
-#            shape_ious[cat] = np.mean(shape_ious[cat])
-#        mean_shape_ious = np.mean(list(shape_ious.values()))
-#        print('acc:',total_correct / float(total_seen))
-#        print('bac:',np.mean(np.array(total_correct_class) / np.array(total_seen_class, dtype=np.float)))
-#        print('class mean iou:',mean_shape_ious)
-#        print('instance mean iou:',np.mean(all_shape_ious))
