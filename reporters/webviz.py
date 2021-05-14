@@ -108,15 +108,5 @@ class Webviz():
         win=self._visdom.matplot(plt_or_figure, opts=opts, env=env, win=self._wins.get(key,None))
         self._wins.update({key:win})
 
-
-# if __name__ == '__main__':
-#     args = merge_args(['a'],dict(c='c',b='b'), test)
-#     for k,v in args.items():
-#         print(k,'->',v)
-#     import numpy as np
-#     wz = Webviz()
-#     wz.line('a',X=np.arange(100),Y=np.random.rand(100),name='a',update='append',opts=dict(showlegend=True))
-#     wz.line('a',X=np.arange(100)+100,Y=np.random.rand(100),name='a',update='append')
-#     wz.line('a',X=np.arange(100),Y=np.random.rand(100),name='b',update='append')
-#     wz.line('a',X=np.arange(100)+100,Y=np.random.rand(100),name='b',update='append')
-#     wz.line('b',X=np.arange(100),Y=np.random.rand(100),name='b',update='append')
+    def close(self):
+        self._visdom.close()
