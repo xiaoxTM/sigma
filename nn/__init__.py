@@ -35,15 +35,15 @@ def get():
     except Exception as e:
         logging.warning('torch module disabled because:', e)
         logging.warning(traceback.print_exc())
-        logging.warning('trying tensorflow')
+        logging.warning('trying jittor')
         try:
-            import sigma.nn.tensorflow
-            conf = sigma.nn.tensorflow.get()
+            import sigma.nn.jittor
+            conf = sigma.nn.jittor.get()
             if conf is not None:
-                config['tensorflow'] = conf
-            config['backend'] = 'tensorflow'
+                config['jittor'] = conf
+            config['backend'] = 'jittor'
         except Exception as e:
-            logging.warning('tensorflow module disabled because:', e)
+            logging.warning('jittor module disabled because:', e)
             logging.warning(traceback.print_exc())
     config['floatx'] = floatx
     config['data_format'] = data_format
@@ -63,15 +63,15 @@ def set(config):
         except Exception as e:
             logging.warning('torch backend disabled because:', e)
             logging.warning(traceback.print_exc())
-    elif backend == 'tensorflow':
+    elif backend == 'jittor':
         try:
-            import sigma.nn.tensorflow
-            conf = config.get('tensorflow', None)
+            import sigma.nn.jittor
+            conf = config.get('jittor', None)
             if conf is not None:
-                sigma.nn.tensorflow.set(conf)
-            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.tensorflow.__version__)))
+                sigma.nn.jittor.set(conf)
+            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.jittor.__version__)))
         except Exception as e:
-            logging.warning('tensorflow backend disabled because:', e)
+            logging.warning('jittor backend disabled because:', e)
             logging.warning(traceback.print_exc())
     else:
         logging.warning(colors.red('no backend specified'))
