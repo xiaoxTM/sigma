@@ -127,6 +127,43 @@ def parse_parameters(option:str):
         parameters[k] = eval(v)
     return options[0], parameters
 
+#def split_by_comma(options:str):
+#    '''parse options from string
+#    '''
+#    stack = []
+#    splits = []
+#    begin = 0
+#    for idx,char in enumerate(options):
+#        if char == ',':
+#            if len(stack) == 0 or stack[-1] == ']':
+#                splits.append(options[begin:idx])
+#                begin = idx + 1
+#        elif char in ['[',']']:
+#            stack.append(char)
+#    if begin < len(options):
+#        splits.append(options[begin:])
+#    return splits
+def split_by_comma(options:str):
+    '''parse options from string
+    '''
+    stack = []
+    splits = []
+    begin = 0
+    for idx,char in enumerate(options):
+        if char == ',':
+            if len(stack) == 0:
+                splits.append(options[begin:idx].replace('\[','[').replace('\{','{').replace('\]',']').replace('\}','}'))
+                begin = idx + 1
+        elif char in ['[','{']:
+            if idx == 0 or options[idx-1] != '\\':
+                stack.append(char)
+        elif char in [']','}']:
+            if idx == 0 or options[idx-1] != '\\':
+                stack.pop()
+    if begin < len(options):
+        splits.append(options[begin:])
+    return splits
+
 def parse_params(option:str):
     '''parse parameters from option
        string should have form like:
@@ -139,7 +176,8 @@ def parse_params(option:str):
     if len(options) == 1:
         return options[0], {}
     options[1] = options[1][:-1] # remove ')'
-    params = options[1].strip().split(',')
+    #params = options[1].strip().split(',')
+    params = split_by_comma(options[1].strip())
     parameters = dict()
 
     for param in params:
