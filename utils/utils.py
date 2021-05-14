@@ -4,7 +4,21 @@ from sigma.fontstyles import colors
 import functools
 import warnings
 from datetime import datetime
+from contextlib import contextmanager
 import sys
+
+@contextmanager
+def metric_it(message_begin,message_end=None,silent=False):
+    if not silent:
+        print('{} ... '.format(colors.green(message_begin)),end='',flush=True)
+    beg = datetime.now()
+    yield
+    if not silent:
+        end = datetime.now()
+        message = message_begin
+        if message_end is not None:
+            message = '{} ... {}'.format(message,message_end)
+        print('\r[{}]:{}'.format(colors.blue(end-beg),colors.green(message)))
 
 
 def deprecated(message, stacklevel=1, source=None):
