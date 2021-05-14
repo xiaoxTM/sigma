@@ -60,7 +60,7 @@ def save_config(path, args, mode='w'):
         for key, value in a.items():
             config.write('{} | {}\n'.format(key, value))
 
-            
+
 def load_config(path):
     config = {}
     with open(path, mode='r') as fp:
@@ -72,14 +72,14 @@ def load_config(path):
     return config
 
 
-def save_configs(path, margs, args, mode='w'):
+def save_configs(path, argslist, mode='w'):
     with open(path, mode=mode) as config:
         if mode == 'a':
             config.write('>>>>>><<<<<<\n')
         config.write('============\n')
         config.write('keys | value\n')
         config.write('============\n')
-        for argue in [margs, args]:
-            a = vars(argue)
+        for args in argslist:
+            a = vars(args)
             for key, value in a.items():
                 config.write('{} | {}\n'.format(key, value))

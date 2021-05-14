@@ -10,15 +10,13 @@
 import sigma
 from sigma import version as vsn
 from sigma import metrics as met
-from sigma.nn.torch import activations as acts
-from sigma.nn.torch import normalizations as norms
-from sigma.nn.torch import initializers
+from sigma.nn.jittor import activations as acts
+from sigma.nn.jittor import normalizations as norms
+from sigma.nn.jittor import initializers
 import numpy as np
 import random
-import torch
-from torch import nn
-import torch.nn.functional as F
-from torch.autograd import Variable
+import jittor as jt
+from jittor import nn
 import os
 
 
@@ -26,14 +24,7 @@ def count_parameters(model):
     total = sum([param.nelement() for param in model.parameters()])
     return total / 1e6
 
-def set_seed(seed=1024, deterministic=False):
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        if deterministic is True:
-            torch.backends.cudnn.benchmark=False
-        torch.backends.cudnn.deterministic=deterministic # cudnn
+def set_seed(seed=1024):
     np.random.seed(seed)
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = '{}'.format(seed)
@@ -214,14 +205,10 @@ def build_linear(cin,couts,
 
 def one_hot(x, nclass):
     # x: [batch-size]
-    if vsn.lt(torch.__version__, '1.1.0'):
-        device = torch.device('cuda:{}'.format(x.get_device()))
-        t = torch.zeros(x.size(0), nclass, device=device).long()
-        t = t.scatter_(1, x.data.view(-1, 1), 1)
-        t = Variable(t)
-    else:
-        t = F.one_hot(x, nclass)
-    return t
+    onehot = jt.zeros(x.size(0), nclass)
+    for i in range(x):
+        onehot[i, x[i].data] = 1
+    return onehot
 
 
 """
@@ -231,21 +218,21 @@ def one_hot(x, nclass):
     some center and its k neighbors
     x : [batch-size, dims, num-points]
 """
-@torch.no_grad()
+@jt.no_grad()
 def knn(x, k, mode='euc'):
     assert mode in ['euc', 'dot']
     # x: [batch-size, dim, num-points]
     assert k < x.size(2), 'k should be small than number of points, given [k:{}/num-points:{}]'.format(k, x.size(2))
     # inner: [batch-size, num-points, num-points]
-    pairwise_distance = torch.matmul(x.transpose(2,1),x)
+    pairwise_distance = nn.matmul(x.transpose(0,2,1),x)
     if mode == 'euc':
         inner = -2*pairwise_distance
         # y: [batch-size, 1, num-points]
-        y = torch.sum(x**2, dim=1, keepdim=True)
+        y = jittor.sum(x**2, dim=1, keepdim=True)
         # pairwise-distance: [batch-size, num-points, num-points]
-        pairwise_distance = -y - inner - y.transpose(2, 1)
+        pairwise_distance = -y - inner - y.transpose(0,2,1)
     # return: [batch-size, num-points, k]
-    return pairwise_distance.topk(k=k, dim=2)
+    return topk(pairwise_distance,k=k,dim=2)
 
 
 def norm(x, dim=1, keepdim=False, epsilon=1e-9):
@@ -262,59 +249,17 @@ def squash(x, dim=1, epsilon=1e-9):
 
 def dynamic_routing(x, bias=0, n_iteration=3):
     batch_size, outdims, outcaps, incaps = x.size()
-    b = torch.zeros((batch_size, 1, outcaps, incaps)).cuda()
+    b = jittor.zeros((batch_size, 1, outcaps, incaps))
 
     for n_iter in range(n_iteration):
-        c = F.softmax(b, dim=2)
+        c = jittor.softmax(b, dim=2)
         if (n_iter+1) == n_iteration:
             s = (c * x).sum(dim=3, keepdim=True) + bias
             v = squash(s)
         else:
-            with torch.no_grad():
+            with jittor.no_grad():
                 s = (c * x).sum(dim=3, keepdim=True) + bias
                 v = squash(s)
                 b = b + (x * v).sum(dim=1, keepdim=True)
     v = v.squeeze(3)
     return v
-
-
-def maskout(x, nclass, labels=None, drop=False):
-    # x: [batch-size, dims, capsules]
-    # labels: None or [batch-size]
-    if labels is None:
-        # preds: [batch-size, capsules]
-        preds = norm(x)
-        # labels: [batch-size]
-        labels = preds.argmax(dim=1)
-    # [batch-size, nclass]
-    onehot = one_hot(labels, nclass)
-    # [batch-size, 1, nclass]
-    onehot = torch.unsqueeze(onehot, dim=1)
-    if drop:
-        batch_size, dims, _ = x.size()
-        return torch.masked_select(x, onehot.eq(1)).view(batch_size, dims)
-    return x * onehot.float()
-
-
-if __name__ == '__main__':
-    labels=np.random.randint(0, 4, size=3, dtype=np.int64)
-    torch_labels = torch.from_numpy(labels)
-    onehot = one_hot(torch_labels)
-    print(onehot)
-    print(one_hot(torch_labels, nclass=4))
-
-    x = np.random.randn(3, 3, 4)
-    torch_x = torch.from_numpy(x)
-    m = maskout(torch_x, torch_labels, nclass=4)
-    print('input:', x)
-    print('maskout:', m)
-    print('maskout with drop:', maskout(torch_x, torch_labels, nclass=4, drop=True))
-
-    #points = np.random.rand(2,4,2)
-    #extras = np.random.rand(2,2,2)
-    #x = np.concatenate([points, extras], axis=1)
-    #print('target:',points)
-    #print('extras:', extras)
-    #print('x:', x)
-    #pool = chamfer_pool(torch.from_numpy(x), torch.from_numpy(points))
-    #print('pooled diff:', torch.from_numpy(points)-pool)

@@ -6,6 +6,7 @@ from sigma.fontstyles import colors
 from sigma import metrics as met
 from sigma.utils import dict2str
 from sigma.reporters import Logger, save_configs
+from sigma.reporters.webviz import Webviz
 from .checkpoint import CheckPointer
 from .utils import set_seed
 from . import optimizers, schedulers
@@ -439,7 +440,7 @@ class Experiment(Trainer):
                 logging.debug(traceback.print_exc())
         if visdom_server is not None:
             try:
-                from sigma.reporters.webviz import Webviz
+                import visdom
                 self._webviz = Webviz(server=visdom_server,
                                       port=visdom_port,
                                       base_url=visdom_base_url,
