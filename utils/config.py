@@ -1,8 +1,7 @@
 import yaml
 
-def merge_with_args(config,args):
+def merge_args(config,args):
     args = vars(args)
-    print(args)
     for k,v in args.items():
         if k in config.keys():
             if v is not None:
@@ -12,6 +11,7 @@ def merge_with_args(config,args):
         else:
             config.update({k:v})
     return config
+
 
 def load(filename):
     with open(filename,'r') as f:
