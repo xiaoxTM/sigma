@@ -206,19 +206,19 @@ class Trainer():
             valid_length = int(train_length * self._valid_percentage)
             _train_set, _valid_set = random_split(train_set, [total_length-valid_length, valid_length])
         train_loader = DataLoader(_train_set,
-                                                                num_workers=self._num_workers,
-                                                                pin_memory=self._pin_memory,
-                                                                batch_size=self._batch_size,
-                                                                shuffle=True,
-                                                                drop_last=self._drop_last,
-                                                                worker_init_fn=self._worker_fn)
+                                  num_workers=self._num_workers,
+                                  pin_memory=self._pin_memory,
+                                  batch_size=self._batch_size,
+                                  shuffle=True,
+                                  drop_last=self._drop_last,
+                                  worker_init_fn=self._worker_fn)
         valid_loader = DataLoader(_valid_set,
-                                                                num_workers=self._num_workers,
-                                                                pin_memory=self._pin_memory,
-                                                                batch_size=self._batch_size,
-                                                                shuffle=True,
-                                                                drop_last=self._drop_last,
-                                                                worker_init_fn=self._worker_fn)
+                                  num_workers=self._num_workers,
+                                  pin_memory=self._pin_memory,
+                                  batch_size=self._batch_size,
+                                  shuffle=True,
+                                  drop_last=self._drop_last,
+                                  worker_init_fn=self._worker_fn)
         return train_loader, valid_loader
 
     def train(self, train_set, valid_set=None, begin_epoch=0, ipo=1,**kwargs):
@@ -274,12 +274,12 @@ class Trainer():
 
     def valid(self, dataset, filename=None, **kwargs):
         valid_loader = DataLoader(dataset,
-                                                                num_workers=self._num_workers,
-                                                                pin_memory=self._pin_memory,
-                                                                batch_size=self._batch_size,
-                                                                shuffle=True,
-                                                                drop_last=self._drop_last,
-                                                                worker_init_fn=self._worker_fn)
+                                  num_workers=self._num_workers,
+                                  pin_memory=self._pin_memory,
+                                  batch_size=self._batch_size,
+                                  shuffle=True,
+                                  drop_last=self._drop_last,
+                                  worker_init_fn=self._worker_fn)
         bar = sigma.ProgressBar(range(1), **kwargs)
         vbar = bar.sub(enumerate(valid_loader))
         with torch.no_grad():

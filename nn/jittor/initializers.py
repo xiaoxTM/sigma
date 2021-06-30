@@ -22,6 +22,9 @@ def get(initializer):
     if  initializer is None or callable(initializer):
         return initializer
     elif isinstance(initializer, str):
+        initializer = initializer.strip()
+        if initializer in ['','null','none']:
+            return None
         initializer_type, params = parse_params(initializer)
         initializer_type = initializer_type.lower()
         assert initializer_type in __inits__.keys(), 'initializer type {} not support'.format(initializer_type)

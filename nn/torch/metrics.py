@@ -279,6 +279,9 @@ def get(metric):
     if metric is None or callable(metric):
         return metric
     elif isinstance(metric, str):
+        metric = metric.strip()
+        if metric in ['','null','none']:
+            return None
         metric_type, params = parse_params(metric)
         metric_type = metric_type.lower()
         assert metric_type in __metrics__.keys(), 'metric type {} not support'.format(metric_type)

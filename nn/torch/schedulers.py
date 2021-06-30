@@ -3,7 +3,7 @@ import torch.optim.lr_scheduler as lrs
 from sigma import parse_params, version
 from sigma.fontstyles import colors
 
-__schedulers__ = {'labmda':lrs.LambdaLR,
+__schedulers__ = {'lambda':lrs.LambdaLR,
                   'step': lrs.StepLR,
                   'multistep': lrs.MultiStepLR,
                   'ms': lrs.MultiStepLR,
@@ -33,6 +33,9 @@ def get(scheduler, optimizer):
     if scheduler is None or isinstance(scheduler, lrs._LRScheduler):
         return scheduler
     elif isinstance(scheduler, str):
+        scheduler = scheduler.strip()
+        if scheduler in ['', 'null', 'none']:
+            return None
         scheduler_type, params = parse_params(scheduler)
         scheduler_type = scheduler_type.lower()
         assert scheduler_type in __schedulers__.keys(), 'scheduler type {} not support'.format(scheduler_type)

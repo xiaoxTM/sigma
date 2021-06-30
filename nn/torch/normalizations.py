@@ -28,6 +28,9 @@ def get(norm, channels, dimension=None, size=None):
     if norm is None or isinstance(norm, nn.Module) or callable(norm):
         return norm
     elif isinstance(norm, str):
+        norm = norm.strip()
+        if norm in ['','null','none']:
+            return None
         norm_type, params = parse_params(norm)
         norm_type = norm_type.lower()
         if norm_type in ['bn','batchnorm','in','instancenorm']:

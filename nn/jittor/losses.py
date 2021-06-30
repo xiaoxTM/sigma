@@ -162,6 +162,7 @@ def get(loss):
     if loss is None or callable(loss):
         return loss
     elif isinstance(loss, str):
+        loss = loss.trip()
         loss_type, params = parse_params(loss)
         loss_type = loss_type.lower()
         assert loss_type in __losses__.keys(), '{} loss type not support'.format(loss_type)

@@ -13,6 +13,7 @@ def get(optimizer, lr, parameters):
     if optimizer is None or isinstance(optimizer, Optimizer):
         return optimizer
     elif isinstance(optimizer, str):
+        optimizer = optimizer.strip()
         optimizer_type, params = parse_params(optimizer)
         optimizer_type = optimizer_type.lower()
         assert optimizer_type in __optimizers__.keys(), 'optimizer type {} not support'.format(optimizer_type)

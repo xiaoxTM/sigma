@@ -26,7 +26,7 @@ def count_parameters(model):
     total = sum([param.nelement() for param in model.parameters()])
     return total / 1e6
 
-def set_seed(seed=1024, deterministic=False):
+def set_seed(seed=1024, deterministic=True):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)

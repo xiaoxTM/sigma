@@ -35,6 +35,9 @@ def get(reg):
     if reg is None or callable(reg):
         return reg
     elif isinstance(reg,str):
+        reg = reg.strip()
+        if reg in ['','null','none']:
+            return None
         reg_type, params = parse_params(reg)
         reg_type = reg_type.lower()
         assert reg_type in __regularizers__.keys(), '{} regularizer type not support'.format(reg_type)

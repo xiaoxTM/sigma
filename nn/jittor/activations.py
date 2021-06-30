@@ -19,6 +19,9 @@ def get(activation):
     if activation is None or isinstance(activation, nn.Module) or callable(activation):
         return activation
     elif isinstance(activation, str):
+        activation = activation.strip()
+        if activation in ['','null','none']:
+            return None
         act_type, params = parse_params(activation)
         act_type = act_type.lower()
         assert act_type in __acts__.keys(), 'activation type {} not support'.format(act_type)

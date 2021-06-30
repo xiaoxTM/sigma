@@ -56,8 +56,9 @@ def save_config(path, args, mode='w'):
         config.write('============\n')
         config.write('keys | value\n')
         config.write('============\n')
-        a = vars(args)
-        for key, value in a.items():
+        if not isinstance(args, dict):
+            args = vars(args)
+        for key, value in args.items():
             config.write('{} | {}\n'.format(key, value))
 
 
@@ -80,6 +81,7 @@ def save_configs(path, argslist, mode='w'):
         config.write('keys | value\n')
         config.write('============\n')
         for args in argslist:
-            a = vars(args)
-            for key, value in a.items():
+            if not isinstance(args, dict):
+                args = vars(args)
+            for key, value in args.items():
                 config.write('{} | {}\n'.format(key, value))
