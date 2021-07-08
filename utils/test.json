@@ -1,1 +1,0 @@
-[{"command":"python3 main.py --gpus {}-first","memory":1000},{"command":"python3 main.py --gpus {}-second","memory":300},{"command":"python3 main.py --gpus-third {}","memory":1200}]
