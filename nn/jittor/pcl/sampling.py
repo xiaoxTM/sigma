@@ -1,4 +1,4 @@
-import torch
+import jittor as jt
 from .base import gather_points_nc,group_points_nc
 from .query import knn_query, ball_query_nc
 
@@ -10,36 +10,35 @@ def farthest_point_sample_nc(points, num_samples):
     Return:
         centroids_index: sampled pointcloud index, [B, num_samples]
     """
-    device = points.device
-    B, N, C = points.shape
-    centroids_index = torch.zeros(B, num_samples, dtype=torch.long).to(device)
-    distance = torch.ones(B, N).to(device) * 1e10
-    farthest = torch.randint(0, N, (B,), dtype=torch.long).to(device)
-    # farthest = torch.ones(B,dtype=torch.long).to(device)
-    batch_indices = torch.arange(B, dtype=torch.long).to(device)
+    B, N, _ = points.shape
+    centroids_index = jt.zeros((B, num_samples),dtype='int64')
+    distance = jt.ones((B, N)) * 1e10
+    # farthest = jt.ones((B,),dtype='int64')
+    farthest = jt.randint(0, N, (B,), dtype='int64')
+    batch_indices = jt.arange(B, dtype='int64')
     for i in range(num_samples):
+        # print('farthest:',farthest.size())
         centroids_index[:, i] = farthest
         centroid = points[batch_indices, farthest, :].view(B, 1, 3)
-        dist = torch.sum((points - centroid) ** 2, dim=-1)
+        dist = jt.sum((points - centroid) ** 2, dim=-1)
         mask = dist < distance
         distance[mask] = dist[mask]
-        farthest = torch.max(distance, -1)[1]
+        farthest = jt.argmax(distance, -1)[0]
     return centroids_index
 
 def farthest_point_sample_cn(points, num_samples):
-    device = points.device
-    B, C, N = points.shape
-    centroids_index = torch.zeros(B, num_samples, dtype=torch.long).to(device)
-    distance = torch.ones(B, N).to(device) * 1e10
-    farthest = torch.randint(0, N, (B,), dtype=torch.long).to(device)
-    batch_indices = torch.arange(B, dtype=torch.long).to(device)
+    B, _, N = points.shape
+    centroids_index = jt.zeros((B, num_samples), dtype='int64')
+    distance = jt.ones((B, N)) * 1e10
+    farthest = jt.randint(0, N, (B,), dtype='int64')
+    batch_indices = jt.arange(B, dtype='int64')
     for i in range(num_samples):
         centroids_index[:, i] = farthest
         centroid = points[batch_indices, :, farthest].view(B,3,1)
-        dist = torch.sum((points - centroid) ** 2, dim=1)
+        dist = jt.sum((points - centroid) ** 2, dim=1)
         mask = dist < distance
         distance[mask] = dist[mask]
-        farthest = torch.max(distance, -1)[1]
+        farthest = jt.argmax(distance, -1)[0]
     return centroids_index
 
 def farthest_point_sample(points, num_samples, data_format='nc'):
@@ -59,7 +58,7 @@ def sample_and_group_nc(num_points, points, num_samples, radius=None, features=N
         new_xyz: sampled points position data, [B, npoint, nsample, 3]
         grouped_features: sampled points data, [B, npoint, nsample, 3+D]
     """
-    B, N, C = points.shape
+    # B, N, C = points.shape
     centroid_idx = farthest_point_sample_nc(points, num_points) # [B, num_point]
     centroid_points = gather_points_nc(points, centroid_idx)
     if radius is None:
@@ -83,9 +82,8 @@ def sample_and_group_all_nc(points, features):
         new_xyz: sampled points position data, [B, 1, 3]
         new_points: sampled points data, [B, 1, N, 3+D]
     """
-    device = points.device
     B, N, C = points.shape
-    centroid_points = torch.zeros(B, 1, C).to(device)
+    # centroid_points = jt.zeros((B, 1, C))
     grouped_points = points.view(B, 1, N, C)
     if features is not None:
         grouped_features = features.view(B, 1, N, -1)

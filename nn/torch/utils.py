@@ -10,9 +10,9 @@
 import sigma
 from sigma import version as vsn
 from sigma import metrics as met
-from sigma.nn.torch import activations as acts
-from sigma.nn.torch import normalizations as norms
-from sigma.nn.torch import initializers
+from sigma.nn.pytorch import activations as acts
+from sigma.nn.pytorch import normalizations as norms
+from sigma.nn.pytorch import initializers
 import numpy as np
 import random
 import torch

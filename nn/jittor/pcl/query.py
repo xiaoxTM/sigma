@@ -1,5 +1,5 @@
 from .base import calculate_square_distance,calculate_square_distance_cn,calculate_square_distance_nc
-import torch
+import jittor as jt
 
 def knn_query(num_samples, points, centroid_points, data_format='nc'):
     # [B,N,N]
@@ -10,13 +10,12 @@ def knn_query(num_samples, points, centroid_points, data_format='nc'):
 
 
 def ball_query_nc(num_samples,radius,points,centroid_points):
-    device = points.device
     B, N, _ = points.shape
     _, S, _ = centroid_points.size()
-    idx = torch.arange(N, dtype=torch.long).to(device).view(1, 1, N).repeat([B, S, 1])
+    idx = jt.arange(N, dtype='int64').view(1, 1, N).repeat([B, S, 1])
     sqrdists = calculate_square_distance_nc(centroid_points, points)
     idx[sqrdists > radius ** 2] = N
-    idx = idx.sort(dim=-1)[0][:, :, :num_samples]
+    idx = idx.argsort(dim=-1)[1][:, :, :num_samples]
     group_first = idx[:, :, 0].view(B, S, 1).repeat([1, 1, num_samples])
     mask = idx == N
     idx[mask] = group_first[mask]
@@ -29,13 +28,12 @@ def ball_query_cn(num_samples,radius,points, centroid_points):
         :param: radius: float, radius of ball to query
         :param: points, Tensor, points to be searched (queried), [B,C,N]
     '''
-    device = points.device
     B, _, N = points.shape
     _, _, S = centroid_points.size()
-    idx = torch.arange(N, dtype=torch.long).to(device).view(1, 1, N).repeat([B, S, 1])
+    idx = jt.arange(N, dtype='int64').view(1, 1, N).repeat([B, S, 1])
     sqrdists = calculate_square_distance_cn(centroid_points, points)
     idx[sqrdists > radius ** 2] = N
-    idx = idx.sort(dim=-1)[0][:, :, :num_samples]
+    idx = idx.argsort(dim=-1)[1][:, :, :num_samples]
     group_first = idx[:, :, 0].view(B, S, 1).repeat([1, 1, num_samples])
     mask = idx == N
     idx[mask] = group_first[mask]

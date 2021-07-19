@@ -27,6 +27,7 @@ def count_parameters(model):
 def set_seed(seed=1024):
     np.random.seed(seed)
     random.seed(seed)
+    jt.set_seed(seed)
     os.environ['PYTHONHASHSEED'] = '{}'.format(seed)
 
 def seed_workers(seed):

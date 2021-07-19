@@ -1,4 +1,4 @@
-import torch
+import jittor as jt
 import numpy as np
 
 
@@ -18,17 +18,17 @@ def calculate_square_distance_nc(t1, t2):
     """
     B, N, _ = t1.shape
     _, M, _ = t2.shape
-    dist = -2 * torch.matmul(t1, t2.permute(0, 2, 1))
-    dist += torch.sum(t1 ** 2, -1).view(B, N, 1)
-    dist += torch.sum(t2 ** 2, -1).view(B, 1, M)
+    dist = -2 * jt.matmul(t1, t2.permute(0, 2, 1))
+    dist += jt.sum(t1 ** 2, -1).view(B, N, 1)
+    dist += jt.sum(t2 ** 2, -1).view(B, 1, M)
     return dist
 
 def calculate_square_distance_cn(t1, t2):
     B, _, N = t1.size()
     B, _, M = t2.size()
-    inner = -2 * torch.matmul(t1.transpose(2, 1), t2) # N x M
-    xx = torch.sum(t1 ** 2, dim=1, keepdim=True).view(B,N,1)
-    yy = torch.sum(t2 ** 2, dim=1, keepdim=True).view(B,1,M)
+    inner = -2 * jt.matmul(t1.transpose(2, 1), t2) # N x M
+    xx = jt.sum(t1 ** 2, dim=1, keepdim=True).view(B,N,1)
+    yy = jt.sum(t2 ** 2, dim=1, keepdim=True).view(B,1,M)
     distance = xx + inner + yy
     return distance
 
@@ -46,7 +46,6 @@ def group_points_nc(points, index):
        :param: index: tensor, [B,S,K]
        :return: grouped points with shape of [B,S,K,C,...]
     '''
-    device = points.device
     batch_size,num_points = points.size()[:2]
     k = index.size(2)
     s = index.size(1)
@@ -54,7 +53,7 @@ def group_points_nc(points, index):
     view_shape = [1] * len(index.size())
     view_shape[0] = batch_size
 
-    idx_base = torch.arange(0, batch_size, device=device).view(*view_shape)*num_points
+    idx_base = jt.arange(0, batch_size).view(*view_shape)*num_points
 
     index = index + idx_base
     index = index.view(-1)
@@ -70,7 +69,6 @@ def group_points_cn(points, index):
        :param: index: tensor, [B,S,K]
        :return: grouped points with shape of [B,C,...,,S,K]
     '''
-    device = points.device
     batch_size,num_points = points.size(0),points.size(-1)
     k = index.size(2)
     s = index.size(1)
@@ -78,7 +76,7 @@ def group_points_cn(points, index):
     view_shape = [1] * len(index.size())
     view_shape[0] = batch_size
 
-    idx_base = torch.arange(0, batch_size, device=device).view(view_shape)*num_points
+    idx_base = jt.arange(0, batch_size).view(view_shape)*num_points
     index = index + idx_base
     index = index.view(-1)
     # [B,C,...,N] -> [B,N,C,...]
@@ -96,7 +94,7 @@ def group_points_cn(points, index):
 
 def group_points(points, index, data_format='nc'):
     if data_format == 'nc':
-        return group_points_nc(points,index)
+        return group_points_nc(points, index)
     return group_points_cn(points, index)
 
 
@@ -109,14 +107,12 @@ def gather_points_nc(points, index):
     Return:
         gathered_points:, indexed points data, [B, S, C, ...]
     """
-    # print(index)
-    device = points.device
     B = points.shape[0]
     view_shape = list(index.shape)
     view_shape[1:] = [1] * (len(view_shape) - 1)
     repeat_shape = list(index.shape)
     repeat_shape[0] = 1
-    batch_indices = torch.arange(B, dtype=torch.long).to(device).view(view_shape).repeat(repeat_shape)
+    batch_indices = jt.arange(B, dtype='int64').view(view_shape).repeat(repeat_shape)
     gathered_points = points[batch_indices, index, :]
     return gathered_points
 
@@ -129,13 +125,12 @@ def gather_points_cn(points, index):
     Return:
         new_points:, indexed points data, [B, C, S]
     """
-    device = points.device
     B = points.shape[0]
     view_shape = list(index.shape)
     view_shape[1:] = [1] * (len(view_shape) - 1)
     repeat_shape = list(index.shape)
     repeat_shape[0] = 1
-    batch_indices = torch.arange(B, dtype=torch.long).to(device).view(view_shape).repeat(repeat_shape)
+    batch_indices = jt.arange(B).view(view_shape).repeat(repeat_shape)
     gathered_points = points[batch_indices, :, index]
     return gathered_points.permute(0,2,1)
 

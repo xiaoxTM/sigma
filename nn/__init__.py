@@ -18,7 +18,7 @@
 
 import traceback
 import logging
-from sigma.fontstyles import colors
+# from sigma.fontstyles import colors
 
 caxis = -1 # channel axis
 floatx = 'float32'
@@ -27,8 +27,8 @@ data_format = ['NC','NWC','NHWC','NDHWC']
 def get():
     config = {}
     try:
-        import sigma.nn.torch
-        conf = sigma.nn.torch.get()
+        import sigma.nn.pytorch
+        conf = sigma.nn.pytorch.get()
         if conf is not None:
             config['torch'] = conf
         config['backend'] = 'torch'
@@ -37,8 +37,8 @@ def get():
         logging.warning(traceback.print_exc())
         logging.warning('trying jittor')
         try:
-            import sigma.nn.jittor
-            conf = sigma.nn.jittor.get()
+            import sigma.nn.pyjittor
+            conf = sigma.nn.pyjittor.get()
             if conf is not None:
                 config['jittor'] = conf
             config['backend'] = 'jittor'
@@ -55,21 +55,21 @@ def set(config):
     from sigma.fontstyles import colors
     if backend == 'torch':
         try:
-            import sigma.nn.torch
+            import sigma.nn.pytorch
             conf = config.get('torch', None)
             if conf is not None:
                 sigma.nn.torch.set(conf)
-            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.torch.__version__)))
+            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.pytorch.__version__)))
         except Exception as e:
             logging.warning('torch backend disabled because:', e)
             logging.warning(traceback.print_exc())
     elif backend == 'jittor':
         try:
-            import sigma.nn.jittor
+            import sigma.nn.pyjittor
             conf = config.get('jittor', None)
             if conf is not None:
-                sigma.nn.jittor.set(conf)
-            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.jittor.__version__)))
+                sigma.nn.pyjittor.set(conf)
+            logging.info('using {}<{}> backend'.format(colors.red(backend),colors.green(sigma.nn.pyjittor.__version__)))
         except Exception as e:
             logging.warning('jittor backend disabled because:', e)
             logging.warning(traceback.print_exc())
