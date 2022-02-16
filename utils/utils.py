@@ -7,14 +7,39 @@ from datetime import datetime
 from contextlib import contextmanager
 import sys
 
+class Recorder():
+    records = []
+    def record(self, fun, *args, **kwargs):
+        beg = datetime.now()
+        ans = fun(*args,**kwargs)
+        end = datetime.now()
+        self.records.append(end-beg)
+        return ans
+
+    @property
+    def mean(self):
+        return np.mean(self.records)
+    
+    @property
+    def max(self):
+        return np.max(self.records)
+    
+    @property
+    def min(self):
+        return np.min(self.records)
+    
+    def clean(self):
+        self.records = []
+
+
 @contextmanager
 def metric_it(message_begin,message_end=None,silent=False):
     if not silent:
         print('{} ... '.format(colors.green(message_begin)),end='',flush=True)
     beg = datetime.now()
     yield
+    end = datetime.now()
     if not silent:
-        end = datetime.now()
         message = message_begin
         if message_end is not None:
             message = '{} ... {}'.format(message,message_end)
