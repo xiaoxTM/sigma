@@ -1,4 +1,6 @@
 import yaml
+from types import SimpleNamespace
+import json
 
 def merge_args(config,args):
     args = vars(args)
@@ -13,7 +15,17 @@ def merge_args(config,args):
     return config
 
 
-def load(filename):
+def load(filename, *args, **kwargs):
     with open(filename,'r') as f:
-        configs = yaml.safe_load(f)
+        configs = yaml.load(f, *args, **kwargs)
     return configs
+
+
+def namespace(d):
+    # Sample
+    return json.loads(json.dumps(d), object_hook=lambda item: SimpleNamespace(**item))
+
+
+def save(filename, config):
+    with open(filename,'w') as f:
+        yaml.dump(vars(config),f)
