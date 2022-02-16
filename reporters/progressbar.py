@@ -29,35 +29,39 @@ class ProgressBar():
         self.__parent = parent
         if items is None:
             assert total is not None and total > 0,'`items` and `total` cannot be both None'
-            self.__total = total
-            self.__items = range(total)
+            self.total = total
+            self.items = range(total)
         else:
             if isinstance(items,int):
-                self.__total = items
-                self.__items = range(items)
+                self.total = items
+                self.items = range(items)
             elif isinstance(items,Iterable):
-                self.__items = items
-                self.__total = len(items)
+                try:
+                    self.item = item
+                    self.total = len(self.item)
+                except Exception as e:
+                    self.items = list(items)
+                    self.total = len(self.items)
             else:
                 raise TypeError('`items` must be int/Iterable/Iterator/Generator, given {}'.format(type(items)))
         self.__iterator = None
         self.__index = -1
-        self.__scale = float(num_prompts) / self.__total
+        self.__scale = float(num_prompts) / self.total
         self._keep_line = keep_line
         #if parent is None:
         self.__nc = [c.encode('utf8') if isinstance(c,str) else c for c in nc]
         self.__cc = [c.encode('utf8') if isinstance(c,str) else c for c in cc]
         self.__prompts = np.asarray([self.__cc[0]] * num_prompts,dtype=np.string_)
         if parent is None:
-            self.__total_size =sigma.utils.intsize(self.__total)
+            self.total_size =sigma.utils.intsize(self.total)
             self.__index_nc = 0
             self.__index_cc = 0
             self._spec = spec
             if self._spec is None:
-                self._spec = '\r<{{:0>{}}}{}{}> [{{:{}}}, {{:3}}%] {{}}' \
-                             .format(self.__total_size,
+                self._spec = '\r<{{:0>{}}}{}{}>[{{:{}}}, {{:3}}%] {{}}' \
+                             .format(self.total_size,
                                      colors.green('@'),
-                                     colors.blue(str(self.__total)),
+                                     colors.blue(str(self.total)),
                                      num_prompts)
             def format_message(index,scale,percentage,message=None):
                 idx = max(int(scale * (index+1)),int(scale * index)+1)
@@ -129,13 +133,13 @@ class ProgressBar():
             self.__prompts[idx_beg:idx_end] = c
             percentage = int(float(index+1) * 100 / total)
             message = self._format_message(index,scale,percentage,message)
-            is_total_last = is_total_last and (self.__index+1==self.__total)
+            is_total_last = is_total_last and (self.__index+1==self.total)
             end_flag = ''
             if is_last and (is_total_last or not (keep_line and self._keep_line)):
                 end_flag = '\n'
             print(message,end=end_flag,flush=True)
         else:
-            is_total_last = is_total_last and (self.__index+1==self.__total)
+            is_total_last = is_total_last and (self.__index+1==self.total)
             keep_line = (not is_last) or (keep_line and (is_leaf or self._keep_line or not is_total_last))
             self.__parent.print_progress(index,scale,total,message,is_last,is_total_last,keep_line,False,nc,cc)
 
@@ -143,13 +147,13 @@ class ProgressBar():
         if self.__iterator is None:
             self.__iterator = self.generate_iterator()
         if self._iter_print_message:
-            self.print_progress(self.__index,self.__scale,self.__total,None,(self.__index+1==self.__total),nc=self.__nc,cc=self.__cc)
+            self.print_progress(self.__index,self.__scale,self.total,None,(self.__index+1==self.total),nc=self.__nc,cc=self.__cc)
         self.__index += 1
 
         return next(self.__iterator)
 
     def __len__(self):
-        return self.__total
+        return self.total
 
     def __iter__(self):
         self.__index = -1
@@ -158,12 +162,12 @@ class ProgressBar():
 
     def generate_iterator(self):
         iterator = None
-        if isinstance(self.__items,Iterable):
-            iterator = iter(self.__items)
-        elif isinstance(self.__items,(Iterator,Generator)):
-            iterator = self.__items
+        if isinstance(self.items,Iterable):
+            iterator = iter(self.items)
+        elif isinstance(self.items,(Iterator,Generator)):
+            iterator = self.items
         else:
-            raise TypeError('`self.__items` must be a instance of Iterable/Iterator/Generator, given {}'.format(type(self.__items)))
+            raise TypeError('`self.items` must be a instance of Iterable/Iterator/Generator, given {}'.format(type(self.items)))
         return iterator
 
 
