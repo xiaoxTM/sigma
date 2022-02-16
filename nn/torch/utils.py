@@ -10,9 +10,9 @@
 import sigma
 from sigma import version as vsn
 from sigma import metrics as met
-from sigma.nn.pytorch import activations as acts
-from sigma.nn.pytorch import normalizations as norms
-from sigma.nn.pytorch import initializers
+from sigma.nn.torch import activations as acts
+from sigma.nn.torch import normalizations as norms
+from sigma.nn.torch import initializers
 import numpy as np
 import random
 import torch
@@ -20,6 +20,19 @@ from torch import nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import os
+
+
+def set_distributed_print_mode(is_master):
+    """
+    This function disables printing when not in master process
+    """
+    import builtins as __builtin__
+    builtin_print = __builtin__.print
+    def print(*args, **kwargs):
+        force = kwargs.pop("force", False)
+        if is_master or force:
+            builtin_print(*args, **kwargs)
+    __builtin__.print = print
 
 
 def count_parameters(model):
@@ -296,25 +309,25 @@ def maskout(x, nclass, labels=None, drop=False):
     return x * onehot.float()
 
 
-if __name__ == '__main__':
-    labels=np.random.randint(0, 4, size=3, dtype=np.int64)
-    torch_labels = torch.from_numpy(labels)
-    onehot = one_hot(torch_labels)
-    print(onehot)
-    print(one_hot(torch_labels, nclass=4))
-
-    x = np.random.randn(3, 3, 4)
-    torch_x = torch.from_numpy(x)
-    m = maskout(torch_x, torch_labels, nclass=4)
-    print('input:', x)
-    print('maskout:', m)
-    print('maskout with drop:', maskout(torch_x, torch_labels, nclass=4, drop=True))
-
-    #points = np.random.rand(2,4,2)
-    #extras = np.random.rand(2,2,2)
-    #x = np.concatenate([points, extras], axis=1)
-    #print('target:',points)
-    #print('extras:', extras)
-    #print('x:', x)
-    #pool = chamfer_pool(torch.from_numpy(x), torch.from_numpy(points))
-    #print('pooled diff:', torch.from_numpy(points)-pool)
+#if __name__ == '__main__':
+#    labels=np.random.randint(0, 4, size=3, dtype=np.int64)
+#    torch_labels = torch.from_numpy(labels)
+#    onehot = one_hot(torch_labels)
+#    print(onehot)
+#    print(one_hot(torch_labels, nclass=4))
+#
+#    x = np.random.randn(3, 3, 4)
+#    torch_x = torch.from_numpy(x)
+#    m = maskout(torch_x, torch_labels, nclass=4)
+#    print('input:', x)
+#    print('maskout:', m)
+#    print('maskout with drop:', maskout(torch_x, torch_labels, nclass=4, drop=True))
+#
+#    #points = np.random.rand(2,4,2)
+#    #extras = np.random.rand(2,2,2)
+#    #x = np.concatenate([points, extras], axis=1)
+#    #print('target:',points)
+#    #print('extras:', extras)
+#    #print('x:', x)
+#    #pool = chamfer_pool(torch.from_numpy(x), torch.from_numpy(points))
+#    #print('pooled diff:', torch.from_numpy(points)-pool)
