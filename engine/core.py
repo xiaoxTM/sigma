@@ -5,24 +5,6 @@ import os.path
 import argparse
 import numpy as np
 
-
-def phase(mode='train'):
-    if mode not in ['train', 'predict']:
-        raise ValueError('`phase` mode only support `train/predict`. given {}'
-                         .format(mode))
-    def _phase(fun):
-        def _wrap(*args, **kwargs):
-            if mode == 'train':
-                sigma.status.is_training = True
-            else:
-                sigma.status.is_training = False
-            x = fun(*args, **kwargs)
-            sigma.status.is_training = not sigma.status.is_training
-            return x
-        return _wrap
-    return _phase
-
-
 def predict_op(input_shape,
                predop=None,
                axis=None,
@@ -57,8 +39,6 @@ def predict_op(input_shape,
             return predop(x, axis, name=name)
     return _predict_op
 
-
-@phase('predict')
 def predict(sess,
             y, # tensor
             generator,
@@ -122,10 +102,8 @@ def predict(sess,
             preds.append([pred])
         else:
             os.makedirs(savedir, exist_ok=True)
-            for i, images in enumerate(zip(samples, pred.astype(np.int8))):
-                dbs.images.save_image('{}/{}.png'.format(global_idx, i),
-                                      helpers.stack(images, interval=10,
-                                                    value=[0, 0, 0]))
+            for i, images in enumerate(pred.astype(np.int8)):
+                dbs.images.save_image('{}/{}.png'.format(global_idx, i), images)
         (global_idx, _, epoch, iteration) = next(progressor)
     if len(preds) > 0:
         return preds[0] if len(preds) == 1 else preds
@@ -182,6 +160,7 @@ def session(target='',
             log=None,
             debug=False,
             address=None,
+            var_list=None,
             verbose=True):
     """ get session and setup Graph, GPU, checkpoints, logs
     """
@@ -192,7 +171,7 @@ def session(target='',
         if checkpoint[-1] != '/':
             parent_dir = checkpoint.rsplit('/', 1)[0]
         os.makedirs(parent_dir, exist_ok=True)
-        sess, saver = helpers.load(sess, checkpoint, saver, verbose=verbose)
+        sess, saver = helpers.load(sess, checkpoint, saver, var_list, verbose=verbose)
     if log is not None:
         summarize = ops.core.summary_merge()
         # in case none tf.summary.* are invoked
@@ -308,7 +287,6 @@ def run(session,
         np.savetxt(filename, records)
 
 
-@phase('train')
 def train(sess,
           generator,
           iterations,
@@ -371,7 +349,6 @@ def train(sess,
                                             feed_dict=samples)
     valid_fun = None
     if valid_gen is not None and valid_iters is not None:
-        @phase('predict')
         def _valid_fun(global_step=None):
             loss = 0
             for iteration in range(iterations):
@@ -400,7 +377,6 @@ def train(sess,
             train_fun = _train_fun
             if valid_fun is not None:
                 valid_op['update'] = metric_update
-                @phase('predict')
                 def _valid_fun(global_step=None):
                     ops.core.run(sess, metric_initializer)
                     loss = 0
@@ -419,7 +395,6 @@ def train(sess,
                 return metric(sess, train_op, samples)
             train_fun = _train_fun
             if valid_fun is not None:
-                @phase('predict')
                 def _valid_fun(global_step=None):
                     loss = 0.0
                     acc  = 0.0
@@ -598,6 +573,9 @@ def build_parser():
 
     # begin of options for testing
     parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--axis', type=int, default=None)
+    parser.add_argument('--savedir', type=str, default=None)
+    parser.add_argument('--predop', type=str, default='argmax')
     # end of options for testing
 
     return parser
@@ -617,7 +595,7 @@ def build_experiment(build_model_fun,
                      model_config=None,
                      generator_config=None,
                      optimizer_config=None,
-                     gpu_config=None):
+                     config=None):
     """ build experiment
         this will automatically add timestamp to checkpoints and logs
 
@@ -666,8 +644,8 @@ def build_experiment(build_model_fun,
                                parameters passed to build_reader_fun
             optimizer_config : dict
                                parameters passed to ops.optimizer.get
-            gpu_config : dict:
-                         gpu configuration
+            config : dict:
+                         configuration
     """
     if model_config is None:
         model_config = {}
@@ -714,7 +692,6 @@ def build_experiment(build_model_fun,
                                        ['predop', 'batch_size', 'axis',
                                         'nclass', 'savedir', 'reuse',
                                         'name', 'scope'])
-        print('test config:', test_config)
         # the process of training networks
         if args.verbose:
             helpers.print_args(args)
@@ -795,7 +772,7 @@ def build_experiment(build_model_fun,
         train_op = {'optimizer':optimization_op, 'loss':loss_op}
         valid_op = {'loss':loss_op}
 
-        sess, saver, summarize, writer = session(config=gpu_config,
+        sess, saver, summarize, writer = session(config=config,
                                                  checkpoint=checkpoint,
                                                  log=log,
                                                  debug=args.debug,

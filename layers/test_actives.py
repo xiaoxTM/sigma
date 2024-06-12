@@ -20,10 +20,12 @@ class ActivesTest(unittest.TestCase):
         data_squash = (data_square_norm / (1 + data_square_norm)) * (data / data_norm)
 
         variable = ops.core.to_tensor(data)
-        squash = actives.squash(variable)
+        squash = actives.squash(variable, axis=1)
 
         _squash = ops.core.run(self.sess, squash)
-        self.assertListEqual(data_squash.tolist(), _squash.tolist())
+        for ds, ss in zip(data_squash, _squash):
+            for d,s in zip(ds, ss):
+                self.assertAlmostEqual(d, s)
 
 
     @classmethod

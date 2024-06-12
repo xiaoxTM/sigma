@@ -31,21 +31,43 @@ from . import base
 from . import losses
 from . import metrics
 
-from .core import trainable_parameters
+from .core import trainable_parameters, version_compare_great
+
+def str2type(name):
+    return eval('core.{}'.format(name))
+
+
+def type2str(dtype):
+    if dtype == core.float16:
+        return 'float16'
+    elif dtype == core.float32:
+        return 'float32'
+    elif dtype == core.float64:
+        return 'float64'
+    else:
+        raise ValueError('dtype `{}` not supported.'.format(dtype))
 
 def get():
     return {'data_format' : core.data_format,
-            'epsilon' : core.epsilon
-           }
+                    'epsilon': core.epsilon,
+                    'floatx': type2str(core.floatx)}
 
 
 def set(config):
     if config is not None:
-        core.epsilon = config.get('epsilon', 1e-5)
-        core.data_format = config.get('data_format', 'NHWC')
+        if version_compare_great(core.version, '1.5.0'):
+            core.data_format = config.get('data_format', ['NC', 'NWC', 'NHWC', 'NDHWC'])
+        else:
+            core.data_format = config.get('data_format', ['NHWC', 'NHWC', 'NHWC', 'NHWC'])
+        core.epsilon = config.get('epsilon', 1e-9)
+        core.floatx = str2type(config.get('floatx', 'float32'))
     else:
-        core.epsilon = 1e-5
-        core.data_format = 'NHWC'
-    core.axis = -1
-    if core.data_format == 'NCHW':
-        core.axis = 1
+        if version_compare_great(core.version, '1.5.0'):
+            core.data_format = ['NC', 'NWC', 'NHWC', 'NDHWC']
+        else:
+            core.data_format = config.get('data_format', ['NHWC', 'NHWC', 'NHWC', 'NHWC'])
+        core.epsilon = 1e-9
+        core.floatx = core.float32
+    core.caxis = -1
+    if core.data_format[1] == 'NCW':
+        core.caxis = 1

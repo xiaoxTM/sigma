@@ -20,7 +20,7 @@ import numpy as np
 from .. import colors, helpers
 from . import helper, core
 
-# @helpers.typecheck(input_shape=list,
+# @helpers.typecheck(inputs_shape=list,
 #                    axis=int,
 #                    reuse=bool,
 #                    name=str,
@@ -46,7 +46,7 @@ def concat(inputs_shape,
     helper.check_input_shape(output_shape)
     for idx, ip in enumerate(inputs_shape[1:]):
         helper.check_input_shape(ip)
-        if not np.all(np.delete(output_shape, axis) == np.delete(ip, axis)):
+        if not np.all(np.delete(output_shape, axis)[1:] == np.delete(ip, axis)[1:]):
             raise ValueError('shape of {}-input differs from first'
                              ' one besides {}-axis. {} vs {}'
                              .format(colors.red(idx+1),
@@ -58,4 +58,46 @@ def concat(inputs_shape,
     def _concat(x):
         with ops_scope:
             return core.concat(x, axis)
+    return _concat, output_shape
+
+# @helpers.typecheck(inputs_shape=list,
+#                    axis=int,
+#                    reuse=bool,
+#                    name=str,
+#                    scope=str)
+def stack(inputs_shape,
+          axis=-1,
+          reuse=False,
+          name=None,
+          scope=None):
+    """ stack multiple tensors into one
+        along with axis
+    """
+    if not isinstance(inputs_shape, (list, tuple)):
+        raise TypeError('concat requires inputs as '
+                        '{}list / tpule{}, given {}'
+                        .format(colors.fg.green, colors.reset,
+                                colors.red(type(inputs_shape))))
+    elif len(inputs_shape) < 2:
+        raise ValueError('concat requires at least {}two{} inputs, given {}'
+                         .format(colors.fg.green, colors.reset,
+                                 colors.red(len(inputs_shape))))
+    input_shape = inputs_shape[0]
+    output_shape = input_shape[:]
+    axis = helper.normalize_axes(input_shape, axis)
+    output_shape.insert(axis, len(inputs_shape))
+    helper.check_input_shape(output_shape)
+    for idx, ip in enumerate(inputs_shape[1:]):
+        helper.check_input_shape(ip)
+        if not np.all(input_shape[1:] == ip[1:]):
+            raise ValueError('shape of {}-input differs from first'
+                             ' one besides {}-axis. {} vs {}'
+                             .format(colors.red(idx+1),
+                                     colors.green(axis),
+                                     colors.red(output_shape),
+                                     colors.green(ip)))
+    ops_scope, _, _ = helper.assign_scope(name, scope, 'stack', reuse)
+    def _concat(x):
+        with ops_scope:
+            return core.stack(x, axis)
     return _concat, output_shape

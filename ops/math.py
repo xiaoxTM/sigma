@@ -33,26 +33,7 @@ def add(inputs_shape,
     """ add multiple tensors into one
         with weight `weights`
     """
-    if not isinstance(inputs_shape, (list, tuple)):
-        raise TypeError('concat requires inputs as '
-                        '{}list / tpule{}, given {}'
-                        .format(colors.fg.green, colors.reset,
-                                colors.red(type(inputs_shape))))
-    elif len(inputs_shape) < 2:
-        raise ValueError('concat requires at least {}two{} inputs, given {}'
-                         .format(colors.fg.green, colors.reset,
-                                 colors.red(len(inputs_shape))))
-    output_shape = inputs_shape[0]
-    helper.check_input_shape(output_shape)
-    for idx, ip in enumerate(inputs_shape[1:]):
-        helper.check_input_shape(ip)
-         # ignore the batch-size dimension in case of value `None`
-        if not np.all(output_shape[1:] == ip[1:]):
-            raise ValueError('shape of {}-input differ '
-                             'from first one. {} vs {}'
-                             .format(colors.red(idx+1),
-                                     colors.red(output_shape),
-                                     colors.green(ip)))
+    helper.check_shape_consistency(inputs_shape)
     if weights is None:
         weights = [1] * len(inputs_shape)
     ops_scope, _, _ = helper.assign_scope(name, scope, 'add', reuse)
@@ -60,7 +41,7 @@ def add(inputs_shape,
         with ops_scope:
             x = [e * w for e, w in zip(x, weights)]
             return core.add(x)
-    return _add, output_shape
+    return _add, inputs_shape[0]
 
 
 # @helpers.typecheck(input_shape=list,
@@ -68,31 +49,12 @@ def add(inputs_shape,
 #                    name=str,
 #                    scope=str)
 def mul(inputs_shape, reuse=False, name=None, scope=None):
-    if not isinstance(inputs_shape, (list, tuple)):
-        raise TypeError('concat requires inputs '
-                        'as {}list / tpule{}, given {}'
-                        .format(colors.fg.green, colors.reset,
-                                colors.red(type(inputs))))
-    elif len(inputs_shape) < 2:
-        raise ValueError('concat requires at least {}two{} inputs, given {}'
-                         .format(colors.fg.green, colors.reset,
-                                 colors.red(len(inputs_shape))))
-    output_shape = inputs_shape[0]
-    helper.check_input_shape(output_shape)
-    for idx, ip in enumerate(inputs_shape[1:]):
-        helper.check_input_shape(ip)
-        # ignore the batch-size dimension in case of value `None`
-        if not np.all(output_shape[1:] == ip[1:]):
-            raise ValueError('shape of {}-input differ from '
-                             'first one. {} vs {}'
-                             .format(colors.red(idx+1),
-                                     colors.red(output_shape),
-                                     colors.green(ip)))
+    helper.check_shape_consistency(inputs_shape)
     ops_scope, _, _ = helper.assign_scope(name, scope, 'mul', reuse)
     def _mul(x):
         with ops_scope:
             return core.multiply(x[0], x[1])
-    return _mul, output_shape
+    return _mul, inputs_shape[0]
 
 
 # @helpers.typecheck(input_shape=list,
@@ -100,28 +62,9 @@ def mul(inputs_shape, reuse=False, name=None, scope=None):
 #                    name=str,
 #                    scope=str)
 def matmul(inputs_shape, reuse=False, name=None, scope=None):
-    if not isinstance(inputs_shape, (list, tuple)):
-        raise TypeError('concat requires inputs '
-                        'as {}list / tpule{}, given {}'
-                        .format(colors.fg.green, colors.reset,
-                                colors.red(type(inputs))))
-    elif len(inputs_shape) < 2:
-        raise ValueError('concat requires at least {}two{} inputs, given {}'
-                         .format(colors.fg.green, colors.reset,
-                                 colors.red(len(inputs_shape))))
-    output_shape = inputs_shape[0]
-    helper.check_input_shape(output_shape)
-    for idx, ip in enumerate(inputs_shape[1:]):
-        helper.check_input_shape(ip)
-         # ignore the batch-size dimension in case of value `None`
-        if not np.all(output_shape[1:] == ip[1:]):
-            raise ValueError('shape of {}-input differ from '
-                             'first one. {} vs {}'
-                             .format(colors.red(idx+1),
-                                     colors.red(output_shape),
-                                     colors.green(ip)))
+    helper.check_shape_consistency(inputs_shape)
     ops_scope, _, _ = helper.assign_scope(name, scope, 'matmul', reuse)
     def _matmul(x):
         with ops_scope:
             return core.matmul(x[0], x[1])
-    return _matmul, output_shape
+    return _matmul, inputs_shape[0]

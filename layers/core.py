@@ -54,8 +54,14 @@ __defaults__ = {'padding' : 'valid',
                 'bias_regularizer' : None
                }
 
+# __layers__ = ['squash', 'crelu', 'relu', 'relu6', 'elu', 'selu', 'leaky_relu',
+#               'softmax', 'softplus', 'softsign', 'sigmoid', 'tanh', 'linear',
+#               'embedding', 'flatten', 'reshape', 'expand_dims', 'maskout',
+#               'input_spec', 'label_spec', 'random_spec',
+#              ]
 
-__layers__ = {'actives': ['crelu',
+
+__modules__ = {'actives': ['crelu',
                           'relu',
                           'relu6',
                           'elu',
@@ -83,13 +89,14 @@ __layers__ = {'actives': ['crelu',
                         'deconv2d',
                         'sepconv2d'],
               'merge': ['concat',
-                        'add',
-                        'mul'],
+                        'stack'],
               'norms': ['instance_norm',
                         'batch_norm',
                         'dropout'],
-              'pools': ['avg_pool2d',
+              'pools': ['avg_pool1d',
+                        'avg_pool2d',
                         'avg_pool2d_global',
+                        'max_pool1d',
                         'max_pool2d',
                         'max_pool2d_global']
              }
@@ -167,7 +174,7 @@ def set_defaults(key_values: dict):
 
 
 def _layer2color(lname: dict) -> str:
-    for k,v in __layers__.items():
+    for k,v in __modules__.items():
         if lname in v:
             return __colormaps__[k]
     return __colormaps__['other']
@@ -263,8 +270,11 @@ def graph_has_edge(graph, input_name, output_name):
                       name if name is not None else 'concat', 'concat',
                       colors.fg.red, output, colors.reset))
 """
-def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
+def print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
     """ print each layer
+        parameters:
+            @name: layer name
+            @typename: layer type name
     """
     # //FUTURE: print details of each layer. e.g., parameters of each layer. For graph ONLY
     global __graph__
@@ -273,7 +283,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
         if name is None:
             raise ValueError('name is not given')
         if isinstance(inputs, (list, tuple)):
-            if ops.helper.is_tensor(inputs[0]):
+            if len(inputs) != 0 and ops.helper.is_tensor(inputs[0]):
                 input_shape = [ops.core.shape(x) for x in inputs]
                 # input_name is a tuple of strings
                 input_name = list(ops.helper.scope_name([x.name for x in inputs]))
@@ -303,10 +313,10 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     # input_name_str = ops.helper.concat_scope_and_name(inputname)
                     input_shape_str = str(input_shape)
                     input_name_str = str(input_name).replace("'","")
-                    print('{}{} \t=>`{}[{} | {}]{}`=> \t{}{}'
+                    print('{}{} \t=>`{}[{}]{}`=> \t{}{}'
                           .format(input_name_str,
                                   colors.green(input_shape_str),
-                                  colors.fg.blue, name, typename, colors.reset,
+                                  colors.fg.blue, typename, colors.reset,
                                   output_name, colors.red(output_shape)))
                     if __details__ is True:
                         length = len(input_name_str) + len(input_shape_str)
@@ -325,17 +335,15 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                     dot.set_node_defaults(shape='record')
                     __graph__ = dot
                 input_scope = str(ops.helper.split_scope(input_name)).replace("'","")
+                output_scope = str(ops.helper.split_scope(output_name)).replace("'","")
                 if is_input_layer:
-                    if isinstance(input_name, str):
-                        input_name = [input_name]
-                        input_shape = [input_shape]
-                    for iname, ishape in zip(input_name, input_shape):
-                        iname = iname.replace(':', '-')
-                        label = '%s\n|{{%s}}|{{%s}}' % (iname, ishape, input_scope)
-                        node = pydot.Node(iname, label=label)
-                        __graph__.add_node(node)
+                    if isinstance(input_name, (list, tuple)):
+                        raise TypeError('input layer cannot be list/tuple of shapes')
+                    output_name = output_name.replace(':', '-')
+                    label = '%s\n|{{%s}}|{{%s}}' % (output_name, output_shape, input_scope)
+                    node = pydot.Node(output_name, label=label)
+                    __graph__.add_node(node)
                 else:
-                    output_scope = str(ops.helper.split_scope(output_name)).replace("'","")
                     if __details__ is True:
                         # input_scope = ops.helper.split_scope(input_name)
                         # output_scope = ops.helper.split_scope(output_name)
@@ -351,7 +359,7 @@ def _print_layer(inputs, outputs, typename, reuse, name, scope, **kwargs):
                             else:
                                 parameters = '{}\n{}:{}'.format(parameters,
                                                                 key, value)
-                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}}|{{}|{}}|{{%s}}}' % (name,
+                        label = '{{%s\n|{input:|output:}|{{%s}|{%s}}|{{%s}|{%s}}}|{{%s}}}' % (name,
                                                                                   str(input_shape).replace("'",""),
                                                                                   output_shape,
                                                                                   input_scope,
@@ -438,9 +446,11 @@ def layer(fun):
         name, reuse = kwargs.get('name', None), kwargs.get('reuse', False)
         if name is None:
             if reuse:
-                name = ops.helper.dispatch_name(fun.__name__, -1)
-            else:
-                name = ops.helper.dispatch_name(fun.__name__)
+                # in reuse mode, name must be given and unique
+                #name = ops.helper.dispatch_name(fun.__name__, -1)
+                raise ValueError('`name` cannot be None when reuse={}'
+                                 .format(colors.red('True')))
+            name = ops.helper.dispatch_name(fun.__name__)
             kwargs['name'] = name
         x = fun(**kwargs)
         outputs = x
@@ -450,7 +460,7 @@ def layer(fun):
         kwargs.pop('reuse')
         kwargs.pop('name')
         scope = kwargs.pop('scope')
-        _print_layer(inputs, outputs, fun.__name__, reuse,
+        print_layer(inputs, outputs, fun.__name__, reuse,
                      name, scope, **kwargs)
         return x
     return _wrap

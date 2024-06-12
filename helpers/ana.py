@@ -16,17 +16,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import scipy.misc as sm
 import multiprocessing as mp
 import numpy as np
 import os
 import os.path
-from .nput import load_filename
+from .nput import load_filename, imread
 
 def histogram_multiprocess_worker(params):
     name, nclass = params
     distributes = np.zeros(nclass)
-    label = sm.imread(name)
+    label = imread(name)
     for nc in range(nclass):
         distributes[nc] += np.sum(label == nc)
     return distributes
@@ -66,7 +65,7 @@ def histogram_from_list_simple(listname, nclass, basepath):
         filename = name
         if basepath is not None:
             filename = os.path.join(basepath, filename)
-        label = sm.imread(filename)
+        label = imread(filename)
         for nc in range(nclass):
             distributes[nc] += np.sum(label == nc)
     return distributes, distributes / np.sum(distributes)
@@ -145,8 +144,8 @@ def estimate_class_weights_from_dir(dirname, nclass,
 
 def distribute_multiprocess_worker(params):
     filename, gtname, nclass = params
-    image = sm.imread(filename)
-    label = sm.imread(gtname)
+    image = imread(filename)
+    label = imread(gtname)
     distributes = np.zeros([3, nclass, 256])
     for channel in range(3):
         single = image[:, :, channel]
@@ -195,8 +194,8 @@ def distribute_from_list_simple(filename, gtname, nclass, basepath):
         if basepath is not None:
             f = os.path.join(basepath, f)
             g = os.path.join(basepath, g)
-        image = sm.imread(f)
-        label = sm.imread(g)
+        image = imread(f)
+        label = imread(g)
         for channel in range(3):
             single = image[:, :, channel]
             for nc in range(nclass):

@@ -1,5 +1,0 @@
-#! /usr/bin/env bash
-sudo rm -rf exp/check-points/mnist/acgan/*
-sudo rm -rf exp/logs/mnist/acgan/images/*
-sudo rm -rf exp/pickles/*.pkl
-sudo rm -rf exp/logs/mnist/acgan/tensorboard

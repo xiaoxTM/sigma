@@ -20,12 +20,16 @@ from . import helper, core
 
 def loss(fun):
     def _loss(axis,
-              from_logits=True,
+              from_logits=False,
               onehot=True,
               reuse=False,
               name=None,
               scope=None,
               *args):
+        """
+        :param from_logits: whether input (x) is before softmax (True), after softmax (False)
+        :param onehot: whether label is onehot format or not
+        """
         ops_scope, _, _ = helper.assign_scope(name,
                                                  scope,
                                                  fun.__name__,
@@ -36,54 +40,53 @@ def loss(fun):
 
 @loss
 def binary_cross_entropy(axis,
-                         from_logits=True,
+                         from_logits=False,
                          onehot=True,
                          reuse=False,
                          name=None,
-                         scope=None):
+                         scope=None,
+                         epsilon=core.epsilon):
     def _binary_cross_entropy(x, labels):
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
-                labels = core.one_hot(labels, depth)
+                labels = core.one_hot(labels, depth, dtype=core.int32)
             if not from_logits:
                 # source code borrowed from:
                 #     @keras.backend.tensorflow_backend.py
-                x = core.clip(x, statis.epsilon, 1- statis.epsilon)
-                x = core.log(x / (1-x))
-            return core.mean(
-                core.sigmoid_cross_entropy_with_logits(labels=labels,
-                                                       logits=x),
-                axis=axis)
+                x = core.clip(x,epsilon, 1-epsilon)
+                x = labels * core.log(x + epsilon)
+                x += (1-labels) * core.log(1 - x + epsilon)
+                return -x
+            return core.sigmoid_cross_entropy_with_logits(labels=labels,
+                                                       logits=x)
     return _binary_cross_entropy
 
 
 @loss
 def categorical_cross_entropy(axis,
-                              from_logits=True,
+                              from_logits=False,
                               onehot=True,
                               reuse=False,
                               name=None,
-                              scope=None):
+                              scope=None,
+                              epsilon=core.epsilon):
     def _categorical_cross_entropy(x, labels):
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
-                labels = core.one_hot(labels, depth)
+                labels = core.one_hot(labels, depth, dtype=core.float32)
             if from_logits:
-                return core.mean(
-                    core.softmax_cross_entropy_with_logits(labels=labels,
-                                                           logits=x),
-                    axis=axis)
+                return core.softmax_cross_entropy_with_logits(labels, logits, axis=axis)
             else:
                 # source code borrowed from:
                 #     @keras.backend.tensorflow_backend.py
+                x = x / core.sum(x, axis, True)
                 x /= core.sum(x,
                               len(x.get_shape())-1,
                               True)
-                x = core.clip(x, statis.epsilon, 1-statis.epsilon)
-            return -core.sum(label * core.log(x),
-                             len(output.get_shape())-1)
+                x = core.clip(x, epsilon, 1-epsilon)
+                return -core.mean(labels * core.log(x), axis)
     return _categorical_cross_entropy
 
 
@@ -98,7 +101,9 @@ def mean_square_error(axis,
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
-                labels = core.one_hot(labels, depth)
+                labels = core.one_hot(labels, depth, dtype=core.int32)
+            if from_logits:
+                x = core.softmax(x, axis)
             return core.mean(core.square(x - labels), axis=axis)
     return _mean_square_error
 
@@ -114,7 +119,9 @@ def mean_absolute_error(axis,
         with scope:
             if not onehot:
                 depth = core.shape(x)[axis]
-                labels = core.one_hot(labels, depth)
+                labels = core.one_hot(labels, depth, dtype=core.int32)
+            if from_logits:
+                x = core.softmax(x, axis)
             return core.mean(core.abs(x - labels), axis=axis)
     return _mean_absolute_error
 
@@ -131,7 +138,9 @@ def winner_takes_all(axis,
             shape = core.shape(x)
             pred = core.argmax(x, axis=axis)
             if not onehot:
-                labels = core.one_hot(labels, shape[axis])
+                labels = core.one_hot(labels, shape[axis], core.int32)
+            if from_logits:
+                x = core.softmax(x, axis)
             loss_tensor = core.where(pred==labels,
                                    core.zeros_like(labels),
                                    core.ones_like(labels))
@@ -151,9 +160,11 @@ def margin_loss(axis,
                 negative_margin=0.1,
                 downweight=0.5):
     if axis is None:
-        axis = core.axis
+        axis = core.caxis
     def _margin_loss(x, labels):
         with scope:
+            if from_logits:
+                x = core.softmax(x, axis)
             if not onehot:
                 depth = core.shape(x)[axis]
                 labels = core.one_hot(labels, depth)
@@ -165,6 +176,55 @@ def margin_loss(axis,
                              axis=axis)
             return core.mean(ploss + downweight * nloss)
     return _margin_loss
+
+@loss
+def chamfer_loss(axis,
+                 from_logits=True,
+                 onehot=True,
+                 reuse=False,
+                 name=None,
+                 scope=None,
+                 dtype=core.float64,
+                 metric=None,
+                 alpha=0.5,
+                 belta=0.5):
+    if axis is None:
+        axis = 1
+    if metric is None:
+        metric = lambda inputs, targets: core.norm(inputs-targets, axis=axis)
+
+    def _chamfer_distance(inputs, targets):
+        ''' inputs and targets should have the shape:
+            [points, features]
+        '''
+        npoints, nfeatures = inputs.shape
+        inputs_expand = core.tile(inputs, (npoints, 1))
+        targets_expand = core.reshape(
+                core.tile(core.expand_dims(targets, 1),
+                          (1, npoints, 1)),
+                (-1, nfeatures))
+        distance = metric(inputs_expand, targets_expand)
+        distance = core.reshape(distance, (npoints, npoints))
+        distance = core.min(distance, axis=1)
+        distance = core.mean(distance)
+        return distance
+
+    def _chamfer_distance_sum(inputs):
+        inputs, targets = inputs
+        return _chamfer_distance(inputs, targets) * alpha \
+             + _chamfer_distance(targets, inputs) * belta
+
+    def _chamfer_loss(x, labels):
+        ''' x and labels should have the shape:
+            [batchsizez, points, features]
+        '''
+        with scope:
+            if from_logits:
+                x = core.softmax(x, axis)
+            return core.mean(
+                    core.map_func(_chamfer_distance_sum, elems=(x, labels), dtype=dtype)
+                    )
+    return _chamfer_loss
 
 
 def get(l, **kwargs):
